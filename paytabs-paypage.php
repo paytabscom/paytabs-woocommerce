@@ -1,18 +1,22 @@
 <?php
-// define('WP_DEBUG', false);
 
-/******************************************************************************************************************************
- *    
- *     Plugin Name: WooCommerce Payment Gateway - PayTabs
- *     Plugin URI: https://www.paytabs.com/plugin
- *     Description: PayTabs - PayPage: Payment gateway for woocommerce. This plugin supports woocommerce version 3.0.0 or greater version.
- *     Version: 3.0
- *     Author: PayTabs - Wajih
- *     Author URL: https://www.paytabs.com
- *     Revision Date : 24/March/2020
- *
- ********************************************************************************************************************************/
+/**
+ * @package PayTabs - PayPage
+ */
 
+/**
+ * Plugin Name: PayTabs - WooCommerce Payment Gateway
+ * Plugin URI: https://paytabs.com/
+ * Description: PayTabs is a <strong>3rd party payment gateway</strong>. Ideal payment solutions for your internet business.
+ * Version: 3.1.0
+ * Author: PayTabs
+ * Author URI: https://paytabs.com/
+ * Revision Date : 02/April/2020
+ */
+
+if (!function_exists('add_action')) {
+  exit;
+}
 
 //load plugin function when woocommerce loaded
 add_action('plugins_loaded', 'woocommerce_paytabs_init', 0);
@@ -38,7 +42,6 @@ require_once PAYTABS_PAYPAGE_DIR . "includes/paytabs_api.php";
 function woocommerce_paytabs_init()
 {
   if (!class_exists('WC_Payment_Gateway')) return;
-  // if (!in_array('woocommerce/woocommerce.php', apply_filters('active_plugins', get_option('active_plugins')))) return;
 
   class WC_Gateway_Paytabs extends WC_Payment_Gateway
   {
@@ -75,10 +78,6 @@ function woocommerce_paytabs_init()
       // This action hook saves the settings
       add_action("woocommerce_update_options_payment_gateways_{$this->id}", array($this, 'process_admin_options'));
 
-      // add_action("woocommerce_thankyou_{$this->id}", array($this, 'thankyou_page'));
-
-      // Customer Emails
-      // add_action('woocommerce_email_before_order_table', array($this, 'email_instructions'), 10, 3);
 
       // We need custom JavaScript to obtain a token
       // add_action('wp_enqueue_scripts', array($this, 'payment_scripts'));
@@ -95,6 +94,7 @@ function woocommerce_paytabs_init()
     /**
      * Returns the icon URL for this payment method
      * "icons" folder must contains .png file named like the "code" param of the payment method
+     * example: stcpay.png, applepay.png ...
      * @return string
      */
     private function getIcon()
@@ -125,14 +125,14 @@ function woocommerce_paytabs_init()
           'title'       => __('Title', 'PayTabs'),
           'type'        => 'text',
           'description' => __('This controls the title which the user sees during checkout.', 'PayTabs'),
-          'default'     => __("PayTabs - {$this->_code}", 'PayTabs'),
+          'default'     => $this->_title,
           'desc_tip'    => true,
         ),
         'description' => array(
           'title'       => __('Description', 'PayTabs'),
           'type'        => 'textarea',
           'description' => __('This controls the description which the user sees during checkout.', 'PayTabs'),
-          'default'     => __('Pay securely by Credit or Debit card through PayTabs Secure Servers.', 'PayTabs'),
+          'default'     => __('Pay securely through PayTabs Secure Servers.', 'PayTabs'),
         ),
         'merchant_email' => array(
           'title'       => __('Merchant e-Mail', 'PayTabs'),
@@ -165,8 +165,6 @@ function woocommerce_paytabs_init()
      **/
     public function process_payment($order_id)
     {
-      global $woocommerce;
-
       // we need it to get any order detailes
       $order = wc_get_order($order_id);
 
