@@ -85,9 +85,18 @@ function woocommerce_paytabs_init()
       // You can also register a webhook here
       // add_action('woocommerce_api_paytabs_callback', array($this, 'callback'));
 
-      if (isset($_REQUEST['payment_reference'])) {
+      if (isset($_REQUEST['payment_reference']) && isset($_REQUEST['key'])) {
         $payment_reference = $_REQUEST['payment_reference'];
-        $this->callback($payment_reference);
+        $key = $_REQUEST['key'];
+
+        $orderId = wc_get_order_id_by_order_key($key);
+        $order = wc_get_order($orderId);
+        if ($order) {
+          $payment_id = $order->get_payment_method();
+          if ($payment_id == $this->id) {
+            $this->callback($payment_reference, $orderId);
+          }
+        }
       }
     }
 
@@ -196,22 +205,32 @@ function woocommerce_paytabs_init()
     /**
      * In case you need a webhook, like PayPal IPN etc
      */
-    public function callback($payment_reference)
+    public function callback($payment_reference, $order_id)
     {
-      if (!$payment_reference) return false;
+      if (!$payment_reference) return;
 
       $paytabsApi = new PaytabsApi($this->merchant_email, $this->secret_key);
       $result = $paytabsApi->verify_payment($payment_reference);
 
       $response = ($result && isset($result->response_code));
       if (!$response) {
-        return false;
+        return;
       }
 
       $success = $result->response_code == 100;
       $message = $result->result;
 
+      if (!isset($result->reference_no)) {
+        wc_add_notice($message, 'error');
+        // return false;
+        // echo $message;
+        // wp_redirect(get_site_url());
+        return;
+      }
+
       $orderId = $result->reference_no;
+      if ($orderId != $order_id) return;
+
       $order = wc_get_order($orderId);
 
       if (!$order) return;
@@ -219,11 +238,11 @@ function woocommerce_paytabs_init()
       if ($success) {
         $this->orderSuccess($order, $message);
 
-        return true;
+        // exit;
       } else {
         $this->orderFailed($order, $message);
 
-        return false;
+        // exit;
       }
     }
 
