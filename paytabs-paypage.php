@@ -85,19 +85,7 @@ function woocommerce_paytabs_init()
       // You can also register a webhook here
       // add_action('woocommerce_api_paytabs_callback', array($this, 'callback'));
 
-      if (isset($_REQUEST['payment_reference']) && isset($_REQUEST['key'])) {
-        $payment_reference = $_REQUEST['payment_reference'];
-        $key = $_REQUEST['key'];
-
-        $orderId = wc_get_order_id_by_order_key($key);
-        $order = wc_get_order($orderId);
-        if ($order) {
-          $payment_id = $order->get_payment_method();
-          if ($payment_id == $this->id) {
-            $this->callback($payment_reference, $orderId);
-          }
-        }
-      }
+      $this->checkCallback();
     }
 
     /**
@@ -177,7 +165,7 @@ function woocommerce_paytabs_init()
       // we need it to get any order detailes
       $order = wc_get_order($order_id);
 
-      $values = $this->prepareOrder($order);
+      $values = WooCommerce2 ? $this->prepareOrder2($order) : $this->prepareOrder($order);
 
       $paytabsApi = new PaytabsApi($this->merchant_email, $this->secret_key);
       $paypage = $paytabsApi->create_pay_page($values);
@@ -199,6 +187,23 @@ function woocommerce_paytabs_init()
         $errorMessage = $paypage->details ?? $paypage->result;
         wc_add_notice($errorMessage, 'error');
         return;
+      }
+    }
+
+    private function checkCallback()
+    {
+      if (isset($_REQUEST['payment_reference']) && isset($_REQUEST['key'])) {
+        $payment_reference = $_REQUEST['payment_reference'];
+        $key = $_REQUEST['key'];
+
+        $orderId = wc_get_order_id_by_order_key($key);
+        $order = wc_get_order($orderId);
+        if ($order) {
+          $payment_id = $this->getPaymentMethod($order);
+          if ($payment_id == $this->id) {
+            $this->callback($payment_reference, $orderId);
+          }
+        }
       }
     }
 
@@ -390,6 +395,121 @@ function woocommerce_paytabs_init()
 
       return $params;
     }
+
+    /**
+     * $this->prepareOrder which support WooCommerce version 2.x
+     */
+    private function prepareOrder2($order)
+    {
+      global $woocommerce;
+
+      // $order->add_order_note();
+
+      $total = $order->get_total();
+      $discount = $order->get_total_discount();
+      $shipping = $order->get_total_shipping();
+
+      $amount = $total + $discount;
+      $other_charges = $shipping;
+      // $totals = $order->get_order_item_totals();
+
+      $currency = $order->get_order_currency();
+      // $ip_customer = $order->get_customer_ip_address();
+
+      //
+
+      $siteUrl = get_site_url();
+      $return_url = $order->get_checkout_payment_url(true);
+      // $return_url = "$siteUrl?wc-api=paytabs_callback&order={$order->id}";
+
+      $products = $order->get_items();
+
+      $products_str = implode(' || ', array_map(function ($p) {
+        return $p['name'];
+      }, $products));
+
+      $quantity = implode(' || ', array_map(function ($p) {
+        return $p['qty'];
+      }, $products));
+
+      $unit_price = implode(' || ', array_map(function ($p) {
+        return $p['line_subtotal'] / $p['qty'];
+      }, $products));
+
+
+      $cdetails = PaytabsHelper::getCountryDetails($order->billing_country);
+      $phoneext = $cdetails['phone'];
+
+      $countryBilling = PaytabsHelper::countryGetiso3($order->billing_country);
+      $countryShipping = PaytabsHelper::countryGetiso3($order->shipping_country);
+
+      $postalCodeBilling = $order->billing_postcode;
+      if (empty($postalCodeBilling)) {
+        $postalCodeBilling = '11111';
+      }
+      $postalCodeShipping = $order->shipping_postcode;
+      if (empty($postalCodeShipping)) {
+        $postalCodeShipping = '11111';
+      }
+
+      $stateBilling = $order->billing_state;
+      if (empty($stateBilling)) {
+        $stateBilling = $order->billing_city;
+      }
+      $stateShipping = $order->shipping_state;
+      if (empty($stateShipping)) {
+        $stateShipping = $order->shipping_city;
+      }
+
+      $lang_code = get_locale();
+      $lang = ($lang_code == 'ar' || substr($lang_code, 0, 3) == 'ar_') ? 'Arabic' : 'English';
+
+      $params = [
+        'payment_type'         => $this->_code,
+        'amount'               => $amount,
+        'quantity'             => $quantity,
+        'currency'             => $currency,
+        "unit_price"           => $unit_price,
+        'other_charges'        => $other_charges,
+        'discount'             => $discount,
+        "products_per_title"   => $products_str,
+
+        'cc_first_name'        => $order->billing_first_name,
+        'cc_last_name'         => $order->billing_last_name,
+        'cc_phone_number'      => $phoneext,
+        'phone_number'         => $order->billing_phone,
+        'country'              => $countryBilling,
+        'state'                => $stateBilling,
+        'city'                 => $order->billing_city,
+        'email'                => $order->billing_email,
+        'postal_code'          => $postalCodeBilling,
+        'billing_address'      => $order->billing_address_1 . ' ' . $order->billing_address_2,
+
+        'shipping_firstname'   => $order->shipping_first_name,
+        'shipping_lastname'    => $order->shipping_last_name,
+        'country_shipping'     => $countryShipping,
+        'state_shipping'       => $stateShipping,
+        'city_shipping'        => $order->shipping_city,
+        'postal_code_shipping' => $postalCodeShipping,
+        'address_shipping'     => $order->shipping_address_1 . ' ' . $order->shipping_address_2,
+
+        'title'                => $order->get_formatted_billing_full_name(),
+        'reference_no'         => $order->id,
+        'cms_with_version'     => "WooCommerce {$woocommerce->version}",
+        'site_url'             => $siteUrl,
+        'return_url'           => $return_url,
+        'msg_lang'             => $lang,
+      ];
+
+      return $params;
+    }
+
+    //
+
+    private function getPaymentMethod($order)
+    {
+      return WooCommerce2 ? $order->payment_method : $order->get_payment_method();
+    }
   }
 
   class WC_Gateway_Paytabs_Creditcard extends WC_Gateway_Paytabs
@@ -500,4 +620,17 @@ function woocommerce_paytabs_init()
 
   add_filter('woocommerce_payment_gateways', 'woocommerce_add_paytabs_gateway');
   add_filter('woocommerce_payment_gateways', 'paytabs_filter_gateways', 10, 1);
+
+
+  function woocommerce_version_check($version = '3.0')
+  {
+    global $woocommerce;
+    if (version_compare($woocommerce->version, $version, ">=")) {
+      return true;
+    }
+
+    return false;
+  }
+
+  define('WooCommerce2', !woocommerce_version_check('3.0'));
 }
