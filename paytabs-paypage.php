@@ -258,8 +258,8 @@ function woocommerce_paytabs_init()
 
       $woocommerce->cart->empty_cart();
 
-      $order->add_order_note('Hey, your order is paid! Thank you!', true);
-      wc_add_notice(__('Thank you for shopping with us. Your account has been charged and your transaction is successful. We will be shipping your order to you soon.', 'woocommerce'), 'success');
+      $order->add_order_note($message, true);
+      // wc_add_notice(__('Thank you for shopping with us. Your account has been charged and your transaction is successful. We will be shipping your order to you soon.', 'woocommerce'), 'success');
 
       wp_redirect($this->get_return_url($order));
     }
@@ -273,7 +273,7 @@ function woocommerce_paytabs_init()
 
       $order->update_status('failed', __('Payment Cancelled', 'error'));
 
-      wp_redirect($order->get_cancel_order_url());
+      // wp_redirect($order->get_cancel_order_url());
     }
 
 
@@ -320,7 +320,7 @@ function woocommerce_paytabs_init()
       }, $products));
 
       $unit_price = implode(' || ', array_map(function ($p) {
-        return $p->get_subtotal();
+        return $p->get_subtotal() / $p->get_quantity();
       }, $products));
 
 
