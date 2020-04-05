@@ -339,6 +339,15 @@ function woocommerce_paytabs_init()
         $postalCodeShipping = '11111';
       }
 
+      $stateBilling = $order->get_billing_state();
+      if (empty($stateBilling)) {
+        $stateBilling = $order->get_billing_city();
+      }
+      $stateShipping = $order->get_shipping_state();
+      if (empty($stateShipping)) {
+        $stateShipping = $order->get_shipping_city();
+      }
+
       $lang_code = get_locale();
       $lang = ($lang_code == 'ar' || substr($lang_code, 0, 3) == 'ar_') ? 'Arabic' : 'English';
 
@@ -357,7 +366,7 @@ function woocommerce_paytabs_init()
         'cc_phone_number'      => $phoneext,
         'phone_number'         => $order->get_billing_phone(),
         'country'              => $countryBilling,
-        'state'                => $order->get_billing_state(),
+        'state'                => $stateBilling,
         'city'                 => $order->get_billing_city(),
         'email'                => $order->get_billing_email(),
         'postal_code'          => $postalCodeBilling,
@@ -366,7 +375,7 @@ function woocommerce_paytabs_init()
         'shipping_firstname'   => $order->get_shipping_first_name(),
         'shipping_lastname'    => $order->get_shipping_last_name(),
         'country_shipping'     => $countryShipping,
-        'state_shipping'       => $order->get_shipping_state(),
+        'state_shipping'       => $stateShipping,
         'city_shipping'        => $order->get_shipping_city(),
         'postal_code_shipping' => $postalCodeShipping,
         'address_shipping'     => $order->get_shipping_address_1() . ' ' . $order->get_shipping_address_2(),
