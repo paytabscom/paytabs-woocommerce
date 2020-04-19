@@ -1,2 +1,2 @@
 # PayTabs - WooCommerce
-Offecial WooCommerce plugin for PayTabs
+Official WooCommerce plugin for PayTabs
