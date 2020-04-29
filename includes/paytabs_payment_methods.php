@@ -132,9 +132,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $paypage = $paytabsApi->create_pay_page($values);
 
 
-        /*
-      * Your API interaction could be built with wp_remote_post()
-      */
+        /**
+         * Your API interaction could be built with wp_remote_post()
+         */
         // $response = wp_remote_post('{payment processor endpoint}', $args);
 
         if ($paypage && $paypage->response_code == 4012) {
@@ -332,6 +332,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             'discount'             => $discount,
             "products_per_title"   => $products_str,
 
+            'title'                => $order->get_formatted_billing_full_name(),
+            'email'                => $order->get_billing_email(),
             'cc_first_name'        => $order->get_billing_first_name(),
             'cc_last_name'         => $order->get_billing_last_name(),
             'cc_phone_number'      => $phoneext,
@@ -339,7 +341,6 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             'country'              => $countryBilling,
             'state'                => $stateBilling,
             'city'                 => $order->get_billing_city(),
-            'email'                => $order->get_billing_email(),
             'postal_code'          => $postalCodeBilling,
             'billing_address'      => $order->get_billing_address_1() . ' ' . $order->get_billing_address_2(),
 
@@ -351,7 +352,6 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             'postal_code_shipping' => $postalCodeShipping,
             'address_shipping'     => $order->get_shipping_address_1() . ' ' . $order->get_shipping_address_2(),
 
-            'title'                => $order->get_formatted_billing_full_name(),
             'reference_no'         => $order->get_id(),
             'cms_with_version'     => "WooCommerce {$woocommerce->version}",
             'site_url'             => $siteUrl,
@@ -441,6 +441,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             'discount'             => $discount,
             "products_per_title"   => $products_str,
 
+            'title'                => $order->get_formatted_billing_full_name(),
+            'email'                => $order->billing_email,
             'cc_first_name'        => $order->billing_first_name,
             'cc_last_name'         => $order->billing_last_name,
             'cc_phone_number'      => $phoneext,
@@ -448,7 +450,6 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             'country'              => $countryBilling,
             'state'                => $stateBilling,
             'city'                 => $order->billing_city,
-            'email'                => $order->billing_email,
             'postal_code'          => $postalCodeBilling,
             'billing_address'      => $order->billing_address_1 . ' ' . $order->billing_address_2,
 
@@ -460,7 +461,6 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             'postal_code_shipping' => $postalCodeShipping,
             'address_shipping'     => $order->shipping_address_1 . ' ' . $order->shipping_address_2,
 
-            'title'                => $order->get_formatted_billing_full_name(),
             'reference_no'         => $order->id,
             'cms_with_version'     => "WooCommerce {$woocommerce->version}",
             'site_url'             => $siteUrl,
