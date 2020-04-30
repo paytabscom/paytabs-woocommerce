@@ -563,6 +563,14 @@ class PaytabsHelper
 
         return $iso_3;
     }
+
+    public static function getNonEmpty(...$vars)
+    {
+        foreach ($vars as $var) {
+            if (!empty($var)) return $var;
+        }
+        return false;
+    }
 }
 
 

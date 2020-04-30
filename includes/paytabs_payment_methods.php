@@ -319,6 +319,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             $stateShipping = $order->get_shipping_city();
         }
 
+        $addressBilling = trim($order->get_billing_address_1() . ' ' . $order->get_billing_address_2());
+        $addressShipping = trim($order->get_shipping_address_1() . ' ' . $order->get_shipping_address_2());
+
         $lang_code = get_locale();
         $lang = ($lang_code == 'ar' || substr($lang_code, 0, 3) == 'ar_') ? 'Arabic' : 'English';
 
@@ -342,15 +345,15 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             'state'                => $stateBilling,
             'city'                 => $order->get_billing_city(),
             'postal_code'          => $postalCodeBilling,
-            'billing_address'      => $order->get_billing_address_1() . ' ' . $order->get_billing_address_2(),
+            'billing_address'      => $addressBilling,
 
-            'shipping_firstname'   => $order->get_shipping_first_name(),
-            'shipping_lastname'    => $order->get_shipping_last_name(),
-            'country_shipping'     => $countryShipping,
-            'state_shipping'       => $stateShipping,
-            'city_shipping'        => $order->get_shipping_city(),
-            'postal_code_shipping' => $postalCodeShipping,
-            'address_shipping'     => $order->get_shipping_address_1() . ' ' . $order->get_shipping_address_2(),
+            'shipping_firstname'   => PaytabsHelper::getNonEmpty($order->get_shipping_first_name(), $order->get_billing_first_name()),
+            'shipping_lastname'    => PaytabsHelper::getNonEmpty($order->get_billing_last_name(), $order->get_shipping_last_name()),
+            'country_shipping'     => PaytabsHelper::getNonEmpty($countryShipping, $countryBilling),
+            'state_shipping'       => PaytabsHelper::getNonEmpty($stateShipping, $stateBilling),
+            'city_shipping'        => PaytabsHelper::getNonEmpty($order->get_shipping_city(), $order->get_billing_city()),
+            'postal_code_shipping' => ($postalCodeShipping == '11111') ? $postalCodeBilling : $postalCodeShipping,
+            'address_shipping'     => PaytabsHelper::getNonEmpty($addressShipping, $addressBilling),
 
             'reference_no'         => $order->get_id(),
             'cms_with_version'     => "WooCommerce {$woocommerce->version}",
@@ -428,6 +431,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             $stateShipping = $order->shipping_city;
         }
 
+        $addressBilling = trim($order->billing_address_1 . ' ' . $order->billing_address_2);
+        $addressShipping = trim($order->shipping_address_1 . ' ' . $order->shipping_address_2);
+
         $lang_code = get_locale();
         $lang = ($lang_code == 'ar' || substr($lang_code, 0, 3) == 'ar_') ? 'Arabic' : 'English';
 
@@ -451,15 +457,15 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             'state'                => $stateBilling,
             'city'                 => $order->billing_city,
             'postal_code'          => $postalCodeBilling,
-            'billing_address'      => $order->billing_address_1 . ' ' . $order->billing_address_2,
+            'billing_address'      => $addressBilling,
 
-            'shipping_firstname'   => $order->shipping_first_name,
-            'shipping_lastname'    => $order->shipping_last_name,
-            'country_shipping'     => $countryShipping,
-            'state_shipping'       => $stateShipping,
-            'city_shipping'        => $order->shipping_city,
-            'postal_code_shipping' => $postalCodeShipping,
-            'address_shipping'     => $order->shipping_address_1 . ' ' . $order->shipping_address_2,
+            'shipping_firstname'   => PaytabsHelper::getNonEmpty($order->shipping_first_name, $order->billing_first_name),
+            'shipping_lastname'    => PaytabsHelper::getNonEmpty($order->shipping_last_name, $order->billing_last_name),
+            'country_shipping'     => PaytabsHelper::getNonEmpty($countryShipping, $countryBilling),
+            'state_shipping'       => PaytabsHelper::getNonEmpty($stateShipping, $stateBilling),
+            'city_shipping'        => PaytabsHelper::getNonEmpty($order->shipping_city, $order->billing_city),
+            'postal_code_shipping' => ($postalCodeShipping == '11111') ? $postalCodeBilling : $postalCodeShipping,
+            'address_shipping'     => PaytabsHelper::getNonEmpty($addressShipping, $addressBilling),
 
             'reference_no'         => $order->id,
             'cms_with_version'     => "WooCommerce {$woocommerce->version}",
