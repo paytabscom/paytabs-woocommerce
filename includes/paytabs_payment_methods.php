@@ -272,7 +272,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         // $totals = $order->get_order_item_totals();
 
         $currency = $order->get_currency();
-        // $ip_customer = $order->get_customer_ip_address();
+        $ip_customer = $order->get_customer_ip_address();
 
         //
 
@@ -327,39 +327,47 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $params = [
             'payment_type'         => $this->_code,
-            'amount'               => $amount,
-            'quantity'             => $quantity,
-            'currency'             => $currency,
-            "unit_price"           => $unit_price,
-            'other_charges'        => $other_charges,
-            'discount'             => $discount,
-            "products_per_title"   => $products_str,
 
             'title'                => $order->get_formatted_billing_full_name(),
-            'email'                => $order->get_billing_email(),
+
+            'currency'             => $currency,
+            'amount'               => $amount,
+            'other_charges'        => $other_charges,
+            'discount'             => $discount,
+
+            'reference_no'         => $order->get_id(),
+
+            'products_per_title'   => $products_str,
+            'quantity'             => $quantity,
+            'unit_price'           => $unit_price,
+
             'cc_first_name'        => $order->get_billing_first_name(),
             'cc_last_name'         => $order->get_billing_last_name(),
             'cc_phone_number'      => $phoneext,
             'phone_number'         => $order->get_billing_phone(),
-            'country'              => $countryBilling,
+            'email'                => $order->get_billing_email(),
+
+            'billing_address'      => $addressBilling,
             'state'                => $stateBilling,
             'city'                 => $order->get_billing_city(),
             'postal_code'          => $postalCodeBilling,
-            'billing_address'      => $addressBilling,
+            'country'              => $countryBilling,
 
             'shipping_firstname'   => PaytabsHelper::getNonEmpty($order->get_shipping_first_name(), $order->get_billing_first_name()),
             'shipping_lastname'    => PaytabsHelper::getNonEmpty($order->get_billing_last_name(), $order->get_shipping_last_name()),
-            'country_shipping'     => PaytabsHelper::getNonEmpty($countryShipping, $countryBilling),
-            'state_shipping'       => PaytabsHelper::getNonEmpty($stateShipping, $stateBilling),
-            'city_shipping'        => PaytabsHelper::getNonEmpty($order->get_shipping_city(), $order->get_billing_city()),
-            'postal_code_shipping' => ($postalCodeShipping == '11111') ? $postalCodeBilling : $postalCodeShipping,
             'address_shipping'     => PaytabsHelper::getNonEmpty($addressShipping, $addressBilling),
+            'city_shipping'        => PaytabsHelper::getNonEmpty($order->get_shipping_city(), $order->get_billing_city()),
+            'state_shipping'       => PaytabsHelper::getNonEmpty($stateShipping, $stateBilling),
+            'postal_code_shipping' => ($postalCodeShipping == '11111') ? $postalCodeBilling : $postalCodeShipping,
+            'country_shipping'     => PaytabsHelper::getNonEmpty($countryShipping, $countryBilling),
 
-            'reference_no'         => $order->get_id(),
-            'cms_with_version'     => "WooCommerce {$woocommerce->version}",
             'site_url'             => $siteUrl,
             'return_url'           => $return_url,
+
             'msg_lang'             => $lang,
+            'cms_with_version'     => "WooCommerce {$woocommerce->version}",
+
+            'ip_customer'          => $ip_customer,
         ];
 
         return $params;
@@ -439,39 +447,45 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $params = [
             'payment_type'         => $this->_code,
-            'amount'               => $amount,
-            'quantity'             => $quantity,
-            'currency'             => $currency,
-            "unit_price"           => $unit_price,
-            'other_charges'        => $other_charges,
-            'discount'             => $discount,
-            "products_per_title"   => $products_str,
 
             'title'                => $order->get_formatted_billing_full_name(),
-            'email'                => $order->billing_email,
+
+            'currency'             => $currency,
+            'amount'               => $amount,
+            'other_charges'        => $other_charges,
+            'discount'             => $discount,
+
+            'reference_no'         => $order->id,
+
+            'quantity'             => $quantity,
+            "unit_price"           => $unit_price,
+            "products_per_title"   => $products_str,
+
             'cc_first_name'        => $order->billing_first_name,
             'cc_last_name'         => $order->billing_last_name,
             'cc_phone_number'      => $phoneext,
             'phone_number'         => $order->billing_phone,
-            'country'              => $countryBilling,
+            'email'                => $order->billing_email,
+
+            'billing_address'      => $addressBilling,
             'state'                => $stateBilling,
             'city'                 => $order->billing_city,
             'postal_code'          => $postalCodeBilling,
-            'billing_address'      => $addressBilling,
+            'country'              => $countryBilling,
 
             'shipping_firstname'   => PaytabsHelper::getNonEmpty($order->shipping_first_name, $order->billing_first_name),
             'shipping_lastname'    => PaytabsHelper::getNonEmpty($order->shipping_last_name, $order->billing_last_name),
-            'country_shipping'     => PaytabsHelper::getNonEmpty($countryShipping, $countryBilling),
-            'state_shipping'       => PaytabsHelper::getNonEmpty($stateShipping, $stateBilling),
-            'city_shipping'        => PaytabsHelper::getNonEmpty($order->shipping_city, $order->billing_city),
-            'postal_code_shipping' => ($postalCodeShipping == '11111') ? $postalCodeBilling : $postalCodeShipping,
             'address_shipping'     => PaytabsHelper::getNonEmpty($addressShipping, $addressBilling),
+            'city_shipping'        => PaytabsHelper::getNonEmpty($order->shipping_city, $order->billing_city),
+            'state_shipping'       => PaytabsHelper::getNonEmpty($stateShipping, $stateBilling),
+            'postal_code_shipping' => ($postalCodeShipping == '11111') ? $postalCodeBilling : $postalCodeShipping,
+            'country_shipping'     => PaytabsHelper::getNonEmpty($countryShipping, $countryBilling),
 
-            'reference_no'         => $order->id,
-            'cms_with_version'     => "WooCommerce {$woocommerce->version}",
             'site_url'             => $siteUrl,
             'return_url'           => $return_url,
+
             'msg_lang'             => $lang,
+            'cms_with_version'     => "WooCommerce {$woocommerce->version}",
         ];
 
         return $params;

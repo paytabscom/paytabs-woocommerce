@@ -615,8 +615,12 @@ class PaytabsApi
     {
         $values['merchant_email'] = $this->merchant_email;
         $values['secret_key'] = $this->secret_key;
-        $values['ip_customer'] = $_SERVER['REMOTE_ADDR'];
-        $values['ip_merchant'] = $_SERVER['SERVER_ADDR'];
+
+        $serverIP = getHostByName(getHostName());
+        $values['ip_merchant'] = PaytabsHelper::getNonEmpty($serverIP, $_SERVER['SERVER_ADDR'], 'NA');
+
+        $values['ip_customer'] = PaytabsHelper::getNonEmpty($values['ip_customer'], $_SERVER['REMOTE_ADDR'], 'NA');
+
         return json_decode($this->runPost(self::PAYPAGE_URL, $values));
     }
 
@@ -632,7 +636,7 @@ class PaytabsApi
     {
         $fields_string = "";
         foreach ($fields as $key => $value) {
-            $fields_string .= $key . '=' . $value . '&';
+            $fields_string .= $key . '=' . urlencode($value) . '&';
         }
         $fields_string = rtrim($fields_string, '&');
         $ch = curl_init();
