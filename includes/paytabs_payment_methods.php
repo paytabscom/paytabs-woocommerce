@@ -145,6 +145,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 'redirect'  => $payment_url,
             );
         } else {
+            $_logPaypage = json_encode($paypage);
+            error_log("PayTabs: create PayPage failed for Order {$order_id}, [{$_logPaypage}]");
+
             $errorMessage = 'PayTabs could not create PayPage';
             try {
                 $errorMessage = isset($paypage->details) ? $paypage->details : $paypage->result;
@@ -157,7 +160,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
     private function checkCallback()
     {
-        if (isset($_REQUEST['payment_reference']) && isset($_REQUEST['key'])) {
+        if (isset($_REQUEST['payment_reference'], $_REQUEST['key'])) {
             $payment_reference = $_REQUEST['payment_reference'];
             $key = $_REQUEST['key'];
 
@@ -168,6 +171,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 if ($payment_id == $this->id) {
                     $this->callback($payment_reference, $orderId);
                 }
+            } else {
+                error_log("PayTabs: callback failed for Order {$orderId}, payemnt_reference [{$payment_reference}]");
             }
         }
     }
@@ -182,8 +187,11 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $paytabsApi = new PaytabsApi($this->merchant_email, $this->secret_key);
         $result = $paytabsApi->verify_payment($payment_reference);
 
+        $_logVerify = json_encode($result);
+
         $response = ($result && isset($result->response_code));
         if (!$response) {
+            error_log("PayTabs: callback failed for Order {$order_id}, empty response [{$_logVerify}]");
             return;
         }
 
@@ -191,25 +199,35 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $message = $result->result;
 
         if (!isset($result->reference_no)) {
+            error_log("PayTabs: callback failed for Order {$order_id}, response [{$_logVerify}]");
             wc_add_notice($message, 'error');
+
             // return false;
-            // echo $message;
             // wp_redirect(get_site_url());
             return;
         }
 
         $orderId = $result->reference_no;
-        if ($orderId != $order_id) return;
+        if ($orderId != $order_id) {
+            error_log("PayTabs: callback failed for Order {$order_id}, Order mismatch [{$_logVerify}]");
+            return;
+        }
 
         $order = wc_get_order($orderId);
 
-        if (!$order) return;
+        if (!$order) {
+            error_log("PayTabs: callback failed for Order {$order_id}, Order not found, response [{$_logVerify}]");
+            return;
+        }
 
         if ($success) {
             $this->orderSuccess($order, $message);
 
             // exit;
         } else {
+            $_logOrder = (json_encode($order->get_data()));
+            error_log("PayTabs: callback failed for Order {$order_id}, response [{$_logVerify}], Order [{$_logOrder}]");
+
             $this->orderFailed($order, $message);
 
             // exit;
