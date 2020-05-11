@@ -221,6 +221,7 @@ class PaytabsHelper
             'PM' => array('name' => 'SAINT PIERRE AND MIQUELON', 'code' => '508'),
             'PN' => array('name' => 'PITCAIRN', 'code' => '870'),
             'PR' => array('name' => 'PUERTO RICO', 'code' => '1'),
+            'PS' => array('name' => 'PALESTINE', 'code' => '970'),
             'PT' => array('name' => 'PORTUGAL', 'code' => '351'),
             'PW' => array('name' => 'PALAU', 'code' => '680'),
             'PY' => array('name' => 'PARAGUAY', 'code' => '595'),
