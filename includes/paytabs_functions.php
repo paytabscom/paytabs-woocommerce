@@ -18,3 +18,8 @@ function woocommerce_paytabs_version_check($version = '3.0')
 
     return false;
 }
+
+function paytabs_error_log($message)
+{
+    error_log($message . PHP_EOL, 3, PAYTABS_DEBUG_FILE);
+}
