@@ -587,7 +587,8 @@ class PaytabsApi
         '7' => ['name' => 'sadad', 'currencies' => ['SAR']],
         '8' => ['name' => 'atfawry', 'currencies' => ['EGP']],
         '9' => ['name' => 'knpay', 'currencies' => ['KWD']],
-        '10' => ['name' => 'amex', 'currencies' => ['AED', 'SAR']]
+        '10' => ['name' => 'amex', 'currencies' => ['AED', 'SAR']],
+        '11' => ['name' => 'valu', 'currencies' => ['EGP']],
     ];
     const URL_AUTHENTICATION = "https://www.paytabs.com/apiv2/validate_secret_key";
     const PAYPAGE_URL = "https://www.paytabs.com/apiv2/create_pay_page";

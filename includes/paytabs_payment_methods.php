@@ -586,3 +586,10 @@ class WC_Gateway_Paytabs_Amex extends WC_Gateway_Paytabs
     protected $_title = 'PayTabs - Amex';
     protected $_description = 'PayTabs - Amex payment method';
 }
+
+class WC_Gateway_Paytabs_Valu extends WC_Gateway_Paytabs
+{
+    protected $_code = 'valu';
+    protected $_title = 'PayTabs - valU';
+    protected $_description = 'valU payments powered by PayTabs';
+}

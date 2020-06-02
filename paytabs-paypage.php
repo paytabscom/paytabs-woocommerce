@@ -36,6 +36,7 @@ $PAYTABS_PAYPAGE_METHODS = [
   'atfawry' => 'WC_Gateway_Paytabs_Atfawry',
   'knpay' => 'WC_Gateway_Paytabs_Knpay',
   'amex' => 'WC_Gateway_Paytabs_Amex',
+  'valu' => 'WC_Gateway_Paytabs_Valu',
 ];
 
 require_once PAYTABS_PAYPAGE_DIR . "includes/paytabs_api.php";
