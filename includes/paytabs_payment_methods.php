@@ -300,17 +300,15 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $products = $order->get_items();
 
-        $products_str = implode(' || ', array_map(function ($p) {
-            return $p->get_name();
-        }, $products));
+        $items_arr = array_map(function ($p) {
+            return [
+                'name' => $p->get_name(),
+                'quantity' => $p->get_quantity(),
+                'price' => round($p->get_subtotal() / $p->get_quantity(), 2)
+            ];
+        }, $products);
 
-        $quantity = implode(' || ', array_map(function ($p) {
-            return $p->get_quantity();
-        }, $products));
-
-        $unit_price = implode(' || ', array_map(function ($p) {
-            return $p->get_subtotal() / $p->get_quantity();
-        }, $products));
+        $products_arr = PaytabsHelper::prepare_products($items_arr);
 
 
         $cdetails = PaytabsHelper::getCountryDetails($order->get_billing_country());
@@ -355,10 +353,6 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
             'reference_no'         => $order->get_id(),
 
-            'products_per_title'   => $products_str,
-            'quantity'             => $quantity,
-            'unit_price'           => $unit_price,
-
             'cc_first_name'        => $order->get_billing_first_name(),
             'cc_last_name'         => $order->get_billing_last_name(),
             'cc_phone_number'      => $phoneext,
@@ -388,7 +382,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             'ip_customer'          => $ip_customer,
         ];
 
-        return $params;
+        $post_arr = array_merge($params, $products_arr);
+
+        return $post_arr;
     }
 
     /**
@@ -420,17 +416,15 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $products = $order->get_items();
 
-        $products_str = implode(' || ', array_map(function ($p) {
-            return $p['name'];
-        }, $products));
+        $items_arr = array_map(function ($p) {
+            return [
+                'name' => $p['name'],
+                'quantity' => $p['qty'],
+                'price' => round($p['line_subtotal'] / $p['qty'], 2)
+            ];
+        }, $products);
 
-        $quantity = implode(' || ', array_map(function ($p) {
-            return $p['qty'];
-        }, $products));
-
-        $unit_price = implode(' || ', array_map(function ($p) {
-            return $p['line_subtotal'] / $p['qty'];
-        }, $products));
+        $products_arr = PaytabsHelper::prepare_products($items_arr);
 
 
         $cdetails = PaytabsHelper::getCountryDetails($order->billing_country);
@@ -475,10 +469,6 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
             'reference_no'         => $order->id,
 
-            'quantity'             => $quantity,
-            "unit_price"           => $unit_price,
-            "products_per_title"   => $products_str,
-
             'cc_first_name'        => $order->billing_first_name,
             'cc_last_name'         => $order->billing_last_name,
             'cc_phone_number'      => $phoneext,
@@ -506,7 +496,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             'cms_with_version'     => "WooCommerce {$woocommerce->version}",
         ];
 
-        return $params;
+        $post_arr = array_merge($params, $products_arr);
+
+        return $post_arr;
     }
 
     //
