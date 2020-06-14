@@ -314,26 +314,18 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $cdetails = PaytabsHelper::getCountryDetails($order->get_billing_country());
         $phoneext = $cdetails['phone'];
 
+        $telephone = $order->get_billing_phone();
+        // Remove country_code from phone_number if it is same as the user's Country code
+        $telephone = preg_replace("/^[\+|00]+{$phoneext}/", '', $telephone);
+
         $countryBilling = PaytabsHelper::countryGetiso3($order->get_billing_country());
         $countryShipping = PaytabsHelper::countryGetiso3($order->get_shipping_country());
 
-        $postalCodeBilling = $order->get_billing_postcode();
-        if (empty($postalCodeBilling)) {
-            $postalCodeBilling = '11111';
-        }
-        $postalCodeShipping = $order->get_shipping_postcode();
-        if (empty($postalCodeShipping)) {
-            $postalCodeShipping = '11111';
-        }
+        $postalCodeBilling = PaytabsHelper::getNonEmpty($order->get_billing_postcode(), '11111');
+        $postalCodeShipping = PaytabsHelper::getNonEmpty($order->get_shipping_postcode(), $postalCodeBilling);
 
-        $stateBilling = $order->get_billing_state();
-        if (empty($stateBilling)) {
-            $stateBilling = $order->get_billing_city();
-        }
-        $stateShipping = $order->get_shipping_state();
-        if (empty($stateShipping)) {
-            $stateShipping = $order->get_shipping_city();
-        }
+        $stateBilling = PaytabsHelper::getNonEmpty($order->get_billing_state(), $order->get_billing_city());
+        $stateShipping = PaytabsHelper::getNonEmpty($order->get_shipping_state(), $order->get_shipping_city());
 
         $addressBilling = trim($order->get_billing_address_1() . ' ' . $order->get_billing_address_2());
         $addressShipping = trim($order->get_shipping_address_1() . ' ' . $order->get_shipping_address_2());
@@ -356,7 +348,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             'cc_first_name'        => $order->get_billing_first_name(),
             'cc_last_name'         => $order->get_billing_last_name(),
             'cc_phone_number'      => $phoneext,
-            'phone_number'         => $order->get_billing_phone(),
+            'phone_number'         => $telephone,
             'email'                => $order->get_billing_email(),
 
             'billing_address'      => $addressBilling,
@@ -370,7 +362,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             'address_shipping'     => PaytabsHelper::getNonEmpty($addressShipping, $addressBilling),
             'city_shipping'        => PaytabsHelper::getNonEmpty($order->get_shipping_city(), $order->get_billing_city()),
             'state_shipping'       => PaytabsHelper::getNonEmpty($stateShipping, $stateBilling),
-            'postal_code_shipping' => ($postalCodeShipping == '11111') ? $postalCodeBilling : $postalCodeShipping,
+            'postal_code_shipping' => $postalCodeShipping,
             'country_shipping'     => PaytabsHelper::getNonEmpty($countryShipping, $countryBilling),
 
             'site_url'             => $siteUrl,
@@ -430,26 +422,18 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $cdetails = PaytabsHelper::getCountryDetails($order->billing_country);
         $phoneext = $cdetails['phone'];
 
+        $telephone = $order->billing_phone;
+        // Remove country_code from phone_number if it is same as the user's Country code
+        $telephone = preg_replace("/^[\+|00]+{$phoneext}/", '', $telephone);
+
         $countryBilling = PaytabsHelper::countryGetiso3($order->billing_country);
         $countryShipping = PaytabsHelper::countryGetiso3($order->shipping_country);
 
-        $postalCodeBilling = $order->billing_postcode;
-        if (empty($postalCodeBilling)) {
-            $postalCodeBilling = '11111';
-        }
-        $postalCodeShipping = $order->shipping_postcode;
-        if (empty($postalCodeShipping)) {
-            $postalCodeShipping = '11111';
-        }
+        $postalCodeBilling = PaytabsHelper::getNonEmpty($order->billing_postcode, '11111');
+        $postalCodeShipping = PaytabsHelper::getNonEmpty($order->shipping_postcode, $postalCodeBilling);
 
-        $stateBilling = $order->billing_state;
-        if (empty($stateBilling)) {
-            $stateBilling = $order->billing_city;
-        }
-        $stateShipping = $order->shipping_state;
-        if (empty($stateShipping)) {
-            $stateShipping = $order->shipping_city;
-        }
+        $stateBilling = PaytabsHelper::getNonEmpty($order->billing_state, $order->billing_city);
+        $stateShipping = PaytabsHelper::getNonEmpty($order->shipping_state, $order->shipping_city);
 
         $addressBilling = trim($order->billing_address_1 . ' ' . $order->billing_address_2);
         $addressShipping = trim($order->shipping_address_1 . ' ' . $order->shipping_address_2);
@@ -472,7 +456,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             'cc_first_name'        => $order->billing_first_name,
             'cc_last_name'         => $order->billing_last_name,
             'cc_phone_number'      => $phoneext,
-            'phone_number'         => $order->billing_phone,
+            'phone_number'         => $telephone,
             'email'                => $order->billing_email,
 
             'billing_address'      => $addressBilling,
@@ -486,7 +470,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             'address_shipping'     => PaytabsHelper::getNonEmpty($addressShipping, $addressBilling),
             'city_shipping'        => PaytabsHelper::getNonEmpty($order->shipping_city, $order->billing_city),
             'state_shipping'       => PaytabsHelper::getNonEmpty($stateShipping, $stateBilling),
-            'postal_code_shipping' => ($postalCodeShipping == '11111') ? $postalCodeBilling : $postalCodeShipping,
+            'postal_code_shipping' => $postalCodeShipping,
             'country_shipping'     => PaytabsHelper::getNonEmpty($countryShipping, $countryBilling),
 
             'site_url'             => $siteUrl,
