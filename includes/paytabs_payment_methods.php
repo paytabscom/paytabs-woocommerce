@@ -304,7 +304,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             return [
                 'name' => $p->get_name(),
                 'quantity' => $p->get_quantity(),
-                'price' => round($p->get_subtotal() / $p->get_quantity(), 2)
+                'price' => $p->get_subtotal() / $p->get_quantity()
             ];
         }, $products);
 
@@ -375,6 +375,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         ];
 
         $post_arr = array_merge($params, $products_arr);
+
+        $sums = PaytabsHelper::round_amount($post_arr);
 
         return $post_arr;
     }

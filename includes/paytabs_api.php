@@ -591,7 +591,7 @@ class PaytabsHelper
         }, $items));
 
         $unit_price = implode($glue, array_map(function ($p) {
-            return $p['price'];
+            return round($p['price'], 3);
         }, $items));
 
 
@@ -600,6 +600,45 @@ class PaytabsHelper
             'quantity'           => $quantity,
             'unit_price'         => $unit_price,
         ];
+    }
+
+    /**
+     * Try to get ride of the ugly message: "Your total amount is not matching to sum of unit price amounts per quantity".
+     * Because of rounding products' prices, may occur some diff between the sums of products & total amount.
+     * if that diff is under 1 then change the "amount" to total sums.
+     * @return true if the calculation is correct or the amount been rounded in @param $post_arr['amount']
+     */
+    public static function round_amount(array &$post_arr)
+    {
+        $amount = $post_arr['amount'];
+        $other_charges = $post_arr['other_charges'];
+        $quantities = $post_arr['quantity'];
+        $unit_prices = $post_arr['unit_price'];
+
+        $sums = 0;
+        $products_q = explode(' || ', $quantities);
+        $products_p = explode(' || ', $unit_prices);
+        for ($i = 0; $i < count($products_p); $i++) {
+            $sums += ($products_p[$i] * $products_q[$i]);
+        }
+
+        $sums += $other_charges;
+
+        $diff = $amount - $sums;
+        if ($diff != 0) {
+            $_logParams = json_encode($post_arr);
+            if (abs($diff) < 1) {
+                paytabs_error_log("PayTabs: PaytabsHelper::round_amount: Round the total to Sum of products, diff = {$diff}, [{$_logParams}]");
+
+                $post_arr['amount'] = $sums;
+            } else {
+                paytabs_error_log("PayTabs: PaytabsHelper::round_amount: Could not round the total to Sum of products because the diff = {$diff} >= 1, [{$_logParams}]");
+
+                return false;
+            }
+        }
+
+        return true;
     }
 }
 
