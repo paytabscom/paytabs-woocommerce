@@ -146,7 +146,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             );
         } else {
             $_logPaypage = json_encode($paypage);
-            paytabs_error_log("PayTabs: create PayPage failed for Order {$order_id}, [{$_logPaypage}]");
+            $_logParams = json_encode($values);
+            paytabs_error_log("PayTabs: create PayPage failed for Order {$order_id}, [{$_logPaypage}], [{$_logParams}]");
 
             $errorMessage = 'PayTabs could not create PayPage';
             try {
