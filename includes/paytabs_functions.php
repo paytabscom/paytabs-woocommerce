@@ -1,8 +1,6 @@
 <?php
 
-if (!defined('PAYTABS_PAYPAGE_VERSION')) {
-    return;
-}
+defined('PAYTABS_PAYPAGE_VERSION') or die;
 
 function woocommerce_paytabs_missing_wc_notice()
 {
