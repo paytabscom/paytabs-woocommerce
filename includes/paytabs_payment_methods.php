@@ -147,7 +147,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         } else {
             $_logPaypage = json_encode($paypage);
             $_logParams = json_encode($values);
-            paytabs_error_log("PayTabs: create PayPage failed for Order {$order_id}, [{$_logPaypage}], [{$_logParams}]");
+            paytabs_error_log("create PayPage failed for Order {$order_id}, [{$_logPaypage}], [{$_logParams}]");
 
             $errorMessage = 'PayTabs could not create PayPage';
             try {
@@ -173,7 +173,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                     $this->callback($payment_reference, $orderId);
                 }
             } else {
-                paytabs_error_log("PayTabs: callback failed for Order {$orderId}, payemnt_reference [{$payment_reference}]");
+                paytabs_error_log("callback failed for Order {$orderId}, payemnt_reference [{$payment_reference}]");
             }
         }
     }
@@ -192,7 +192,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $response = ($result && isset($result->response_code));
         if (!$response) {
-            paytabs_error_log("PayTabs: callback failed for Order {$order_id}, empty response [{$_logVerify}]");
+            paytabs_error_log("callback failed for Order {$order_id}, empty response [{$_logVerify}]");
             return;
         }
 
@@ -200,7 +200,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $message = $result->result;
 
         if (!isset($result->reference_no)) {
-            paytabs_error_log("PayTabs: callback failed for Order {$order_id}, response [{$_logVerify}]");
+            paytabs_error_log("callback failed for Order {$order_id}, response [{$_logVerify}]");
             wc_add_notice($message, 'error');
 
             // return false;
@@ -210,14 +210,14 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $orderId = $result->reference_no;
         if ($orderId != $order_id) {
-            paytabs_error_log("PayTabs: callback failed for Order {$order_id}, Order mismatch [{$_logVerify}]");
+            paytabs_error_log("callback failed for Order {$order_id}, Order mismatch [{$_logVerify}]");
             return;
         }
 
         $order = wc_get_order($orderId);
 
         if (!$order) {
-            paytabs_error_log("PayTabs: callback failed for Order {$order_id}, Order not found, response [{$_logVerify}]");
+            paytabs_error_log("callback failed for Order {$order_id}, Order not found, response [{$_logVerify}]");
             return;
         }
 
@@ -227,7 +227,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             // exit;
         } else {
             $_logOrder = (json_encode($order->get_data()));
-            paytabs_error_log("PayTabs: callback failed for Order {$order_id}, response [{$_logVerify}], Order [{$_logOrder}]");
+            paytabs_error_log("callback failed for Order {$order_id}, response [{$_logVerify}], Order [{$_logOrder}]");
 
             $this->orderFailed($order, $message);
 

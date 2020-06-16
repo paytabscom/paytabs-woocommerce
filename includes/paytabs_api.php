@@ -628,11 +628,11 @@ class PaytabsHelper
         if ($diff != 0) {
             $_logParams = json_encode($post_arr);
             if (abs($diff) < 1) {
-                paytabs_error_log("PayTabs: PaytabsHelper::round_amount: Round the total to Sum of products, diff = {$diff}, [{$_logParams}]");
+                paytabs_error_log("PaytabsHelper::round_amount: Round the total to Sum of products, diff = {$diff}, [{$_logParams}]");
 
                 $post_arr['amount'] = $sums;
             } else {
-                paytabs_error_log("PayTabs: PaytabsHelper::round_amount: Could not round the total to Sum of products because the diff = {$diff} >= 1, [{$_logParams}]");
+                paytabs_error_log("PaytabsHelper::round_amount: Could not round the total to Sum of products because the diff = {$diff} >= 1, [{$_logParams}]");
 
                 return false;
             }

@@ -21,5 +21,6 @@ function woocommerce_paytabs_version_check($version = '3.0')
 
 function paytabs_error_log($message)
 {
-    error_log($message . PHP_EOL, 3, PAYTABS_DEBUG_FILE);
+    $_prefix = date('c') . ' PayTabs: ';
+    error_log($_prefix . $message . PHP_EOL, 3, PAYTABS_DEBUG_FILE);
 }
