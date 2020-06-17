@@ -591,7 +591,7 @@ class PaytabsHelper
         }, $items));
 
         $unit_price = implode($glue, array_map(function ($p) {
-            return round($p['price'], 3);
+            return round($p['price'], 2);
         }, $items));
 
 
@@ -610,6 +610,8 @@ class PaytabsHelper
      */
     public static function round_amount(array &$post_arr)
     {
+        $threshold = 1.0;
+
         $amount = $post_arr['amount'];
         $other_charges = $post_arr['other_charges'];
         $quantities = $post_arr['quantity'];
@@ -627,15 +629,17 @@ class PaytabsHelper
         $diff = $amount - $sums;
         if ($diff != 0) {
             $_logParams = json_encode($post_arr);
-            if (abs($diff) < 1) {
-                paytabs_error_log("PaytabsHelper::round_amount: Round the total to Sum of products, diff = {$diff}, [{$_logParams}]");
 
-                $post_arr['amount'] = $sums;
+            if (abs($diff) > $threshold) {
+                paytabs_error_log("PaytabsHelper::round_amount: diff = {$diff}, [{$_logParams}]");
             } else {
-                paytabs_error_log("PaytabsHelper::round_amount: Could not round the total to Sum of products because the diff = {$diff} >= 1, [{$_logParams}]");
+                paytabs_error_log("PaytabsHelper::round_amount: diff = {$diff} added to 'other_charges', [{$_logParams}]");
 
-                return false;
+                $other_charges += $diff;
+                $post_arr['other_charges'] = $other_charges;
             }
+
+            return false;
         }
 
         return true;
