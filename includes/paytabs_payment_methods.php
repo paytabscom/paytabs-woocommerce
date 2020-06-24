@@ -35,9 +35,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $this->description = $this->get_option('description');
         $this->enabled = $this->get_option('enabled');
 
-        $merchant_email = $this->get_option('merchant_email');
-        $secret_key = $this->get_option('secret_key');
-        $this->_paytabsApi = PaytabsApi::getInstance($merchant_email, $secret_key);
+        $this->merchant_email = $this->get_option('merchant_email');
+        $this->secret_key = $this->get_option('secret_key');
 
         // This action hook saves the settings
         add_action("woocommerce_update_options_payment_gateways_{$this->id}", array($this, 'process_admin_options'));
@@ -131,7 +130,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $values = WooCommerce2 ? $this->prepareOrder2($order) : $this->prepareOrder($order);
 
-        $paypage = $this->_paytabsApi->create_pay_page($values);
+        $_paytabsApi = PaytabsApi::getInstance($this->merchant_email, $this->secret_key);
+        $paypage = $_paytabsApi->create_pay_page($values);
 
 
         /**
@@ -184,7 +184,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     {
         if (!$payment_reference) return;
 
-        $result = $this->_paytabsApi->verify_payment($payment_reference);
+        $_paytabsApi = PaytabsApi::getInstance($this->merchant_email, $this->secret_key);
+        $result = $_paytabsApi->verify_payment($payment_reference);
 
         $_logVerify = json_encode($result);
 

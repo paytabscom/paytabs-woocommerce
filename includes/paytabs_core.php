@@ -1015,10 +1015,17 @@ class PaytabsApi
             self::$instance = new PaytabsApi($merchant_email, $secret_key);
         }
 
+        // self::$instance->setAuth($merchant_email, $secret_key);
+
         return self::$instance;
     }
 
     private function __construct($merchant_email, $secret_key)
+    {
+        $this->setAuth($merchant_email, $secret_key);
+    }
+
+    private function setAuth($merchant_email, $secret_key)
     {
         $this->merchant_email = $merchant_email;
         $this->secret_key = $secret_key;
