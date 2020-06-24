@@ -7,6 +7,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     protected $_code = '';
     protected $_title = '';
     protected $_description = '';
+    //
+    protected $_paytabsApi;
+
+    //
 
     public function __construct()
     {
@@ -31,8 +35,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $this->description = $this->get_option('description');
         $this->enabled = $this->get_option('enabled');
 
-        $this->merchant_email = $this->get_option('merchant_email');
-        $this->secret_key = $this->get_option('secret_key');
+        $merchant_email = $this->get_option('merchant_email');
+        $secret_key = $this->get_option('secret_key');
+        $this->_paytabsApi = PaytabsApi::getInstance($merchant_email, $secret_key);
 
         // This action hook saves the settings
         add_action("woocommerce_update_options_payment_gateways_{$this->id}", array($this, 'process_admin_options'));
@@ -126,8 +131,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $values = WooCommerce2 ? $this->prepareOrder2($order) : $this->prepareOrder($order);
 
-        $paytabsApi = new PaytabsApi($this->merchant_email, $this->secret_key);
-        $paypage = $paytabsApi->create_pay_page($values);
+        $paypage = $this->_paytabsApi->create_pay_page($values);
 
 
         /**
@@ -135,7 +139,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
          */
         // $response = wp_remote_post('{payment processor endpoint}', $args);
 
-        if ($paypage && $paypage->response_code == 4012) {
+        if ($paypage->success) {
             $payment_url = $paypage->payment_url;
 
             return array(
@@ -145,13 +149,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         } else {
             $_logPaypage = json_encode($paypage);
             $_logParams = json_encode($values);
-            paytabs_error_log("create PayPage failed for Order {$order_id}, [{$_logPaypage}], [{$_logParams}]");
+            PaytabsHelper::log("create PayPage failed for Order {$order_id}, [{$_logPaypage}], [{$_logParams}]", 3);
 
-            $errorMessage = 'PayTabs could not create PayPage';
-            try {
-                $errorMessage = isset($paypage->details) ? $paypage->details : $paypage->result;
-            } catch (\Throwable $th) {
-            }
+            $errorMessage = $paypage->result;
+
             wc_add_notice($errorMessage, 'error');
             return null;
         }
@@ -171,7 +172,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                     $this->callback($payment_reference, $orderId);
                 }
             } else {
-                paytabs_error_log("callback failed for Order {$orderId}, payemnt_reference [{$payment_reference}]");
+                PaytabsHelper::log("callback failed for Order {$orderId}, payemnt_reference [{$payment_reference}]", 3);
             }
         }
     }
@@ -183,22 +184,15 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     {
         if (!$payment_reference) return;
 
-        $paytabsApi = new PaytabsApi($this->merchant_email, $this->secret_key);
-        $result = $paytabsApi->verify_payment($payment_reference);
+        $result = $this->_paytabsApi->verify_payment($payment_reference);
 
         $_logVerify = json_encode($result);
 
-        $response = ($result && isset($result->response_code));
-        if (!$response) {
-            paytabs_error_log("callback failed for Order {$order_id}, empty response [{$_logVerify}]");
-            return;
-        }
-
-        $success = $result->response_code == 100;
+        $success = $result->success;
         $message = $result->result;
 
         if (!isset($result->reference_no)) {
-            paytabs_error_log("callback failed for Order {$order_id}, response [{$_logVerify}]");
+            PaytabsHelper::log("callback failed for Order {$order_id}, response [{$_logVerify}]", 3);
             wc_add_notice($message, 'error');
 
             // return false;
@@ -208,14 +202,14 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $orderId = $result->reference_no;
         if ($orderId != $order_id) {
-            paytabs_error_log("callback failed for Order {$order_id}, Order mismatch [{$_logVerify}]");
+            PaytabsHelper::log("callback failed for Order {$order_id}, Order mismatch [{$_logVerify}]", 3);
             return;
         }
 
         $order = wc_get_order($orderId);
 
         if (!$order) {
-            paytabs_error_log("callback failed for Order {$order_id}, Order not found, response [{$_logVerify}]");
+            PaytabsHelper::log("callback failed for Order {$order_id}, Order not found, response [{$_logVerify}]", 3);
             return;
         }
 
@@ -225,7 +219,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             // exit;
         } else {
             $_logOrder = (json_encode($order->get_data()));
-            paytabs_error_log("callback failed for Order {$order_id}, response [{$_logVerify}], Order [{$_logOrder}]");
+            PaytabsHelper::log("callback failed for Order {$order_id}, response [{$_logVerify}], Order [{$_logOrder}]", 3);
 
             $this->orderFailed($order, $message);
 
@@ -307,24 +301,13 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             ];
         }, $products);
 
-        $products_arr = PaytabsHelper::prepare_products($items_arr);
-
-
         $cdetails = PaytabsHelper::getCountryDetails($order->get_billing_country());
         $phoneext = $cdetails['phone'];
 
         $telephone = $order->get_billing_phone();
-        // Remove country_code from phone_number if it is same as the user's Country code
-        $telephone = preg_replace("/^[\+|00]+{$phoneext}/", '', $telephone);
 
         $countryBilling = PaytabsHelper::countryGetiso3($order->get_billing_country());
         $countryShipping = PaytabsHelper::countryGetiso3($order->get_shipping_country());
-
-        $postalCodeBilling = PaytabsHelper::getNonEmpty($order->get_billing_postcode(), '11111');
-        $postalCodeShipping = PaytabsHelper::getNonEmpty($order->get_shipping_postcode(), $postalCodeBilling);
-
-        $stateBilling = PaytabsHelper::getNonEmpty($order->get_billing_state(), $order->get_billing_city());
-        $stateShipping = PaytabsHelper::getNonEmpty($order->get_shipping_state(), $order->get_shipping_city());
 
         $addressBilling = trim($order->get_billing_address_1() . ' ' . $order->get_billing_address_2());
         $addressShipping = trim($order->get_shipping_address_1() . ' ' . $order->get_shipping_address_2());
@@ -332,50 +315,50 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $lang_code = get_locale();
         $lang = ($lang_code == 'ar' || substr($lang_code, 0, 3) == 'ar_') ? 'Arabic' : 'English';
 
-        $params = [
-            'payment_type'         => $this->_code,
+        $holder = new PaytabsHolder();
+        $holder
+            ->set01PaymentCode($this->_code)
+            ->set02Title($order->get_formatted_billing_full_name())
+            ->set03Payment(
+                $currency,
+                $amount,
+                $other_charges,
+                $discount
+            )
+            ->set04Products($items_arr)
+            ->set05ReferenceNum($order->get_id())
+            ->set06CustomerInfo(
+                $order->get_billing_first_name(),
+                $order->get_billing_last_name(),
+                $phoneext,
+                $telephone,
+                $order->get_billing_email()
+            )
+            ->set07Billing(
+                $addressBilling,
+                $order->get_billing_state(),
+                $order->get_billing_city(),
+                $order->get_billing_postcode(),
+                $countryBilling
+            )
+            ->set08Shipping(
+                $order->get_shipping_first_name(),
+                $order->get_shipping_last_name(),
+                $addressShipping,
+                $order->get_shipping_state(),
+                $order->get_shipping_city(),
+                $order->get_shipping_postcode(),
+                $countryShipping
+            )
+            ->set09URLs(
+                $siteUrl,
+                $return_url
+            )
+            ->set10Lang($lang)
+            ->set11CMSVersion("WooCommerce {$woocommerce->version}")
+            ->set12IPCustomer($ip_customer);
 
-            'title'                => $order->get_formatted_billing_full_name(),
-
-            'currency'             => $currency,
-            'amount'               => $amount,
-            'other_charges'        => $other_charges,
-            'discount'             => $discount,
-
-            'reference_no'         => $order->get_id(),
-
-            'cc_first_name'        => $order->get_billing_first_name(),
-            'cc_last_name'         => $order->get_billing_last_name(),
-            'cc_phone_number'      => $phoneext,
-            'phone_number'         => $telephone,
-            'email'                => $order->get_billing_email(),
-
-            'billing_address'      => $addressBilling,
-            'state'                => $stateBilling,
-            'city'                 => $order->get_billing_city(),
-            'postal_code'          => $postalCodeBilling,
-            'country'              => $countryBilling,
-
-            'shipping_firstname'   => PaytabsHelper::getNonEmpty($order->get_shipping_first_name(), $order->get_billing_first_name()),
-            'shipping_lastname'    => PaytabsHelper::getNonEmpty($order->get_billing_last_name(), $order->get_shipping_last_name()),
-            'address_shipping'     => PaytabsHelper::getNonEmpty($addressShipping, $addressBilling),
-            'city_shipping'        => PaytabsHelper::getNonEmpty($order->get_shipping_city(), $order->get_billing_city()),
-            'state_shipping'       => PaytabsHelper::getNonEmpty($stateShipping, $stateBilling),
-            'postal_code_shipping' => $postalCodeShipping,
-            'country_shipping'     => PaytabsHelper::getNonEmpty($countryShipping, $countryBilling),
-
-            'site_url'             => $siteUrl,
-            'return_url'           => $return_url,
-
-            'msg_lang'             => $lang,
-            'cms_with_version'     => "WooCommerce {$woocommerce->version}",
-
-            'ip_customer'          => $ip_customer,
-        ];
-
-        $post_arr = array_merge($params, $products_arr);
-
-        $sums = PaytabsHelper::round_amount($post_arr);
+        $post_arr = $holder->build(true);
 
         return $post_arr;
     }
@@ -417,24 +400,13 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             ];
         }, $products);
 
-        $products_arr = PaytabsHelper::prepare_products($items_arr);
-
-
         $cdetails = PaytabsHelper::getCountryDetails($order->billing_country);
         $phoneext = $cdetails['phone'];
 
         $telephone = $order->billing_phone;
-        // Remove country_code from phone_number if it is same as the user's Country code
-        $telephone = preg_replace("/^[\+|00]+{$phoneext}/", '', $telephone);
 
         $countryBilling = PaytabsHelper::countryGetiso3($order->billing_country);
         $countryShipping = PaytabsHelper::countryGetiso3($order->shipping_country);
-
-        $postalCodeBilling = PaytabsHelper::getNonEmpty($order->billing_postcode, '11111');
-        $postalCodeShipping = PaytabsHelper::getNonEmpty($order->shipping_postcode, $postalCodeBilling);
-
-        $stateBilling = PaytabsHelper::getNonEmpty($order->billing_state, $order->billing_city);
-        $stateShipping = PaytabsHelper::getNonEmpty($order->shipping_state, $order->shipping_city);
 
         $addressBilling = trim($order->billing_address_1 . ' ' . $order->billing_address_2);
         $addressShipping = trim($order->shipping_address_1 . ' ' . $order->shipping_address_2);
@@ -442,46 +414,50 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $lang_code = get_locale();
         $lang = ($lang_code == 'ar' || substr($lang_code, 0, 3) == 'ar_') ? 'Arabic' : 'English';
 
-        $params = [
-            'payment_type'         => $this->_code,
+        $holder = new PaytabsHolder();
+        $holder
+            ->set01PaymentCode($this->_code)
+            ->set02Title($order->get_formatted_billing_full_name())
+            ->set03Payment(
+                $currency,
+                $amount,
+                $other_charges,
+                $discount
+            )
+            ->set04Products($items_arr)
+            ->set05ReferenceNum($order->id)
+            ->set06CustomerInfo(
+                $order->billing_first_name,
+                $order->billing_last_name,
+                $phoneext,
+                $telephone,
+                $order->billing_email
+            )
+            ->set07Billing(
+                $addressBilling,
+                $order->billing_state,
+                $order->billing_city,
+                $order->billing_postcode,
+                $countryBilling
+            )
+            ->set08Shipping(
+                $order->shipping_first_name,
+                $order->shipping_last_name,
+                $addressShipping,
+                $order->shipping_state,
+                $order->shipping_city,
+                $order->shipping_postcode,
+                $countryShipping
+            )
+            ->set09URLs(
+                $siteUrl,
+                $return_url
+            )
+            ->set10Lang($lang)
+            ->set11CMSVersion("WooCommerce {$woocommerce->version}")
+            ->set12IPCustomer('');
 
-            'title'                => $order->get_formatted_billing_full_name(),
-
-            'currency'             => $currency,
-            'amount'               => $amount,
-            'other_charges'        => $other_charges,
-            'discount'             => $discount,
-
-            'reference_no'         => $order->id,
-
-            'cc_first_name'        => $order->billing_first_name,
-            'cc_last_name'         => $order->billing_last_name,
-            'cc_phone_number'      => $phoneext,
-            'phone_number'         => $telephone,
-            'email'                => $order->billing_email,
-
-            'billing_address'      => $addressBilling,
-            'state'                => $stateBilling,
-            'city'                 => $order->billing_city,
-            'postal_code'          => $postalCodeBilling,
-            'country'              => $countryBilling,
-
-            'shipping_firstname'   => PaytabsHelper::getNonEmpty($order->shipping_first_name, $order->billing_first_name),
-            'shipping_lastname'    => PaytabsHelper::getNonEmpty($order->shipping_last_name, $order->billing_last_name),
-            'address_shipping'     => PaytabsHelper::getNonEmpty($addressShipping, $addressBilling),
-            'city_shipping'        => PaytabsHelper::getNonEmpty($order->shipping_city, $order->billing_city),
-            'state_shipping'       => PaytabsHelper::getNonEmpty($stateShipping, $stateBilling),
-            'postal_code_shipping' => $postalCodeShipping,
-            'country_shipping'     => PaytabsHelper::getNonEmpty($countryShipping, $countryBilling),
-
-            'site_url'             => $siteUrl,
-            'return_url'           => $return_url,
-
-            'msg_lang'             => $lang,
-            'cms_with_version'     => "WooCommerce {$woocommerce->version}",
-        ];
-
-        $post_arr = array_merge($params, $products_arr);
+        $post_arr = $holder->build(true);
 
         return $post_arr;
     }

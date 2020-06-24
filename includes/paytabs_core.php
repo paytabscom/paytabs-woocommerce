@@ -1,27 +1,7 @@
 <?php
 
-
 class PaytabsHelper
 {
-    private $config;
-    private $paymentMethod;
-
-    public function __construct($config, $paymentMethod)
-    {
-        $this->config = $config;
-        $this->paymentMethod = $paymentMethod;
-    }
-
-    public function pt()
-    {
-        $Email = $this->config->get("payment_paytabs_{$this->paymentMethod}_merchant_email");
-        $secretKey = $this->config->get("payment_paytabs_{$this->paymentMethod}_merchant_secret_key");
-
-        $pt = new PaytabsApi($Email, $secretKey);
-
-        return $pt;
-    }
-
     static function paymentType($key)
     {
         return PaytabsApi::PAYMENT_TYPES[$key]['name'];
@@ -47,6 +27,98 @@ class PaytabsHelper
         $currencyCode = strtoupper($currencyCode);
 
         return in_array($currencyCode, $list);
+    }
+
+    static function isPayTabsPayment($code)
+    {
+        foreach (PaytabsApi::PAYMENT_TYPES as $key => $value) {
+            if ($value['name'] === $code) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * @return the first non-empty var from the vars list
+     */
+    public static function getNonEmpty(...$vars)
+    {
+        foreach ($vars as $var) {
+            if (!empty($var)) return $var;
+        }
+        return false;
+    }
+
+    /**
+     * convert non-english digits to English
+     * used for fileds that accepts only English digits like: "postal_code"
+     */
+    public static function convertAr2En($string)
+    {
+        $nonEnglish = [
+            // Arabic
+            [
+                '٠',
+                '١',
+                '٢',
+                '٣',
+                '٤',
+                '٥',
+                '٦',
+                '٧',
+                '٨',
+                '٩'
+            ],
+            // Persian
+            [
+                '۰',
+                '۱',
+                '۲',
+                '۳',
+                '۴',
+                '۵',
+                '۶',
+                '۷',
+                '۸',
+                '۹'
+            ]
+        ];
+
+        $num = range(0, 9);
+
+        $englishNumbersOnly = $string;
+        foreach ($nonEnglish as $oldNum) {
+            $englishNumbersOnly = str_replace($oldNum, $num, $englishNumbersOnly);
+        }
+
+        return $englishNumbersOnly;
+    }
+
+    /**
+     * check Strings that require to be a valid Word, not [. (dot) or digits ...]
+     * if the parameter is not a valid "Word", convert it to "NA"
+     */
+    public static function pt_fillIfEmpty(&$string)
+    {
+        if (empty(preg_replace('/[\W]/', '', $string))) {
+            $string .= 'NA';
+        }
+    }
+
+    public static function log($msg, $severity = 1)
+    {
+        if (function_exists('paytabs_error_log')) {
+            paytabs_error_log($msg, $severity);
+        } else {
+            try {
+                $_prefix = date('c') . ' PayTabs: ';
+                $_msg = ($_prefix . $msg . PHP_EOL);
+                file_put_contents('debug_paytabs.log', $_msg, FILE_APPEND);
+            } catch (\Throwable $th) {
+                // var_export($th);
+            }
+        }
     }
 
     public static function getCountryDetails($iso_2)
@@ -564,43 +636,99 @@ class PaytabsHelper
 
         return $iso_3;
     }
+}
 
-    public static function getNonEmpty(...$vars)
-    {
-        foreach ($vars as $var) {
-            if (!empty($var)) return $var;
-        }
-        return false;
-    }
+
+/**
+ * Holder class that holds PayTabs's request's values
+ */
+class PaytabsHolder
+{
+    const GLUE = ' || ';
+    const THRESHOLD = 1.0;
 
     /**
-     * @param $items: array of the products, each product has the format ['name' => xx, 'quantity' => x, 'price' =>x]
-     * @return array to pass to paypage API in the format ['products_per_title' => 'xx || xx ', 'quantity' => 'xx || xx', 'unit_price' => 'xx || xx']
+     * payment_type
      */
-    public static function prepare_products(array $items)
-    {
-        $glue = ' || ';
+    private $payment_code;
 
-        $products_str = implode($glue, array_map(function ($p) {
-            $name = str_replace('||', '/', $p['name']);
-            return $name;
-        }, $items));
+    /**
+     * title
+     */
+    private $title;
 
-        $quantity = implode($glue, array_map(function ($p) {
-            return $p['quantity'];
-        }, $items));
+    /**
+     * currency
+     * amount
+     * other_charges
+     * discount
+     */
+    private $payment;
 
-        $unit_price = implode($glue, array_map(function ($p) {
-            return round($p['price'], 2);
-        }, $items));
+    /**
+     * products_per_title
+     * quantity
+     * unit_price
+     */
+    private $products;
+
+    /**
+     * reference_no
+     */
+    private $reference_num;
+
+    /**
+     * cc_first_name
+     * cc_last_name
+     * cc_phone_number
+     * phone_number
+     * email
+     */
+    private $customer_info;
+
+    /**
+     * billing_address
+     * state
+     * city
+     * postal_code
+     * country
+     */
+    private $billing;
+
+    /**
+     * shipping_firstname
+     * shipping_lastname
+     * address_shipping
+     * city_shipping
+     * state_shipping
+     * postal_code_shipping
+     * country_shipping
+     */
+    private $shipping;
+
+    /**
+     * site_url
+     * return_url
+     */
+    private $urls;
+
+    /**
+     * msg_lang
+     */
+    private $lang;
+
+    /**
+     * cms_with_version
+     */
+    private $cms_version;
+
+    /**
+     * ip_customer
+     */
+    private $ip_customer;
 
 
-        return [
-            'products_per_title' => $products_str,
-            'quantity'           => $quantity,
-            'unit_price'         => $unit_price,
-        ];
-    }
+    //
 
     /**
      * Try to get ride of the ugly message: "Your total amount is not matching to sum of unit price amounts per quantity".
@@ -608,14 +736,15 @@ class PaytabsHelper
      * if that diff is under 1 then change the "amount" to total sums.
      * @return true if the calculation is correct or the amount been rounded in @param $post_arr['amount']
      */
-    public static function round_amount(array &$post_arr)
+    public function fix_amounts()
     {
-        $threshold = 1.0;
+        $pay = array_merge($this->payment, $this->products);
 
-        $amount = $post_arr['amount'];
-        $other_charges = $post_arr['other_charges'];
-        $quantities = $post_arr['quantity'];
-        $unit_prices = $post_arr['unit_price'];
+        $amount = $pay['amount'];
+        $other_charges = $pay['other_charges'];
+
+        $quantities = $pay['quantity'];
+        $unit_prices = $pay['unit_price'];
 
         $sums = 0;
         $products_q = explode(' || ', $quantities);
@@ -628,15 +757,15 @@ class PaytabsHelper
 
         $diff = $amount - $sums;
         if ($diff != 0) {
-            $_logParams = json_encode($post_arr);
+            $_logParams = json_encode($pay);
 
-            if (abs($diff) > $threshold) {
-                paytabs_error_log("PaytabsHelper::round_amount: diff = {$diff}, [{$_logParams}]");
+            if (abs($diff) > self::THRESHOLD) {
+                PaytabsHelper::log("PaytabsHelper::round_amount: diff = {$diff}, [{$_logParams}]", 3);
             } else {
-                paytabs_error_log("PaytabsHelper::round_amount: diff = {$diff} added to 'other_charges', [{$_logParams}]");
+                PaytabsHelper::log("PaytabsHelper::round_amount: diff = {$diff} added to 'other_charges', [{$_logParams}]", 2);
 
                 $other_charges += $diff;
-                $post_arr['other_charges'] = $other_charges;
+                $this->payment['other_charges'] = $other_charges;
             }
 
             return false;
@@ -644,36 +773,258 @@ class PaytabsHelper
 
         return true;
     }
+
+    /**
+     * @return array
+     */
+    public function build($fix_amounts = true)
+    {
+        if ($fix_amounts) {
+            $this->fix_amounts();
+        }
+
+        $all = array_merge(
+            $this->payment_code,
+            $this->title,
+            $this->payment,
+            $this->products,
+            $this->reference_num,
+            $this->customer_info,
+            $this->billing,
+            $this->shipping,
+            $this->urls,
+            $this->lang,
+            $this->cms_version,
+            $this->ip_customer
+        );
+
+        return $all;
+    }
+
+    private function _fill(&$var, ...$options)
+    {
+        $var = trim($var);
+        $var = PaytabsHelper::getNonEmpty($var, ...$options);
+    }
+
+    //
+
+    public function set01PaymentCode($code)
+    {
+        $this->payment_code = ['payment_type' => $code];
+
+        return $this;
+    }
+
+    public function set02Title($title)
+    {
+        $this->title = ['title' => $title];
+
+        return $this;
+    }
+
+    public function set03Payment($currency, $amount, $other_charges, $discount)
+    {
+        $this->payment = [
+            'currency'      => $currency,
+            'amount'        => $amount,
+            'other_charges' => $other_charges,
+            'discount'      => $discount,
+        ];
+
+        return $this;
+    }
+
+
+    /**
+     * @param $items: array of the products, each product has the format ['name' => xx, 'quantity' => x, 'price' => x]
+     */
+    public function set04Products($products)
+    {
+        $products_str = implode(self::GLUE, array_map(function ($p) {
+            $name = str_replace('||', '/', $p['name']);
+            return $name;
+        }, $products));
+
+        $quantity = implode(self::GLUE, array_map(function ($p) {
+            return $p['quantity'];
+        }, $products));
+
+        $unit_price = implode(self::GLUE, array_map(function ($p) {
+            return round($p['price'], 2);
+        }, $products));
+
+        //
+
+        $this->products = [
+            'products_per_title' => $products_str,
+            'quantity'           => $quantity,
+            'unit_price'         => $unit_price,
+        ];
+
+        return $this;
+    }
+
+    public function set05ReferenceNum($reference_num)
+    {
+        $this->reference_num = ['reference_no' => $reference_num];
+
+        return $this;
+    }
+
+    public function set06CustomerInfo($firstname, $lastname, $phone_prefix, $phone_number, $email)
+    {
+        // Remove country_code from phone_number if it is same as the user's Country code
+        $phone_number = preg_replace("/^[\+|00]+{$phone_prefix}/", '', $phone_number);
+
+        PaytabsHelper::pt_fillIfEmpty($firstname);
+        PaytabsHelper::pt_fillIfEmpty($lastname);
+
+        //
+
+        $this->customer_info = [
+            'cc_first_name'   => $firstname,
+            'cc_last_name'    => $lastname,
+            'cc_phone_number' => $phone_prefix,
+            'phone_number'    => $phone_number,
+            'email'           => $email,
+        ];
+
+        return $this;
+    }
+
+    public function set07Billing($address, $state, $city, $postal_code, $country)
+    {
+        $this->_fill($address, 'NA');
+
+        PaytabsHelper::pt_fillIfEmpty($city);
+
+        $this->_fill($state, $city, 'NA');
+
+        $postal_code = PaytabsHelper::convertAr2En($postal_code);
+        $this->_fill($postal_code, '11111');
+
+        //
+
+        $this->billing = [
+            'billing_address' => $address,
+            'state'           => $state,
+            'city'            => $city,
+            'postal_code'     => $postal_code,
+            'country'         => $country,
+        ];
+
+        return $this;
+    }
+
+    public function set08Shipping($firstname, $lastname, $address, $state, $city, $postal_code, $country)
+    {
+        $this->_fill($firstname, $this->customer_info['cc_first_name']);
+        $this->_fill($lastname, $this->customer_info['cc_last_name']);
+
+        $this->_fill($address, $this->billing['billing_address']);
+        $this->_fill($state, $city, $this->billing['state']);
+        $this->_fill($city, $this->billing['city']);
+        $this->_fill($postal_code, $this->billing['postal_code']);
+        $this->_fill($country, $this->billing['country']);
+
+        //
+
+        $this->shipping = [
+            'shipping_firstname'   => $firstname,
+            'shipping_lastname'    => $lastname,
+            'address_shipping'     => $address,
+            'city_shipping'        => $city,
+            'state_shipping'       => $state,
+            'postal_code_shipping' => $postal_code,
+            'country_shipping'     => $country,
+        ];
+
+        return $this;
+    }
+
+    public function set09URLs($site_url, $return_url)
+    {
+        $this->urls = [
+            'site_url'   => $site_url,
+            'return_url' => $return_url,
+        ];
+
+        return $this;
+    }
+
+    public function set10Lang($lang)
+    {
+        $this->lang = ['msg_lang' => $lang];
+
+        return $this;
+    }
+
+    public function set11CMSVersion($cms_version)
+    {
+        $this->cms_version = ['cms_with_version' => $cms_version];
+
+        return $this;
+    }
+
+    public function set12IPCustomer($ip_customer)
+    {
+        $this->ip_customer = ['ip_customer' => $ip_customer];
+
+        return $this;
+    }
 }
 
 
+/**
+ * API class which contacts PayTabs server's API
+ */
 class PaytabsApi
 {
     const PAYMENT_TYPES = [
-        '1' => ['name' => 'stcpay', 'currencies' => ['SAR']],
-        '2' => ['name' => 'stcpayqr', 'currencies' => ['SAR']],
-        '3' => ['name' => 'applepay', 'currencies' => ['AED', 'SAR']],
-        '4' => ['name' => 'omannet', 'currencies' => ['OMR']],
-        '5' => ['name' => 'mada', 'currencies' => ['SAR']],
-        '6' => ['name' => 'creditcard', 'currencies' => null],
-        '7' => ['name' => 'sadad', 'currencies' => ['SAR']],
-        '8' => ['name' => 'atfawry', 'currencies' => ['EGP']],
-        '9' => ['name' => 'knpay', 'currencies' => ['KWD']],
-        '10' => ['name' => 'amex', 'currencies' => ['AED', 'SAR']],
-        '11' => ['name' => 'valu', 'currencies' => ['EGP']],
+        '1'  => ['name' => 'stcpay', 'title' => 'PayTabs - StcPay', 'currencies' => ['SAR']],
+        '2'  => ['name' => 'stcpayqr', 'title' => 'PayTabs - StcPay(QR)', 'currencies' => ['SAR']],
+        '3'  => ['name' => 'applepay', 'title' => 'PayTabs - ApplePay', 'currencies' => ['AED', 'SAR']],
+        '4'  => ['name' => 'omannet', 'title' => 'PayTabs - OmanNet', 'currencies' => ['OMR']],
+        '5'  => ['name' => 'mada', 'title' => 'PayTabs - Mada', 'currencies' => ['SAR']],
+        '6'  => ['name' => 'creditcard', 'title' => 'PayTabs - CreditCard', 'currencies' => null],
+        '7'  => ['name' => 'sadad', 'title' => 'PayTabs - Sadad', 'currencies' => ['SAR']],
+        '8'  => ['name' => 'atfawry', 'title' => 'PayTabs - @Fawry', 'currencies' => ['EGP']],
+        '9'  => ['name' => 'knpay', 'title' => 'PayTabs - KnPay', 'currencies' => ['KWD']],
+        '10' => ['name' => 'amex', 'title' => 'PayTabs - Amex', 'currencies' => ['AED', 'SAR']],
+        '11' => ['name' => 'valu', 'title' => 'PayTabs - valU', 'currencies' => ['EGP']],
     ];
     const URL_AUTHENTICATION = "https://www.paytabs.com/apiv2/validate_secret_key";
     const PAYPAGE_URL = "https://www.paytabs.com/apiv2/create_pay_page";
     const VERIFY_URL = "https://www.paytabs.com/apiv2/verify_payment";
 
+    //
+
     private $merchant_email;
     private $secret_key;
 
-    function __construct($merchant_email, $secret_key)
+    //
+
+    private static $instance = null;
+
+    //
+
+    public static function getInstance($merchant_email, $secret_key)
+    {
+        if (self::$instance == null) {
+            self::$instance = new PaytabsApi($merchant_email, $secret_key);
+        }
+
+        return self::$instance;
+    }
+
+    private function __construct($merchant_email, $secret_key)
     {
         $this->merchant_email = $merchant_email;
         $this->secret_key = $secret_key;
     }
+
+    /** start: API calls */
 
     function authentication()
     {
@@ -695,7 +1046,10 @@ class PaytabsApi
 
         $values['ip_customer'] = PaytabsHelper::getNonEmpty($values['ip_customer'], $_SERVER['REMOTE_ADDR'], 'NA');
 
-        return json_decode($this->runPost(self::PAYPAGE_URL, $values));
+        $res = json_decode($this->runPost(self::PAYPAGE_URL, $values));
+        $paypage = $this->enhance($res);
+
+        return $paypage;
     }
 
     function verify_payment($payment_reference)
@@ -703,10 +1057,62 @@ class PaytabsApi
         $values['merchant_email'] = $this->merchant_email;
         $values['secret_key'] = $this->secret_key;
         $values['payment_reference'] = $payment_reference;
-        return json_decode($this->runPost(self::VERIFY_URL, $values));
+
+        $res = json_decode($this->runPost(self::VERIFY_URL, $values));
+        $verify = $this->enhanceVerify($res);
+
+        return $verify;
     }
 
-    function runPost($url, $fields)
+    /** end: API calls */
+
+
+    /** start: Local calls */
+
+    /**
+     * paypage structure: null || stdClass->[result | details, response_code, payment_url, p_id]
+     * @return paypage structure: stdClass->[success, result, response_code, payment_url, p_id]
+     */
+    private function enhance($paypage)
+    {
+        $_paypage = $paypage;
+
+        if (!$paypage) {
+            $_paypage = new stdClass();
+            $_paypage->success = false;
+            $_paypage->result = 'Create paytabs payment failed';
+        } else {
+            $_paypage->success = ($paypage->response_code == 4012 && !empty($paypage->payment_url));
+
+            $msg = '';
+            if (isset($paypage->result)) $msg .= $paypage->result;
+            if (isset($paypage->details)) $msg .= $paypage->details;
+
+            $_paypage->result = $msg;
+        }
+
+        return $_paypage;
+    }
+
+    private function enhanceVerify($verify)
+    {
+        $_verify = $verify;
+
+        if (!$verify) {
+            $_verify = new stdClass();
+            $_verify->success = false;
+            $_verify->result = 'Verifying paytabs payment failed';
+        } else {
+
+            $_verify->success = isset($verify->response_code) && $verify->response_code == 100;
+        }
+
+        return $_verify;
+    }
+
+    /** end: Local calls */
+
+    private function runPost($url, $fields)
     {
         $fields_string = "";
         foreach ($fields as $key => $value) {

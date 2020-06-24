@@ -39,7 +39,7 @@ $PAYTABS_PAYPAGE_METHODS = [
   'valu' => 'WC_Gateway_Paytabs_Valu',
 ];
 
-require_once PAYTABS_PAYPAGE_DIR . "includes/paytabs_api.php";
+// require_once PAYTABS_PAYPAGE_DIR . "includes/paytabs_api.php";
 require_once PAYTABS_PAYPAGE_DIR . "includes/paytabs_functions.php";
 
 
@@ -51,6 +51,7 @@ function woocommerce_paytabs_init()
     return;
   }
 
+  require_once PAYTABS_PAYPAGE_DIR . "includes/paytabs_core.php";
   require_once PAYTABS_PAYPAGE_DIR . "includes/paytabs_payment_methods.php";
   require_once PAYTABS_PAYPAGE_DIR . "includes/paytabs_gateways.php";
 
