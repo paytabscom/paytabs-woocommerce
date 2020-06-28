@@ -108,9 +108,9 @@ class PaytabsHelper
 
     public static function log($msg, $severity = 1)
     {
-        if (function_exists('paytabs_error_log')) {
+        try {
             paytabs_error_log($msg, $severity);
-        } else {
+        } catch (\Throwable $th) {
             try {
                 $_prefix = date('c') . ' PayTabs: ';
                 $_msg = ($_prefix . $msg . PHP_EOL);
@@ -901,8 +901,8 @@ class PaytabsHolder
 
         $this->_fill($state, $city, 'NA');
 
-        $postal_code = PaytabsHelper::convertAr2En($postal_code);
         $this->_fill($postal_code, '11111');
+        $postal_code = PaytabsHelper::convertAr2En($postal_code);
 
         //
 
