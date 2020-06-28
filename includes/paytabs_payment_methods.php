@@ -319,15 +319,15 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $holder = new PaytabsHolder();
         $holder
             ->set01PaymentCode($this->_code)
-            ->set02Title($order->get_formatted_billing_full_name())
-            ->set03Payment(
+            ->set02ReferenceNum($order->get_id())
+            ->set03InvoiceInfo($order->get_formatted_billing_full_name(), $lang)
+            ->set04Payment(
                 $currency,
                 $amount,
                 $other_charges,
                 $discount
             )
-            ->set04Products($items_arr)
-            ->set05ReferenceNum($order->get_id())
+            ->set05Products($items_arr)
             ->set06CustomerInfo(
                 $order->get_billing_first_name(),
                 $order->get_billing_last_name(),
@@ -355,11 +355,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 $siteUrl,
                 $return_url
             )
-            ->set10Lang($lang)
-            ->set11CMSVersion("WooCommerce {$woocommerce->version}")
-            ->set12IPCustomer($ip_customer);
+            ->set10CMSVersion("WooCommerce {$woocommerce->version}")
+            ->set11IPCustomer($ip_customer);
 
-        $post_arr = $holder->build(true);
+        $post_arr = $holder->pt_build(true);
 
         return $post_arr;
     }
@@ -418,15 +417,15 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $holder = new PaytabsHolder();
         $holder
             ->set01PaymentCode($this->_code)
-            ->set02Title($order->get_formatted_billing_full_name())
-            ->set03Payment(
+            ->set02ReferenceNum($order->id)
+            ->set03InvoiceInfo($order->get_formatted_billing_full_name(), $lang)
+            ->set04Payment(
                 $currency,
                 $amount,
                 $other_charges,
                 $discount
             )
-            ->set04Products($items_arr)
-            ->set05ReferenceNum($order->id)
+            ->set05Products($items_arr)
             ->set06CustomerInfo(
                 $order->billing_first_name,
                 $order->billing_last_name,
@@ -454,11 +453,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 $siteUrl,
                 $return_url
             )
-            ->set10Lang($lang)
-            ->set11CMSVersion("WooCommerce {$woocommerce->version}")
-            ->set12IPCustomer('');
+            ->set10CMSVersion("WooCommerce {$woocommerce->version}")
+            ->set11IPCustomer('');
 
-        $post_arr = $holder->build(true);
+        $post_arr = $holder->pt_build(true);
 
         return $post_arr;
     }

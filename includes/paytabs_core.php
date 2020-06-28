@@ -1,5 +1,11 @@
 <?php
 
+/**
+ * PayTabs PHP SDK
+ * Version: 1.0.0
+ */
+
+
 class PaytabsHelper
 {
     static function paymentType($key)
@@ -654,8 +660,9 @@ class PaytabsHolder
 
     /**
      * title
+     * msg_lang
      */
-    private $title;
+    private $invoiceInfo;
 
     /**
      * currency
@@ -711,11 +718,6 @@ class PaytabsHolder
      * return_url
      */
     private $urls;
-
-    /**
-     * msg_lang
-     */
-    private $lang;
 
     /**
      * cms_with_version
@@ -777,7 +779,7 @@ class PaytabsHolder
     /**
      * @return array
      */
-    public function build($fix_amounts = true)
+    public function pt_build($fix_amounts = true)
     {
         if ($fix_amounts) {
             $this->fix_amounts();
@@ -785,7 +787,7 @@ class PaytabsHolder
 
         $all = array_merge(
             $this->payment_code,
-            $this->title,
+            $this->invoiceInfo,
             $this->payment,
             $this->products,
             $this->reference_num,
@@ -793,7 +795,6 @@ class PaytabsHolder
             $this->billing,
             $this->shipping,
             $this->urls,
-            $this->lang,
             $this->cms_version,
             $this->ip_customer
         );
@@ -816,14 +817,24 @@ class PaytabsHolder
         return $this;
     }
 
-    public function set02Title($title)
+    public function set02ReferenceNum($reference_num)
     {
-        $this->title = ['title' => $title];
+        $this->reference_num = ['reference_no' => $reference_num];
 
         return $this;
     }
 
-    public function set03Payment($currency, $amount, $other_charges, $discount)
+    public function set03InvoiceInfo($title, $lang = 'English')
+    {
+        $this->invoiceInfo = [
+            'title' => $title,
+            'msg_lang' => $lang,
+        ];
+
+        return $this;
+    }
+
+    public function set04Payment($currency, $amount, $other_charges, $discount)
     {
         $this->payment = [
             'currency'      => $currency,
@@ -839,7 +850,7 @@ class PaytabsHolder
     /**
      * @param $items: array of the products, each product has the format ['name' => xx, 'quantity' => x, 'price' => x]
      */
-    public function set04Products($products)
+    public function set05Products($products)
     {
         $products_str = implode(self::GLUE, array_map(function ($p) {
             $name = str_replace('||', '/', $p['name']);
@@ -861,13 +872,6 @@ class PaytabsHolder
             'quantity'           => $quantity,
             'unit_price'         => $unit_price,
         ];
-
-        return $this;
-    }
-
-    public function set05ReferenceNum($reference_num)
-    {
-        $this->reference_num = ['reference_no' => $reference_num];
 
         return $this;
     }
@@ -953,21 +957,14 @@ class PaytabsHolder
         return $this;
     }
 
-    public function set10Lang($lang)
-    {
-        $this->lang = ['msg_lang' => $lang];
-
-        return $this;
-    }
-
-    public function set11CMSVersion($cms_version)
+    public function set10CMSVersion($cms_version)
     {
         $this->cms_version = ['cms_with_version' => $cms_version];
 
         return $this;
     }
 
-    public function set12IPCustomer($ip_customer)
+    public function set11IPCustomer($ip_customer)
     {
         $this->ip_customer = ['ip_customer' => $ip_customer];
 
