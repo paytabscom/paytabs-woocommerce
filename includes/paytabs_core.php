@@ -923,8 +923,8 @@ class PaytabsHolder
         $this->_fill($lastname, $this->customer_info['cc_last_name']);
 
         $this->_fill($address, $this->billing['billing_address']);
-        $this->_fill($state, $city, $this->billing['state']);
         $this->_fill($city, $this->billing['city']);
+        $this->_fill($state, $city, $this->billing['state']);
         $this->_fill($postal_code, $this->billing['postal_code']);
         $this->_fill($country, $this->billing['country']);
 
