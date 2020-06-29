@@ -127,6 +127,24 @@ class PaytabsHelper
         }
     }
 
+    static function getTokenInfo($return_values)
+    {
+        $fields = [
+            'pt_token',
+            'pt_customer_email',
+            'pt_customer_password'
+        ];
+
+        $tokenInfo = [];
+
+        foreach ($fields as $field) {
+            if (!isset($return_values[$field])) return false;
+            $tokenInfo[$field] = $return_values[$field];
+        }
+
+        return $tokenInfo;
+    }
+
     public static function getCountryDetails($iso_2)
     {
         $countryPhoneList = array(
@@ -729,6 +747,16 @@ class PaytabsHolder
      */
     private $ip_customer;
 
+    /**
+     * is_preauth
+     */
+    private $preauth;
+
+    /**
+     * is_tokenization
+     * is_existing_customer
+     */
+    private $tokenization;
 
     //
 
@@ -798,6 +826,14 @@ class PaytabsHolder
             $this->cms_version,
             $this->ip_customer
         );
+
+        if ($this->preauth) {
+            $all = array_merge($all, $this->preauth);
+        }
+
+        if ($this->tokenization) {
+            $all = array_merge($all, $this->tokenization);
+        }
 
         return $all;
     }
@@ -970,6 +1006,247 @@ class PaytabsHolder
 
         return $this;
     }
+
+    /**
+     * Optional method
+     * https://dev.paytabs.com/docs/paypage.html#pre-authorization-using-api
+     */
+    public function set12PreAuth($isPreAuth = false)
+    {
+        $this->preauth = [
+            'is_preauth' => $isPreAuth ? 1 : 0,
+        ];
+
+        return $this;
+    }
+
+    /**
+     * Optional method
+     * Call it only in case you want to use Tokenization feature
+     * https://dev.paytabs.com/docs/tokenization/
+     */
+    public function set13Tokenization($isTokenization = false, $isExistingCustomer = false)
+    {
+        $this->tokenization = [
+            'is_tokenization' => $isTokenization ? 'TRUE' : 'FALSE',
+            'is_existing_customer' => $isExistingCustomer ? 'TRUE' : 'FALSE',
+        ];
+
+        return $this;
+    }
+}
+
+
+/**
+ * Holder class that holds PayTabs's request's values
+ */
+class PaytabsTokenizeHolder
+{
+    /**
+     * order_id
+     * title
+     * product_name
+     */
+    private $invoiceInfo;
+
+    /**
+     * amount
+     * currency
+     */
+    private $payment;
+
+    /**
+     * cc_first_name
+     * cc_last_name
+     * phone_number
+     * customer_email
+     */
+    private $customer_info;
+
+    /**
+     * address_billing
+     * state_billing
+     * city_billing
+     * postal_code_billing
+     * country_billing
+     */
+    private $billing;
+
+    /**
+     * address_shipping
+     * city_shipping
+     * state_shipping
+     * postal_code_shipping
+     * country_shipping
+     */
+    private $shipping;
+
+    /**
+     * billing_shipping_details
+     */
+    private $billing_shipping_details;
+
+    /**
+     * pt_token
+     * pt_customer_email
+     * pt_customer_password
+     */
+    private $tokenInfo;
+
+
+    //
+
+    /**
+     * @return array
+     */
+    public function pt_build()
+    {
+        $all = array_merge(
+            $this->invoiceInfo,
+            $this->payment,
+            $this->customer_info,
+            $this->tokenInfo
+        );
+
+        if ($this->billing_shipping_details) {
+            $all = array_merge(
+                $all,
+                $this->billing_shipping_details
+            );
+        } else {
+            $all = array_merge(
+                $all,
+                $this->billing,
+                $this->shipping
+            );
+        }
+
+        return $all;
+    }
+
+    private function _fill(&$var, ...$options)
+    {
+        $var = trim($var);
+        $var = PaytabsHelper::getNonEmpty($var, ...$options);
+    }
+
+    //
+
+    public function set01InvoiceInfo($orderId, $title, $productName)
+    {
+        $this->invoiceInfo = [
+            'order_id' => $orderId,
+            'title' => $title,
+            'product_name' => $productName
+        ];
+
+        return $this;
+    }
+
+    public function set02Payment($currency, $amount)
+    {
+        $this->payment = [
+            'currency' => $currency,
+            'amount'   => $amount,
+        ];
+
+        return $this;
+    }
+
+    public function set03CustomerInfo($firstname, $lastname, $phone_number, $email)
+    {
+        PaytabsHelper::pt_fillIfEmpty($firstname);
+        PaytabsHelper::pt_fillIfEmpty($lastname);
+
+        //
+
+        $this->customer_info = [
+            'cc_first_name'  => $firstname,
+            'cc_last_name'   => $lastname,
+            'phone_number'   => $phone_number,
+            'customer_email' => $email,
+        ];
+
+        return $this;
+    }
+
+    /**
+     * Optional method
+     */
+    public function set04Billing($address, $state, $city, $postal_code, $country)
+    {
+        $this->_fill($address, 'NA');
+
+        PaytabsHelper::pt_fillIfEmpty($city);
+
+        $this->_fill($state, $city, 'NA');
+
+        $this->_fill($postal_code, '11111');
+        $postal_code = PaytabsHelper::convertAr2En($postal_code);
+
+        //
+
+        $this->billing = [
+            'address_billing'     => $address,
+            'state_billing'       => $state,
+            'city_billing'        => $city,
+            'postal_code_billing' => $postal_code,
+            'country_billing'     => $country,
+        ];
+
+        return $this;
+    }
+
+    /**
+     * Optional method
+     */
+    public function set05Shipping($address, $state, $city, $postal_code, $country)
+    {
+        $this->_fill($address, $this->billing['billing_address']);
+        $this->_fill($city, $this->billing['city']);
+        $this->_fill($state, $city, $this->billing['state']);
+        $this->_fill($postal_code, $this->billing['postal_code']);
+        $this->_fill($country, $this->billing['country']);
+
+        //
+
+        $this->shipping = [
+            'address_shipping'     => $address,
+            'city_shipping'        => $city,
+            'state_shipping'       => $state,
+            'postal_code_shipping' => $postal_code,
+            'country_shipping'     => $country,
+        ];
+
+        return $this;
+    }
+
+    /**
+     * @param $on if TRUE => Do not pass Billing & Shipping parameters to the server
+     */
+    public function set06NoBillingAndShipping($on = false)
+    {
+        if ($on) {
+            $this->billing_shipping_details = [
+                'billing_shipping_details' => 'no'
+            ];
+        } else {
+            $this->billing_shipping_details = false;
+        }
+
+        return $this;
+    }
+
+    public function set07TokenInfo($token, $customer_email, $customer_password)
+    {
+        $this->tokenInfo = [
+            'pt_token' => $token,
+            'pt_customer_email' => $customer_email,
+            'pt_customer_password' => $customer_password,
+        ];
+
+        return $this;
+    }
 }
 
 
@@ -991,9 +1268,10 @@ class PaytabsApi
         '10' => ['name' => 'amex', 'title' => 'PayTabs - Amex', 'currencies' => ['AED', 'SAR']],
         '11' => ['name' => 'valu', 'title' => 'PayTabs - valU', 'currencies' => ['EGP']],
     ];
-    const URL_AUTHENTICATION = "https://www.paytabs.com/apiv2/validate_secret_key";
-    const PAYPAGE_URL = "https://www.paytabs.com/apiv2/create_pay_page";
-    const VERIFY_URL = "https://www.paytabs.com/apiv2/verify_payment";
+    const URL_AUTHENTICATION = 'https://www.paytabs.com/apiv2/validate_secret_key';
+    const PAYPAGE_URL = 'https://www.paytabs.com/apiv2/create_pay_page';
+    const VERIFY_URL = 'https://www.paytabs.com/apiv2/verify_payment';
+    const TOKENIZATION_URL = 'https://www.paytabs.com/apiv3/tokenized_transaction_prepare';
 
     //
 
@@ -1066,6 +1344,17 @@ class PaytabsApi
         $verify = $this->enhanceVerify($res);
 
         return $verify;
+    }
+
+    function tokenized_payment($values)
+    {
+        $values['merchant_email'] = $this->merchant_email;
+        $values['secret_key'] = $this->secret_key;
+
+        $res = json_decode($this->runPost(self::TOKENIZATION_URL, $values));
+        $tokenized = $this->enhanceVerify($res);
+
+        return $tokenized;
     }
 
     /** end: API calls */
