@@ -8,7 +8,7 @@
  * Plugin Name: PayTabs - WooCommerce Payment Gateway
  * Plugin URI: https://paytabs.com/
  * Description: PayTabs is a <strong>3rd party payment gateway</strong>. Ideal payment solutions for your internet business.
- * Version: 3.2.3
+ * Version: 3.3.0
  * Author: PayTabs
  * Author URI: https://paytabs.com/
  * Revision Date : 19/April/2020
@@ -21,7 +21,7 @@ if (!function_exists('add_action')) {
 //load plugin function when woocommerce loaded
 add_action('plugins_loaded', 'woocommerce_paytabs_init', 0);
 
-define('PAYTABS_PAYPAGE_VERSION', '3.2.3');
+define('PAYTABS_PAYPAGE_VERSION', '3.3.0');
 define('PAYTABS_PAYPAGE_DIR', plugin_dir_path(__FILE__));
 define('PAYTABS_PAYPAGE_ICONS_URL', plugins_url("icons/", __FILE__));
 define('PAYTABS_DEBUG_FILE', WP_CONTENT_DIR . "/debug_paytabs.log");
@@ -39,7 +39,7 @@ $PAYTABS_PAYPAGE_METHODS = [
   'valu' => 'WC_Gateway_Paytabs_Valu',
 ];
 
-require_once PAYTABS_PAYPAGE_DIR . "includes/paytabs_api.php";
+// require_once PAYTABS_PAYPAGE_DIR . "includes/paytabs_api.php";
 require_once PAYTABS_PAYPAGE_DIR . "includes/paytabs_functions.php";
 
 
@@ -51,6 +51,7 @@ function woocommerce_paytabs_init()
     return;
   }
 
+  require_once PAYTABS_PAYPAGE_DIR . "includes/paytabs_core.php";
   require_once PAYTABS_PAYPAGE_DIR . "includes/paytabs_payment_methods.php";
   require_once PAYTABS_PAYPAGE_DIR . "includes/paytabs_gateways.php";
 
