@@ -15,13 +15,13 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     public function __construct()
     {
         $this->id = "paytabs_{$this->_code}"; // payment gateway plugin ID
-        $this->icon = $this->getIcon(); // URL of the icon that will be displayed on checkout page near your gateway name
+        $this->icon = $this->getIcon(); // URL of the icon that will be displayed on checkout page near the gateway name
         $this->has_fields = false; // in case you need a custom credit card form
         $this->method_title = $this->_title;
         $this->method_description = $this->_description; // will be displayed on the options page
 
         // gateways can support subscriptions, refunds, saved payment methods,
-        // but in this tutorial we begin with simple payments
+        // Supports simple payments
         $this->supports = array(
             'products'
         );
@@ -45,7 +45,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         // We need custom JavaScript to obtain a token
         // add_action('wp_enqueue_scripts', array($this, 'payment_scripts'));
 
-        // You can also register a webhook here
+        // Register a webhook
         // add_action('woocommerce_api_paytabs_callback', array($this, 'callback'));
 
         $this->checkCallback();
@@ -125,7 +125,6 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
      **/
     public function process_payment($order_id)
     {
-        // we need it to get any order detailes
         $order = wc_get_order($order_id);
 
         $values = WooCommerce2 ? $this->prepareOrder2($order) : $this->prepareOrder($order);
@@ -139,7 +138,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
          */
         // $response = wp_remote_post('{payment processor endpoint}', $args);
 
-        if ($paypage->success) {
+        $success = $paypage->success;
+        $message = $paypage->result;
+
+        if ($success) {
             $payment_url = $paypage->payment_url;
 
             return array(
@@ -151,7 +153,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             $_logParams = json_encode($values);
             PaytabsHelper::log("create PayPage failed for Order {$order_id}, [{$_logPaypage}], [{$_logParams}]", 3);
 
-            $errorMessage = $paypage->result;
+            $errorMessage = $message;
 
             wc_add_notice($errorMessage, 'error');
             return null;
@@ -160,8 +162,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
     private function checkCallback()
     {
-        if (isset($_REQUEST['payment_reference'], $_REQUEST['key'])) {
-            $payment_reference = $_REQUEST['payment_reference'];
+        $param_paymentRef = 'payment_reference';
+
+        if (isset($_REQUEST[$param_paymentRef], $_REQUEST['key'])) {
+            $payment_reference = $_REQUEST[$param_paymentRef];
             $key = $_REQUEST['key'];
 
             $orderId = wc_get_order_id_by_order_key($key);
@@ -189,9 +193,6 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $_logVerify = json_encode($result);
 
-        $success = $result->success;
-        $message = $result->result;
-
         if (!isset($result->reference_no)) {
             PaytabsHelper::log("callback failed for Order {$order_id}, response [{$_logVerify}]", 3);
             wc_add_notice($message, 'error');
@@ -201,7 +202,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             return;
         }
 
+        $success = $result->success;
+        $message = $result->result;
         $orderId = $result->reference_no;
+
         if ($orderId != $order_id) {
             PaytabsHelper::log("callback failed for Order {$order_id}, Order mismatch [{$_logVerify}]", 3);
             return;
