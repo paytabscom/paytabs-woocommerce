@@ -23,7 +23,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         // gateways can support subscriptions, refunds, saved payment methods,
         // Supports simple payments
         $this->supports = array(
-            'products'
+            'products',
+            'refunds'
         );
 
         // Method with all the options fields
@@ -160,6 +161,44 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         }
     }
 
+    public function process_refund($order_id, $amount = null, $reason = '')
+    {
+        if (!$amount) {
+            return false;
+        }
+
+        $order = wc_get_order($order_id);
+        $transaction_id = $order->get_transaction_id();
+
+        if (!$transaction_id) {
+            return false;
+        }
+
+        $pt_refundHolder = new PaytabsRefundHolder();
+        $pt_refundHolder
+            ->set01RefundInfo($amount, $reason)
+            ->set02Transaction($transaction_id);
+
+        $values = $pt_refundHolder->pt_build();
+
+        $_paytabsApi = PaytabsApi::getInstance($this->merchant_email, $this->secret_key);
+        $refundRes = $_paytabsApi->refund($values);
+
+        $success = $refundRes->success;
+        $message = $refundRes->result;
+        $pending_success = $refundRes->pending_success;
+
+        $order->add_order_note('Refund status: ' . $message, true);
+
+        if ($success) {
+            $order->update_status('refunded', __('Payment Refunded: ', 'PayTabs'));
+        } else if ($pending_success) {
+            $order->update_status('on-hold', __('Payment Pending Refund: ', 'PayTabs'));
+        }
+
+        return $success;
+    }
+
     private function checkCallback()
     {
         $param_paymentRef = 'payment_reference';
@@ -205,6 +244,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $success = $result->success;
         $message = $result->result;
         $orderId = $result->reference_no;
+        $transactionId = $result->transaction_id;
 
         if ($orderId != $order_id) {
             PaytabsHelper::log("callback failed for Order {$order_id}, Order mismatch [{$_logVerify}]", 3);
@@ -219,7 +259,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         }
 
         if ($success) {
-            $this->orderSuccess($order, $message);
+            $this->orderSuccess($order, $transactionId, $message);
 
             // exit;
         } else {
@@ -235,10 +275,11 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     /**
      * Payment successed => Order status change to success
      */
-    private function orderSuccess($order, $message)
+    private function orderSuccess($order, $transaction_id, $message)
     {
         global $woocommerce;
 
+        $order->set_transaction_id($transaction_id);
         $order->payment_complete();
         // $order->reduce_order_stock();
 
