@@ -279,8 +279,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     {
         global $woocommerce;
 
-        $order->set_transaction_id($transaction_id);
-        $order->payment_complete();
+        $order->payment_complete($transaction_id);
         // $order->reduce_order_stock();
 
         $woocommerce->cart->empty_cart();
