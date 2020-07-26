@@ -256,6 +256,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $_paytabsApi = PaytabsApi::getInstance($this->merchant_email, $this->secret_key);
         $result = $_paytabsApi->verify_payment($payment_reference);
 
+        $success = $result->success;
+        $message = $result->result;
+
         $_logVerify = json_encode($result);
 
         if (!isset($result->reference_no)) {
@@ -267,8 +270,6 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             return;
         }
 
-        $success = $result->success;
-        $message = $result->result;
         $orderId = $result->reference_no;
         $transactionId = $result->transaction_id;
 
@@ -289,7 +290,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
             // exit;
         } else {
-            $_logOrder = (json_encode($order->get_data()));
+            $_data = WooCommerce2 ? $order->data : $order->get_data();
+            $_logOrder = (json_encode($_data));
             PaytabsHelper::log("callback failed for Order {$order_id}, response [{$_logVerify}], Order [{$_logOrder}]", 3);
 
             $this->orderFailed($order, $message);
