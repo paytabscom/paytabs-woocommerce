@@ -39,6 +39,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $this->merchant_email = $this->get_option('merchant_email');
         $this->secret_key = $this->get_option('secret_key');
 
+        $this->hide_personal_info = $this->get_option('hide_personal_info') == 'yes';
+        $this->hide_billing = $this->get_option('hide_billing') == 'yes';
+        $this->hide_view_invoice = $this->get_option('hide_view_invoice') == 'yes';
+
         // This action hook saves the settings
         add_action("woocommerce_update_options_payment_gateways_{$this->id}", array($this, 'process_admin_options'));
 
@@ -108,7 +112,28 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 'description' => __('Please enter your PayTabs Secret Key. You can find the secret key on your Merchant’s Portal', 'PayTabs'),
                 'default'     => '',
                 'required'    => true
-            )
+            ),
+            'hide_personal_info' => array(
+                'title'       => __('Hide personal information', 'PayTabs'),
+                'label'       => __('Hide Personal information', 'PayTabs'),
+                'type'        => 'checkbox',
+                'description' => 'Enable if you wish to hide Personal info of the customer in PayTabs payment page.',
+                'default'     => 'no'
+            ),
+            'hide_billing' => array(
+                'title'       => __('Hide billing info', 'PayTabs'),
+                'label'       => __('Hide Billing info', 'PayTabs'),
+                'type'        => 'checkbox',
+                'description' => 'Enable if you wish to hide Billing info of the customer in PayTabs payment page.',
+                'default'     => 'no'
+            ),
+            'hide_view_invoice' => array(
+                'title'       => __('Hide view invoice', 'PayTabs'),
+                'label'       => __('Hide View invoice', 'PayTabs'),
+                'type'        => 'checkbox',
+                'description' => 'Hide View invoice link in PayTabs payment page.',
+                'default'     => 'no'
+            ),
         );
     }
 
@@ -160,6 +185,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             return null;
         }
     }
+
 
     public function process_refund($order_id, $amount = null, $reason = '')
     {
@@ -395,12 +421,17 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 $order->get_shipping_postcode(),
                 $countryShipping
             )
-            ->set09URLs(
+            ->set09HideOptions(
+                $this->hide_personal_info,
+                $this->hide_billing,
+                $this->hide_view_invoice
+            )
+            ->set10URLs(
                 $siteUrl,
                 $return_url
             )
-            ->set10CMSVersion("WooCommerce {$woocommerce->version}")
-            ->set11IPCustomer($ip_customer);
+            ->set11CMSVersion("WooCommerce {$woocommerce->version}")
+            ->set12IPCustomer($ip_customer);
 
         $post_arr = $holder->pt_build(true);
 
@@ -493,12 +524,17 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 $order->shipping_postcode,
                 $countryShipping
             )
-            ->set09URLs(
+            ->set09HideOptions(
+                $this->hide_personal_info,
+                $this->hide_billing,
+                $this->hide_view_invoice
+            )
+            ->set10URLs(
                 $siteUrl,
                 $return_url
             )
-            ->set10CMSVersion("WooCommerce {$woocommerce->version}")
-            ->set11IPCustomer('');
+            ->set11CMSVersion("WooCommerce {$woocommerce->version}")
+            ->set12IPCustomer('');
 
         $post_arr = $holder->pt_build(true);
 
