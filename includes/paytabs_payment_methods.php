@@ -43,6 +43,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $this->hide_billing = $this->get_option('hide_billing') == 'yes';
         $this->hide_view_invoice = $this->get_option('hide_view_invoice') == 'yes';
 
+        if ($this->_code == 'valu') {
+            $this->valu_product_id = $this->get_option('valu_product_id');
+        }
+
         // This action hook saves the settings
         add_action("woocommerce_update_options_payment_gateways_{$this->id}", array($this, 'process_admin_options'));
 
@@ -435,6 +439,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             ->set11CMSVersion("WooCommerce {$woocommerce->version}")
             ->set12IPCustomer($ip_customer);
 
+        if ($this->_code == 'valu') {
+            $holder->set20ValuParams($this->valu_product_id, 0);
+        }
+
         $post_arr = $holder->pt_build(true);
 
         return $post_arr;
@@ -537,6 +545,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             )
             ->set11CMSVersion("WooCommerce {$woocommerce->version}")
             ->set12IPCustomer('');
+
+        if ($this->_code == 'valu') {
+            $holder->set20ValuParams($this->valu_product_id, 0);
+        }
 
         $post_arr = $holder->pt_build(true);
 

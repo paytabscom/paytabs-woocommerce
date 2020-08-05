@@ -2,7 +2,7 @@
 
 /**
  * PayTabs PHP SDK
- * Version: 1.1.1
+ * Version: 1.2.0
  */
 
 
@@ -765,6 +765,12 @@ class PaytabsHolder
      */
     private $tokenization;
 
+    /**
+     * valu_product_id
+     * valu_down_payment
+     */
+    private $valu_params;
+
     //
 
     /**
@@ -833,6 +839,10 @@ class PaytabsHolder
             $this->cms_version,
             $this->ip_customer
         );
+
+        if ($this->payment_code['payment_type'] === 'valu') {
+            $all = array_merge($all, $this->valu_params);
+        }
 
         if ($this->hide_options) {
             $all = array_merge($all, $this->hide_options);
@@ -1055,6 +1065,19 @@ class PaytabsHolder
         $this->tokenization = [
             'is_tokenization' => $isTokenization ? 'TRUE' : 'FALSE',
             'is_existing_customer' => $isExistingCustomer ? 'TRUE' : 'FALSE',
+        ];
+
+        return $this;
+    }
+
+    /**
+     * Required method if Payment method = valU
+     */
+    public function set20ValuParams($valu_product_id, $valu_down_payment = 0)
+    {
+        $this->valu_params = [
+            'valu_product_id' => $valu_product_id,
+            'valu_down_payment' => $valu_down_payment,
         ];
 
         return $this;
