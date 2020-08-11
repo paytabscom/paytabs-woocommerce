@@ -1,8 +1,8 @@
 <?php
 
 /**
- * PayTabs PHP SDK
- * Version: 1.2.1
+ * PayTabs 2 PHP SDK
+ * Version: 1.1.0
  */
 
 
@@ -47,13 +47,14 @@ class PaytabsHelper
 
     /**
      * @return the first non-empty var from the vars list
+     * @return null if all params are empty
      */
     public static function getNonEmpty(...$vars)
     {
         foreach ($vars as $var) {
             if (!empty($var)) return $var;
         }
-        return false;
+        return null;
     }
 
     /**
@@ -110,6 +111,11 @@ class PaytabsHelper
         if (empty(preg_replace('/[\W]/', '', $string))) {
             $string .= 'NA';
         }
+    }
+
+    static function pt_fillIP(&$string)
+    {
+        $string = $_SERVER['REMOTE_ADDR'];
     }
 
     public static function log($msg, $severity = 1)
@@ -666,10 +672,9 @@ class PaytabsHelper
 /**
  * Holder class that holds PayTabs's request's values
  */
-class PaytabsHolder
+class PaytabsHolder2
 {
     const GLUE = ' || ';
-    const THRESHOLD = 1.0;
 
     /**
      * payment_type
@@ -677,469 +682,68 @@ class PaytabsHolder
     private $payment_code;
 
     /**
-     * title
-     * msg_lang
+     * tran_type
+     * tran_class
      */
-    private $invoiceInfo;
+    private $transaction;
 
     /**
-     * currency
-     * amount
-     * other_charges
-     * discount
+     * cart_id
+     * cart_currency
+     * cart_amount
+     * cart_descriptions
      */
-    private $payment;
+    private $cart;
 
     /**
-     * products_per_title
-     * quantity
-     * unit_price
-     */
-    private $products;
-
-    /**
-     * reference_no
-     */
-    private $reference_num;
-
-    /**
-     * cc_first_name
-     * cc_last_name
-     * cc_phone_number
-     * phone_number
+     * name
      * email
-     */
-    private $customer_info;
-
-    /**
-     * billing_address
-     * state
+     * phone
+     * street1
      * city
-     * postal_code
+     * state
      * country
+     * zip
+     * ip
      */
-    private $billing;
+    private $customer_details;
 
     /**
-     * shipping_firstname
-     * shipping_lastname
-     * address_shipping
-     * city_shipping
-     * state_shipping
-     * postal_code_shipping
-     * country_shipping
+     * name
+     * email
+     * phone
+     * street1
+     * city
+     * state
+     * country
+     * zip
+     * ip
      */
-    private $shipping;
+    private $shipping_details;
 
     /**
-     * hide_personal_info
-     * hide_billing
-     * hide_view_invoice
+     * hide_shipping
      */
-    private $hide_options;
+    private $hide_shipping;
 
     /**
-     * site_url
-     * return_url
+     * pan
+     * expiry_month
+     * expiry_year
+     * cvv
+     */
+    private $card_details;
+
+    /**
+     * return
+     * callback
      */
     private $urls;
 
     /**
-     * cms_with_version
+     * paypage_lang
      */
-    private $cms_version;
-
-    /**
-     * ip_customer
-     */
-    private $ip_customer;
-
-    /**
-     * is_preauth
-     */
-    private $preauth;
-
-    /**
-     * is_tokenization
-     * is_existing_customer
-     */
-    private $tokenization;
-
-    /**
-     * valu_product_id
-     * valu_down_payment
-     */
-    private $valu_params;
-
-    //
-
-    /**
-     * Try to get ride of the ugly message: "Your total amount is not matching to sum of unit price amounts per quantity".
-     * Because of rounding products' prices, may occur some diff between the sums of products & total amount.
-     * if that diff is under 1 then change the "amount" to total sums.
-     * @return true if the calculation is correct or the amount been rounded in @param $post_arr['amount']
-     */
-    public function fix_amounts()
-    {
-        $pay = array_merge($this->payment, $this->products);
-
-        $amount = $pay['amount'];
-        $other_charges = $pay['other_charges'];
-
-        $quantities = $pay['quantity'];
-        $unit_prices = $pay['unit_price'];
-
-        $sums = 0;
-        $products_q = explode(' || ', $quantities);
-        $products_p = explode(' || ', $unit_prices);
-        for ($i = 0; $i < count($products_p); $i++) {
-            $sums += ($products_p[$i] * $products_q[$i]);
-        }
-
-        $sums += $other_charges;
-
-        $diff = $amount - $sums;
-        if ($diff != 0) {
-            $_logParams = json_encode($pay);
-
-            if (abs($diff) > self::THRESHOLD) {
-                PaytabsHelper::log("PaytabsHelper::round_amount: diff = {$diff}, [{$_logParams}]", 3);
-            } else {
-                PaytabsHelper::log("PaytabsHelper::round_amount: diff = {$diff} added to 'other_charges', [{$_logParams}]", 2);
-
-                $other_charges += $diff;
-                $this->payment['other_charges'] = $other_charges;
-            }
-
-            return false;
-        }
-
-        return true;
-    }
-
-    /**
-     * @return array
-     */
-    public function pt_build($fix_amounts = true)
-    {
-        if ($fix_amounts) {
-            $this->fix_amounts();
-        }
-
-        $all = array_merge(
-            $this->payment_code,
-            $this->invoiceInfo,
-            $this->payment,
-            $this->products,
-            $this->reference_num,
-            $this->customer_info,
-            $this->billing,
-            $this->shipping,
-            $this->urls,
-            $this->cms_version,
-            $this->ip_customer
-        );
-
-        if ($this->payment_code['payment_type'] === 'valu') {
-            $all = array_merge($all, $this->valu_params);
-        }
-
-        if ($this->hide_options) {
-            $all = array_merge($all, $this->hide_options);
-        }
-
-        if ($this->preauth) {
-            $all = array_merge($all, $this->preauth);
-        }
-
-        if ($this->tokenization) {
-            $all = array_merge($all, $this->tokenization);
-        }
-
-        return $all;
-    }
-
-    private function _fill(&$var, ...$options)
-    {
-        $var = trim($var);
-        $var = PaytabsHelper::getNonEmpty($var, ...$options);
-    }
-
-    //
-
-    public function set01PaymentCode($code)
-    {
-        $this->payment_code = ['payment_type' => $code];
-
-        return $this;
-    }
-
-    public function set02ReferenceNum($reference_num)
-    {
-        $this->reference_num = ['reference_no' => $reference_num];
-
-        return $this;
-    }
-
-    public function set03InvoiceInfo($title, $lang = 'English')
-    {
-        $this->invoiceInfo = [
-            'title' => $title,
-            'msg_lang' => $lang,
-        ];
-
-        return $this;
-    }
-
-    public function set04Payment($currency, $amount, $other_charges, $discount)
-    {
-        $this->payment = [
-            'currency'      => $currency,
-            'amount'        => $amount,
-            'other_charges' => $other_charges,
-            'discount'      => $discount,
-        ];
-
-        return $this;
-    }
-
-
-    /**
-     * @param $items: array of the products, each product has the format ['name' => xx, 'quantity' => x, 'price' => x]
-     */
-    public function set05Products($products)
-    {
-        $products_str = implode(self::GLUE, array_map(function ($p) {
-            $name = str_replace('||', '/', $p['name']);
-            return $name;
-        }, $products));
-
-        $quantity = implode(self::GLUE, array_map(function ($p) {
-            return $p['quantity'];
-        }, $products));
-
-        $unit_price = implode(self::GLUE, array_map(function ($p) {
-            return round($p['price'], 2);
-        }, $products));
-
-        //
-
-        $this->products = [
-            'products_per_title' => $products_str,
-            'quantity'           => $quantity,
-            'unit_price'         => $unit_price,
-        ];
-
-        return $this;
-    }
-
-    public function set06CustomerInfo($firstname, $lastname, $phone_prefix, $phone_number, $email)
-    {
-        // Remove country_code from phone_number if it is same as the user's Country code
-        $phone_number = preg_replace("/^[\+|00]+{$phone_prefix}/", '', $phone_number);
-
-        PaytabsHelper::pt_fillIfEmpty($firstname);
-        PaytabsHelper::pt_fillIfEmpty($lastname);
-
-        //
-
-        $this->customer_info = [
-            'cc_first_name'   => $firstname,
-            'cc_last_name'    => $lastname,
-            'cc_phone_number' => $phone_prefix,
-            'phone_number'    => $phone_number,
-            'email'           => $email,
-        ];
-
-        return $this;
-    }
-
-    public function set07Billing($address, $state, $city, $postal_code, $country)
-    {
-        $this->_fill($address, 'NA');
-
-        PaytabsHelper::pt_fillIfEmpty($city);
-
-        $this->_fill($state, $city, 'NA');
-
-        $this->_fill($postal_code, '11111');
-        $postal_code = PaytabsHelper::convertAr2En($postal_code);
-
-        //
-
-        $this->billing = [
-            'billing_address' => $address,
-            'state'           => $state,
-            'city'            => $city,
-            'postal_code'     => $postal_code,
-            'country'         => $country,
-        ];
-
-        return $this;
-    }
-
-    public function set08Shipping($firstname, $lastname, $address, $state, $city, $postal_code, $country)
-    {
-        $this->_fill($firstname, $this->customer_info['cc_first_name']);
-        $this->_fill($lastname, $this->customer_info['cc_last_name']);
-
-        $this->_fill($address, $this->billing['billing_address']);
-        $this->_fill($city, $this->billing['city']);
-        $this->_fill($state, $city, $this->billing['state']);
-        $this->_fill($postal_code, $this->billing['postal_code']);
-        $this->_fill($country, $this->billing['country']);
-
-        //
-
-        $this->shipping = [
-            'shipping_firstname'   => $firstname,
-            'shipping_lastname'    => $lastname,
-            'address_shipping'     => $address,
-            'city_shipping'        => $city,
-            'state_shipping'       => $state,
-            'postal_code_shipping' => $postal_code,
-            'country_shipping'     => $country,
-        ];
-
-        return $this;
-    }
-
-    /**
-     * Optional method
-     */
-    public function set09HideOptions($hide_personal_info, $hide_billing, $hide_view_invoice)
-    {
-        $this->hide_options = [
-            'hide_personal_info' => $hide_personal_info ? 'true' : '',
-            'hide_billing' => $hide_billing ? 'true' : '',
-            'hide_view_invoice' => $hide_view_invoice ? 'true' : '',
-        ];
-
-        return $this;
-    }
-
-    public function set10URLs($site_url, $return_url)
-    {
-        $this->urls = [
-            'site_url'   => $site_url,
-            'return_url' => $return_url,
-        ];
-
-        return $this;
-    }
-
-    public function set11CMSVersion($cms_version)
-    {
-        $this->cms_version = ['cms_with_version' => $cms_version];
-
-        return $this;
-    }
-
-    public function set12IPCustomer($ip_customer)
-    {
-        $this->ip_customer = ['ip_customer' => $ip_customer];
-
-        return $this;
-    }
-
-    /**
-     * Optional method
-     * https://dev.paytabs.com/docs/paypage.html#pre-authorization-using-api
-     */
-    public function set13PreAuth($isPreAuth = false)
-    {
-        $this->preauth = [
-            'is_preauth' => $isPreAuth ? 1 : 0,
-        ];
-
-        return $this;
-    }
-
-    /**
-     * Optional method
-     * Call it only in case you want to use Tokenization feature
-     * https://dev.paytabs.com/docs/tokenization/
-     */
-    public function set14Tokenization($isTokenization = false, $isExistingCustomer = false)
-    {
-        $this->tokenization = [
-            'is_tokenization' => $isTokenization ? 'TRUE' : 'FALSE',
-            'is_existing_customer' => $isExistingCustomer ? 'TRUE' : 'FALSE',
-        ];
-
-        return $this;
-    }
-
-    /**
-     * Required method if Payment method = valU
-     */
-    public function set20ValuParams($valu_product_id, $valu_down_payment = 0)
-    {
-        $this->valu_params = [
-            'valu_product_id' => $valu_product_id,
-            'valu_down_payment' => $valu_down_payment,
-        ];
-
-        return $this;
-    }
-}
-
-
-/**
- * Holder class that holds PayTabs's request's values
- */
-class PaytabsTokenizeHolder
-{
-    /**
-     * order_id
-     * title
-     * product_name
-     */
-    private $invoiceInfo;
-
-    /**
-     * amount
-     * currency
-     */
-    private $payment;
-
-    /**
-     * cc_first_name
-     * cc_last_name
-     * phone_number
-     * customer_email
-     */
-    private $customer_info;
-
-    /**
-     * address_billing
-     * state_billing
-     * city_billing
-     * postal_code_billing
-     * country_billing
-     */
-    private $billing;
-
-    /**
-     * address_shipping
-     * city_shipping
-     * state_shipping
-     * postal_code_shipping
-     * country_shipping
-     */
-    private $shipping;
-
-    /**
-     * billing_shipping_details
-     */
-    private $billing_shipping_details;
-
-    /**
-     * pt_token
-     * pt_customer_email
-     * pt_customer_password
-     */
-    private $tokenInfo;
+    private $lang;
 
 
     //
@@ -1150,26 +754,30 @@ class PaytabsTokenizeHolder
     public function pt_build()
     {
         $all = array_merge(
-            $this->invoiceInfo,
-            $this->payment,
-            $this->customer_info,
-            $this->tokenInfo
+            $this->payment_code,
+            $this->transaction,
+            $this->cart,
+            $this->urls
         );
 
-        if ($this->billing_shipping_details) {
-            $all = array_merge(
-                $all,
-                $this->billing_shipping_details
-            );
-        } else {
-            $all = array_merge(
-                $all,
-                $this->billing,
-                $this->shipping
-            );
-        }
+        $this->pt_merges(
+            $all,
+            $this->customer_details,
+            $this->shipping_details,
+            $this->hide_shipping,
+            $this->lang
+        );
 
         return $all;
+    }
+
+    private function pt_merges(&$all, ...$arrays)
+    {
+        foreach ($arrays as $array) {
+            if ($array) {
+                $all = array_merge($all, $array);
+            }
+        }
     }
 
     private function _fill(&$var, ...$options)
@@ -1178,119 +786,120 @@ class PaytabsTokenizeHolder
         $var = PaytabsHelper::getNonEmpty($var, ...$options);
     }
 
-    //
-
-    public function set01InvoiceInfo($orderId, $title, $productName)
+    private function setCustomerDetails($name, $email, $phone, $address, $city, $state, $country, $zip, $ip)
     {
-        $this->invoiceInfo = [
-            'order_id' => $orderId,
-            'title' => $title,
-            'product_name' => $productName
-        ];
+        // PaytabsHelper::pt_fillIfEmpty($name);
+        // $this->_fill($address, 'NA');
 
-        return $this;
-    }
+        // PaytabsHelper::pt_fillIfEmpty($city);
 
-    public function set02Payment($currency, $amount)
-    {
-        $this->payment = [
-            'currency' => $currency,
-            'amount'   => $amount,
-        ];
+        // $this->_fill($state, $city, 'NA');
 
-        return $this;
-    }
-
-    public function set03CustomerInfo($firstname, $lastname, $phone_number, $email)
-    {
-        PaytabsHelper::pt_fillIfEmpty($firstname);
-        PaytabsHelper::pt_fillIfEmpty($lastname);
-
-        //
-
-        $this->customer_info = [
-            'cc_first_name'  => $firstname,
-            'cc_last_name'   => $lastname,
-            'phone_number'   => $phone_number,
-            'customer_email' => $email,
-        ];
-
-        return $this;
-    }
-
-    /**
-     * Optional method
-     */
-    public function set04Billing($address, $state, $city, $postal_code, $country)
-    {
-        $this->_fill($address, 'NA');
-
-        PaytabsHelper::pt_fillIfEmpty($city);
-
-        $this->_fill($state, $city, 'NA');
-
-        $this->_fill($postal_code, '11111');
-        $postal_code = PaytabsHelper::convertAr2En($postal_code);
-
-        //
-
-        $this->billing = [
-            'address_billing'     => $address,
-            'state_billing'       => $state,
-            'city_billing'        => $city,
-            'postal_code_billing' => $postal_code,
-            'country_billing'     => $country,
-        ];
-
-        return $this;
-    }
-
-    /**
-     * Optional method
-     */
-    public function set05Shipping($address, $state, $city, $postal_code, $country)
-    {
-        $this->_fill($address, $this->billing['billing_address']);
-        $this->_fill($city, $this->billing['city']);
-        $this->_fill($state, $city, $this->billing['state']);
-        $this->_fill($postal_code, $this->billing['postal_code']);
-        $this->_fill($country, $this->billing['country']);
-
-        //
-
-        $this->shipping = [
-            'address_shipping'     => $address,
-            'city_shipping'        => $city,
-            'state_shipping'       => $state,
-            'postal_code_shipping' => $postal_code,
-            'country_shipping'     => $country,
-        ];
-
-        return $this;
-    }
-
-    /**
-     * @param $on if TRUE => Do not pass Billing & Shipping parameters to the server
-     */
-    public function set06NoBillingAndShipping($on = false)
-    {
-        if ($on) {
-            $this->billing_shipping_details = [
-                'billing_shipping_details' => 'no'
-            ];
-        } else {
-            $this->billing_shipping_details = false;
+        if ($zip) {
+            $zip = PaytabsHelper::convertAr2En($zip);
         }
 
+        if (!$ip) {
+            PaytabsHelper::pt_fillIP($ip);
+        }
+
+        //
+
+        $info =  [
+            'name'    => $name,
+            'email'   => $email,
+            'phone'   => $phone,
+            'street1' => $address,
+            'city'    => $city,
+            'state'   => $state,
+            'country' => $country,
+            'zip'     => $zip,
+            'ip'      => $ip
+        ];
+
+        return $info;
+    }
+
+    //
+
+    public function set01PaymentCode($code)
+    {
+        $this->payment_code = ['payment_methods' => [$code]];
+
         return $this;
     }
 
-    public function set07TokenInfo($token, $customer_email, $customer_password)
+    public function set02Transaction($tran_type, $tran_class)
     {
-        $this->tokenInfo = [
-            'pt_token' => $token,
-            'pt_customer_email' => $customer_email,
-            'pt_customer_password' => $customer_password,
+        $this->transaction = [
+            'tran_type' => $tran_type,
+            'tran_class' => $tran_class,
+        ];
+
+        return $this;
+    }
+
+    public function set03Cart($cart_id, $currency, $amount, $cart_description)
+    {
+        $this->cart = [
+            'cart_id'          => "$cart_id",
+            'cart_currency'    => "$currency",
+            'cart_amount'      => (float) $amount,
+            'cart_description' => $cart_description,
+        ];
+
+        return $this;
+    }
+
+    public function set04CustomerDetails($name, $email, $phone, $address, $city, $state, $country, $zip, $ip)
+    {
+        $infos = $this->setCustomerDetails($name, $email, $phone, $address, $city, $state, $country, $zip, $ip);
+
+        //
+
+        $this->customer_details = [
+            'customer_details' => $infos
+        ];
+
+        return $this;
+    }
+
+    public function set05ShippingDetails($name, $email, $phone, $address, $city, $state, $country, $zip, $ip)
+    {
+        $infos = $this->setCustomerDetails($name, $email, $phone, $address, $city, $state, $country, $zip, $ip);
+
+        //
+
+        $this->shipping_details = [
+            'shipping_details' => $infos
+        ];
+
+        return $this;
+    }
+
+    public function set06HideShipping($on = false)
+    {
+        $this->hide_shipping = [
+            'hide_shipping' => $on,
+        ];
+
+        return $this;
+    }
+
+    public function set07URLs($return_url, $callback_url)
+    {
+        $this->urls = [
+            'return'   => $return_url,
+            'callback' => $callback_url,
+        ];
+
+        return $this;
+    }
+
+    public function set08Lang($lang_code)
+    {
+        $this->lang = [
+            'paypage_lang' => $lang_code
         ];
 
         return $this;
@@ -1306,13 +915,11 @@ class PaytabsRefundHolder
 
     /**
      * refund_amount
-     * refund_reason
      */
     private $refundInfo;
 
     /**
      * transaction_id
-     * order_id *
      */
     private $transaction_id;
 
@@ -1325,6 +932,10 @@ class PaytabsRefundHolder
     public function pt_build()
     {
         $all = array_merge(
+            [
+                'tran_type' => 'refund',
+                'tran_class' => 'ecom'
+            ],
             $this->refundInfo,
             $this->transaction_id
         );
@@ -1334,26 +945,27 @@ class PaytabsRefundHolder
 
     //
 
-    public function set01RefundInfo($amount, $reason)
+    public function set01RefundInfo($amount, $cart_currency)
     {
         $this->refundInfo = [
-            'refund_amount' => $amount,
-            'refund_reason' => $reason,
+            'cart_amount' => (float) $amount,
+            'cart_currency' => $cart_currency,
         ];
 
         return $this;
     }
 
-    public function set02Transaction($transaction_id)
+    public function set02Transaction($cart_id, $transaction_id, $reason)
     {
         $this->transaction_id = [
-            'transaction_id' => $transaction_id
+            'tran_ref' => $transaction_id,
+            'cart_id'  => "{$cart_id}",
+            'cart_description' => $reason,
         ];
 
         return $this;
     }
 }
-
 
 /**
  * API class which contacts PayTabs server's API
@@ -1373,18 +985,18 @@ class PaytabsApi
         '10' => ['name' => 'amex', 'title' => 'PayTabs - Amex', 'currencies' => ['AED', 'SAR']],
         '11' => ['name' => 'valu', 'title' => 'PayTabs - valU', 'currencies' => ['EGP']],
     ];
-    const BASE_URL = 'https://www.paytabs.com/';
+    const BASE_URL = 'https://secure.paytabs.com/';
 
-    const AUTHENTICATION_URL = PaytabsApi::BASE_URL . 'apiv2/validate_secret_key';
-    const PAYPAGE_URL        = PaytabsApi::BASE_URL . 'apiv2/create_pay_page';
-    const VERIFY_URL         = PaytabsApi::BASE_URL . 'apiv2/verify_payment';
-    const TOKENIZATION_URL   = PaytabsApi::BASE_URL . 'apiv3/tokenized_transaction_prepare';
-    const REFUND_URL         = PaytabsApi::BASE_URL . 'apiv2/refund_process';
+    const URL_REQUEST = PaytabsApi::BASE_URL . 'payment/request';
+    const URL_QUERY   = PaytabsApi::BASE_URL . 'payment/query';
+
+    const URL_TOKEN        = PaytabsApi::BASE_URL . 'payment/token';
+    const URL_TOKEN_DELETE = PaytabsApi::BASE_URL . 'payment/token/delete';
 
     //
 
-    private $merchant_email;
-    private $secret_key;
+    private $profile_id;
+    private $server_key;
 
     //
 
@@ -1403,83 +1015,74 @@ class PaytabsApi
         return self::$instance;
     }
 
-    private function __construct($merchant_email, $secret_key)
+    private function __construct($profile_id, $server_key)
     {
-        $this->setAuth($merchant_email, $secret_key);
+        $this->setAuth($profile_id, $server_key);
     }
 
-    private function setAuth($merchant_email, $secret_key)
+    private function setAuth($profile_id, $server_key)
     {
-        $this->merchant_email = $merchant_email;
-        $this->secret_key = $secret_key;
+        $this->profile_id = $profile_id;
+        $this->server_key = $server_key;
     }
 
-    private function appendAuth(&$values)
-    {
-        $values['merchant_email'] = $this->merchant_email;
-        $values['secret_key'] = $this->secret_key;
-    }
 
     /** start: API calls */
 
-    function authentication()
-    {
-        $values = [];
-        $this->appendAuth($values);
-
-        $obj = json_decode($this->runPost(self::AUTHENTICATION_URL, $values), TRUE);
-
-        if ($obj->response_code == "4000") {
-            return TRUE;
-        }
-        return FALSE;
-    }
-
     function create_pay_page($values)
     {
-        $this->appendAuth($values);
+        // $serverIP = getHostByName(getHostName());
+        // $values['ip_merchant'] = PaytabsHelper::getNonEmpty($serverIP, $_SERVER['SERVER_ADDR'], 'NA');
 
-        $serverIP = getHostByName(getHostName());
-        $values['ip_merchant'] = PaytabsHelper::getNonEmpty($serverIP, $_SERVER['SERVER_ADDR'], 'NA');
 
-        $values['ip_customer'] = PaytabsHelper::getNonEmpty($values['ip_customer'], $_SERVER['REMOTE_ADDR'], 'NA');
-
-        $res = json_decode($this->runPost(self::PAYPAGE_URL, $values));
+        $res = json_decode($this->sendRequest(self::URL_REQUEST, $values));
         $paypage = $this->enhance($res);
 
         return $paypage;
     }
 
-    function verify_payment($payment_reference)
+    function verify_payment($tran_reference)
     {
-        $this->appendAuth($values);
+        $values['tran_ref'] = $tran_reference;
+        $verify = json_decode($this->sendRequest(self::URL_QUERY, $values));
 
-        $values['payment_reference'] = $payment_reference;
-
-        $res = json_decode($this->runPost(self::VERIFY_URL, $values));
-        $verify = $this->enhanceVerify($res);
+        $verify = $this->enhanceVerify($verify);
 
         return $verify;
     }
 
-    function tokenized_payment($values)
-    {
-        $this->appendAuth($values);
-
-        $res = json_decode($this->runPost(self::TOKENIZATION_URL, $values));
-        $tokenized = $this->enhanceVerify($res);
-
-        return $tokenized;
-    }
-
     function refund($values)
     {
-        $this->appendAuth($values);
-
-        $res = json_decode($this->runPost(self::REFUND_URL, $values));
+        $res = json_decode($this->sendRequest(self::URL_REQUEST, $values));
         $refund = $this->enhanceRefund($res);
 
         return $refund;
+    }
+
+    function is_valid_redirect($post_values)
+    {
+        $serverKey = $this->server_key;
+
+        // Request body include a signature post Form URL encoded field
+        // 'signature' (hexadecimal encoding for hmac of sorted post form fields)
+        $requestSignature = $post_values["signature"];
+        unset($post_values["signature"]);
+        $fields = $post_values;
+
+        // Sort form fields 
+        ksort($fields);
+
+        // Generate URL-encoded query string of Post fields except signature field.
+        $query = http_build_query($fields);
+
+        $signature = hash_hmac('sha256', $query, $serverKey);
+        if (hash_equals($signature, $requestSignature) === TRUE) {
+            // VALID Redirect
+            return true;
+        } else {
+            // INVALID Redirect
+            return false;
+        }
     }
 
     /** end: API calls */
@@ -1488,8 +1091,7 @@ class PaytabsApi
     /** start: Local calls */
 
     /**
-     * paypage structure: null || stdClass->[result | details, response_code, payment_url, p_id]
-     * @return paypage structure: stdClass->[success, result|message, response_code, payment_url, p_id]
+     * 
      */
     private function enhance($paypage)
     {
@@ -1498,18 +1100,12 @@ class PaytabsApi
         if (!$paypage) {
             $_paypage = new stdClass();
             $_paypage->success = false;
-            $_paypage->result = 'Create paytabs payment failed';
+            $_paypage->message = 'Create paytabs payment failed';
         } else {
-            $_paypage->success = ($paypage->response_code == 4012 && !empty($paypage->payment_url));
+            $_paypage->success = isset($paypage->tran_ref, $paypage->redirect_url) && !empty($paypage->redirect_url);
 
-            $msg = '';
-            if (isset($paypage->result)) $msg .= $paypage->result;
-            if (isset($paypage->details)) $msg .= $paypage->details;
-
-            $_paypage->result = $msg;
+            $_paypage->payment_url = @$paypage->redirect_url;
         }
-
-        $_paypage->message = $_paypage->result;
 
         return $_paypage;
     }
@@ -1521,13 +1117,18 @@ class PaytabsApi
         if (!$verify) {
             $_verify = new stdClass();
             $_verify->success = false;
-            $_verify->result = 'Verifying paytabs payment failed';
+            $_verify->message = 'Verifying paytabs payment failed';
         } else {
-
-            $_verify->success = isset($verify->response_code) && $verify->response_code == 100;
+            if (isset($verify->payment_result)) {
+                $_verify->success = $verify->payment_result->response_status == "A";
+            } else {
+                $_verify->success = false;
+            }
+            $_verify->message = $verify->payment_result->response_message;
         }
 
-        $_verify->message = $_verify->result;
+        $_verify->reference_no = @$verify->cart_id;
+        $_verify->transaction_id = @$verify->tran_ref;
 
         return $_verify;
     }
@@ -1539,44 +1140,50 @@ class PaytabsApi
         if (!$refund) {
             $_refund = new stdClass();
             $_refund->success = false;
-            $_refund->result = 'Verifying paytabs Refund failed';
+            $_refund->message = 'Verifying paytabs Refund failed';
         } else {
-            if (isset($refund->response_code)) {
-                $_refund->success = $refund->response_code == 814;
-                $_refund->pending_success = $refund->response_code == 812;
+            if (isset($refund->payment_result)) {
+                $_refund->success = $refund->payment_result->response_status == "A";
+                $_refund->message = $refund->payment_result->response_message;
             } else {
                 $_refund->success = false;
             }
+            $_refund->pending_success = false;
         }
-
-        $_refund->message = $_refund->result;
 
         return $_refund;
     }
 
     /** end: Local calls */
 
-    private function runPost($url, $fields)
+    private function sendRequest($gateway_url, $values)
     {
-        $fields_string = "";
-        foreach ($fields as $key => $value) {
-            $fields_string .= $key . '=' . urlencode($value) . '&';
+        $auth_key = $this->server_key;
+
+        $headers = [
+            'Content-Type: application/json',
+            "Authorization: {$auth_key}"
+        ];
+
+        $values['profile_id'] = (int) $this->profile_id;
+        $post_params = json_encode($values);
+
+        $ch = @curl_init();
+        @curl_setopt($ch, CURLOPT_URL, $gateway_url);
+        @curl_setopt($ch, CURLOPT_POST, true);
+        @curl_setopt($ch, CURLOPT_POSTFIELDS, $post_params);
+        @curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        @curl_setopt($ch, CURLOPT_HEADER, false);
+        @curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        @curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        @curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        @curl_setopt($ch, CURLOPT_VERBOSE, true);
+        // @curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        $result = @curl_exec($ch);
+        if (!$result) {
+            die(curl_error($ch));
         }
-        $fields_string = rtrim($fields_string, '&');
-        $ch = curl_init();
-
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $fields_string);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HEADER, false);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch, CURLOPT_VERBOSE, true);
-
-        $result = curl_exec($ch);
-        curl_close($ch);
+        @curl_close($ch);
 
         return $result;
     }

@@ -36,12 +36,11 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $this->description = $this->get_option('description');
         $this->enabled = $this->get_option('enabled');
 
-        $this->merchant_id = $this->get_option('merchant_email');
-        $this->merchant_key = $this->get_option('secret_key');
+        // PT
+        $this->merchant_id = $this->get_option('profile_id');
+        $this->merchant_key = $this->get_option('server_key');
 
-        $this->hide_personal_info = $this->get_option('hide_personal_info') == 'yes';
-        $this->hide_billing = $this->get_option('hide_billing') == 'yes';
-        $this->hide_view_invoice = $this->get_option('hide_view_invoice') == 'yes';
+        $this->hide_shipping = $this->get_option('hide_shipping') == 'yes';
 
         if ($this->_code == 'valu') {
             $this->valu_product_id = $this->get_option('valu_product_id');
@@ -60,6 +59,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $this->checkCallback();
     }
 
+
     /**
      * Returns the icon URL for this payment method
      * "icons" folder must contains .png file named like the "code" param of the payment method
@@ -76,6 +76,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         return $icon;
     }
+
 
     /**
      * Plugin options
@@ -103,43 +104,31 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 'description' => __('This controls the description which the user sees during checkout.', 'PayTabs'),
                 'default'     => __('Pay securely through PayTabs Secure Servers.', 'PayTabs'),
             ),
-            'merchant_email' => array(
-                'title'       => __('Merchant e-Mail', 'PayTabs'),
+            // PT
+            'profile_id' => array(
+                'title'       => __('Profile ID', 'PayTabs'),
                 'type'        => 'text',
-                'description' => __('Please enter the E-Mail of your PayTabs Merchant account.', 'PayTabs'),
+                'description' => __('Please enter the "Profile ID" of your PayTabs Merchant account.', 'PayTabs'),
                 'default'     => '',
                 'required'    => true
             ),
-            'secret_key' => array(
-                'title'       => __('Secret Key', 'PayTabs'),
+            'server_key' => array(
+                'title'       => __('Server Key', 'PayTabs'),
                 'type'        => 'text',
-                'description' => __('Please enter your PayTabs Secret Key. You can find the secret key on your Merchant’s Portal', 'PayTabs'),
+                'description' => __('Please enter your PayTabs "Server Key". You can find it on your Merchant’s Portal', 'PayTabs'),
                 'default'     => '',
                 'required'    => true
             ),
-            'hide_personal_info' => array(
-                'title'       => __('Hide personal information', 'PayTabs'),
-                'label'       => __('Hide Personal information', 'PayTabs'),
+            'hide_shipping' => array(
+                'title'       => __('Hide shipping info', 'PayTabs'),
+                'label'       => __('Hide shipping info', 'PayTabs'),
                 'type'        => 'checkbox',
-                'description' => 'Enable if you wish to hide Personal info of the customer in PayTabs payment page.',
-                'default'     => 'no'
-            ),
-            'hide_billing' => array(
-                'title'       => __('Hide billing info', 'PayTabs'),
-                'label'       => __('Hide Billing info', 'PayTabs'),
-                'type'        => 'checkbox',
-                'description' => 'Enable if you wish to hide Billing info of the customer in PayTabs payment page.',
-                'default'     => 'no'
-            ),
-            'hide_view_invoice' => array(
-                'title'       => __('Hide view invoice', 'PayTabs'),
-                'label'       => __('Hide View invoice', 'PayTabs'),
-                'type'        => 'checkbox',
-                'description' => 'Hide View invoice link in PayTabs payment page.',
+                'description' => 'Enable if you wish to hide Shipping info of the customer in PayTabs payment page.',
                 'default'     => 'no'
             ),
         );
     }
+
 
     /**
      *  There are no payment fields for paytabs, but we want to show the description if set.
@@ -204,10 +193,14 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             return false;
         }
 
+        // PT
+        $currency = $order->get_currency();
+        if (empty($reason)) $reason = 'Admin request';
+
         $pt_refundHolder = new PaytabsRefundHolder();
         $pt_refundHolder
-            ->set01RefundInfo($amount, $reason)
-            ->set02Transaction($transaction_id);
+            ->set01RefundInfo($amount, $currency)
+            ->set02Transaction($order_id, $transaction_id, $reason);
 
         $values = $pt_refundHolder->pt_build();
 
@@ -229,15 +222,17 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         return $success;
     }
 
+
     private function checkCallback()
     {
-        $param_paymentRef = 'payment_reference';
+        // PT
+        $param_paymentRef = 'tranRef';
 
-        if (isset($_REQUEST[$param_paymentRef], $_REQUEST['key'])) {
-            $payment_reference = $_REQUEST[$param_paymentRef];
-            $key = $_REQUEST['key'];
+        if (isset($_POST[$param_paymentRef], $_POST['cartId'])) {
+            $payment_reference = $_POST[$param_paymentRef];
+            $orderId = $_POST['cartId'];
 
-            $orderId = wc_get_order_id_by_order_key($key);
+            // $orderId = wc_get_order_id_by_order_key($key);
             $order = wc_get_order($orderId);
             if ($order) {
                 $payment_id = $this->getPaymentMethod($order);
@@ -250,6 +245,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         }
     }
 
+
     /**
      * In case you need a webhook, like PayPal IPN etc
      */
@@ -259,6 +255,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $_paytabsApi = PaytabsApi::getInstance($this->merchant_id, $this->merchant_key);
         $result = $_paytabsApi->verify_payment($payment_reference);
+        // $valid_redirect = $_paytabsApi->is_valid_redirect($_POST);
 
         $success = $result->success;
         $message = $result->message;
@@ -296,6 +293,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         }
     }
 
+
     /**
      * Payment successed => Order status change to success
      */
@@ -313,6 +311,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         wp_redirect($this->get_return_url($order));
     }
+
 
     /**
      * Payment failed => Order status change to failed
@@ -338,17 +337,18 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
      */
     private function prepareOrder($order)
     {
-        global $woocommerce;
+        // PT
+        // global $woocommerce;
 
         // $order->add_order_note();
 
         $total = $order->get_total();
-        $discount = $order->get_total_discount();
-        $shipping = $order->get_total_shipping();
-        $tax = $order->get_total_tax();
+        // $discount = $order->get_total_discount();
+        // $shipping = $order->get_total_shipping();
+        // $tax = $order->get_total_tax();
 
-        $amount = $total + $discount;
-        $other_charges = $shipping + $tax;
+        $amount = $total; // + $discount;
+        // $other_charges = $shipping + $tax;
         // $totals = $order->get_order_item_totals();
 
         $currency = $order->get_currency();
@@ -356,12 +356,11 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         //
 
-        $siteUrl = get_site_url();
+        // $siteUrl = get_site_url();
         $return_url = $order->get_checkout_payment_url(true);
         // $return_url = "$siteUrl?wc-api=paytabs_callback&order={$order->id}";
 
         $products = $order->get_items();
-
         $items_arr = array_map(function ($p) {
             return [
                 'name' => $p->get_name(),
@@ -370,8 +369,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             ];
         }, $products);
 
-        $cdetails = PaytabsHelper::getCountryDetails($order->get_billing_country());
-        $phoneext = $cdetails['phone'];
+        // $cdetails = PaytabsHelper::getCountryDetails($order->get_billing_country());
+        // $phoneext = $cdetails['phone'];
 
         $telephone = $order->get_billing_phone();
 
@@ -382,57 +381,44 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $addressShipping = trim($order->get_shipping_address_1() . ' ' . $order->get_shipping_address_2());
 
         $lang_code = get_locale();
-        $lang = ($lang_code == 'ar' || substr($lang_code, 0, 3) == 'ar_') ? 'Arabic' : 'English';
+        // $lang = ($lang_code == 'ar' || substr($lang_code, 0, 3) == 'ar_') ? 'Arabic' : 'English';
 
-        $holder = new PaytabsHolder();
+        $holder = new PaytabsHolder2();
         $holder
             ->set01PaymentCode($this->_code)
-            ->set02ReferenceNum($order->get_id())
-            ->set03InvoiceInfo($order->get_formatted_billing_full_name(), $lang)
-            ->set04Payment(
-                $currency,
-                $amount,
-                $other_charges,
-                $discount
-            )
-            ->set05Products($items_arr)
-            ->set06CustomerInfo(
-                $order->get_billing_first_name(),
-                $order->get_billing_last_name(),
-                $phoneext,
+            ->set02Transaction('sale', 'ecom')
+            ->set03Cart($order->get_id(), $currency, $amount, json_encode($items_arr))
+            ->set04CustomerDetails(
+                $order->get_formatted_billing_full_name(),
+                $order->get_billing_email(),
                 $telephone,
-                $order->get_billing_email()
-            )
-            ->set07Billing(
                 $addressBilling,
-                $order->get_billing_state(),
                 $order->get_billing_city(),
+                $order->get_billing_state(),
+                $countryBilling,
                 $order->get_billing_postcode(),
-                $countryBilling
+                $ip_customer
             )
-            ->set08Shipping(
-                $order->get_shipping_first_name(),
-                $order->get_shipping_last_name(),
+            ->set05ShippingDetails(
+                $order->get_formatted_shipping_full_name(),
+                $order->get_billing_email(),
+                null,
                 $addressShipping,
-                $order->get_shipping_state(),
                 $order->get_shipping_city(),
+                $order->get_shipping_state(),
+                $countryShipping,
                 $order->get_shipping_postcode(),
-                $countryShipping
+                null
             )
-            ->set09HideOptions(
-                $this->hide_personal_info,
-                $this->hide_billing,
-                $this->hide_view_invoice
+            ->set06HideShipping($this->hide_shipping)
+            ->set07URLs(
+                $return_url,
+                null
             )
-            ->set10URLs(
-                $siteUrl,
-                $return_url
-            )
-            ->set11CMSVersion("WooCommerce {$woocommerce->version}")
-            ->set12IPCustomer($ip_customer);
+            ->set08Lang($lang_code);
 
         if ($this->_code == 'valu') {
-            $holder->set20ValuParams($this->valu_product_id, 0);
+            // $holder->set20ValuParams($this->valu_product_id, 0);
         }
 
         $post_arr = $holder->pt_build(true);
@@ -440,22 +426,24 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         return $post_arr;
     }
 
+
     /**
      * $this->prepareOrder which support WooCommerce version 2.x
      */
     private function prepareOrder2($order)
     {
-        global $woocommerce;
+        // PT
+        // global $woocommerce;
 
         // $order->add_order_note();
 
         $total = $order->get_total();
         $discount = $order->get_total_discount();
-        $shipping = $order->get_total_shipping();
-        $tax = $order->get_total_tax();
+        // $shipping = $order->get_total_shipping();
+        // $tax = $order->get_total_tax();
 
-        $amount = $total + $discount;
-        $other_charges = $shipping + $tax;
+        $amount = $total; // + $discount;
+        // $other_charges = $shipping + $tax;
         // $totals = $order->get_order_item_totals();
 
         $currency = $order->get_order_currency();
@@ -463,12 +451,11 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         //
 
-        $siteUrl = get_site_url();
+        // $siteUrl = get_site_url();
         $return_url = $order->get_checkout_payment_url(true);
         // $return_url = "$siteUrl?wc-api=paytabs_callback&order={$order->id}";
 
         $products = $order->get_items();
-
         $items_arr = array_map(function ($p) {
             return [
                 'name' => $p['name'],
@@ -477,8 +464,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             ];
         }, $products);
 
-        $cdetails = PaytabsHelper::getCountryDetails($order->billing_country);
-        $phoneext = $cdetails['phone'];
+        // $cdetails = PaytabsHelper::getCountryDetails($order->billing_country);
+        // $phoneext = $cdetails['phone'];
 
         $telephone = $order->billing_phone;
 
@@ -489,57 +476,44 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $addressShipping = trim($order->shipping_address_1 . ' ' . $order->shipping_address_2);
 
         $lang_code = get_locale();
-        $lang = ($lang_code == 'ar' || substr($lang_code, 0, 3) == 'ar_') ? 'Arabic' : 'English';
+        // $lang = ($lang_code == 'ar' || substr($lang_code, 0, 3) == 'ar_') ? 'Arabic' : 'English';
 
         $holder = new PaytabsHolder();
         $holder
             ->set01PaymentCode($this->_code)
-            ->set02ReferenceNum($order->id)
-            ->set03InvoiceInfo($order->get_formatted_billing_full_name(), $lang)
-            ->set04Payment(
-                $currency,
-                $amount,
-                $other_charges,
-                $discount
-            )
-            ->set05Products($items_arr)
-            ->set06CustomerInfo(
-                $order->billing_first_name,
-                $order->billing_last_name,
-                $phoneext,
+            ->set02Transaction('sale', 'ecom')
+            ->set03Cart($order->id, $currency, $amount, json_encode($items_arr))
+            ->set04CustomerDetails(
+                $order->get_formatted_billing_full_name(),
+                $order->billing_email,
                 $telephone,
-                $order->billing_email
-            )
-            ->set07Billing(
                 $addressBilling,
-                $order->billing_state,
                 $order->billing_city,
+                $order->billing_state,
+                $countryBilling,
                 $order->billing_postcode,
-                $countryBilling
+                null
             )
-            ->set08Shipping(
-                $order->shipping_first_name,
-                $order->shipping_last_name,
+            ->set05ShippingDetails(
+                $order->get_formatted_shipping_full_name(),
+                $order->billing_email,
+                null,
                 $addressShipping,
-                $order->shipping_state,
                 $order->shipping_city,
+                $order->shipping_state,
+                $countryShipping,
                 $order->shipping_postcode,
-                $countryShipping
+                null
             )
-            ->set09HideOptions(
-                $this->hide_personal_info,
-                $this->hide_billing,
-                $this->hide_view_invoice
+            ->set06HideShipping(false)
+            ->set07URLs(
+                $return_url,
+                null
             )
-            ->set10URLs(
-                $siteUrl,
-                $return_url
-            )
-            ->set11CMSVersion("WooCommerce {$woocommerce->version}")
-            ->set12IPCustomer('');
+            ->set08Lang($lang_code);
 
         if ($this->_code == 'valu') {
-            $holder->set20ValuParams($this->valu_product_id, 0);
+            // $holder->set20ValuParams($this->valu_product_id, 0);
         }
 
         $post_arr = $holder->pt_build(true);
