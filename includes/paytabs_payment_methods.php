@@ -36,8 +36,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $this->description = $this->get_option('description');
         $this->enabled = $this->get_option('enabled');
 
-        $this->merchant_email = $this->get_option('merchant_email');
-        $this->secret_key = $this->get_option('secret_key');
+        $this->merchant_id = $this->get_option('merchant_email');
+        $this->merchant_key = $this->get_option('secret_key');
 
         $this->hide_personal_info = $this->get_option('hide_personal_info') == 'yes';
         $this->hide_billing = $this->get_option('hide_billing') == 'yes';
@@ -159,7 +159,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $values = WooCommerce2 ? $this->prepareOrder2($order) : $this->prepareOrder($order);
 
-        $_paytabsApi = PaytabsApi::getInstance($this->merchant_email, $this->secret_key);
+        $_paytabsApi = PaytabsApi::getInstance($this->merchant_id, $this->merchant_key);
         $paypage = $_paytabsApi->create_pay_page($values);
 
 
@@ -169,7 +169,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         // $response = wp_remote_post('{payment processor endpoint}', $args);
 
         $success = $paypage->success;
-        $message = $paypage->result;
+        $message = $paypage->message;
 
         if ($success) {
             $payment_url = $paypage->payment_url;
@@ -211,11 +211,11 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $values = $pt_refundHolder->pt_build();
 
-        $_paytabsApi = PaytabsApi::getInstance($this->merchant_email, $this->secret_key);
+        $_paytabsApi = PaytabsApi::getInstance($this->merchant_id, $this->merchant_key);
         $refundRes = $_paytabsApi->refund($values);
 
         $success = $refundRes->success;
-        $message = $refundRes->result;
+        $message = $refundRes->message;
         $pending_success = $refundRes->pending_success;
 
         $order->add_order_note('Refund status: ' . $message, true);
@@ -242,7 +242,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             if ($order) {
                 $payment_id = $this->getPaymentMethod($order);
                 if ($payment_id == $this->id) {
-                    $this->callback($payment_reference, $orderId);
+                    $this->callback($payment_reference, $orderId, $order);
                 }
             } else {
                 PaytabsHelper::log("callback failed for Order {$orderId}, payemnt_reference [{$payment_reference}]", 3);
@@ -253,19 +253,21 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     /**
      * In case you need a webhook, like PayPal IPN etc
      */
-    public function callback($payment_reference, $order_id)
+    public function callback($payment_reference, $order_id, $order)
     {
         if (!$payment_reference) return;
 
-        $_paytabsApi = PaytabsApi::getInstance($this->merchant_email, $this->secret_key);
+        $_paytabsApi = PaytabsApi::getInstance($this->merchant_id, $this->merchant_key);
         $result = $_paytabsApi->verify_payment($payment_reference);
 
         $success = $result->success;
-        $message = $result->result;
+        $message = $result->message;
+        $orderId = @$result->reference_no;
+        $transaction_ref = @$result->transaction_id;
 
         $_logVerify = json_encode($result);
 
-        if (!isset($result->reference_no)) {
+        if (!$orderId) {
             PaytabsHelper::log("callback failed for Order {$order_id}, response [{$_logVerify}]", 3);
             wc_add_notice($message, 'error');
 
@@ -274,23 +276,13 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             return;
         }
 
-        $orderId = $result->reference_no;
-        $transactionId = $result->transaction_id;
-
         if ($orderId != $order_id) {
             PaytabsHelper::log("callback failed for Order {$order_id}, Order mismatch [{$_logVerify}]", 3);
             return;
         }
 
-        $order = wc_get_order($orderId);
-
-        if (!$order) {
-            PaytabsHelper::log("callback failed for Order {$order_id}, Order not found, response [{$_logVerify}]", 3);
-            return;
-        }
-
         if ($success) {
-            $this->orderSuccess($order, $transactionId, $message);
+            $this->orderSuccess($order, $transaction_ref, $message);
 
             // exit;
         } else {
