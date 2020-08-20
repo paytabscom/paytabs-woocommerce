@@ -802,7 +802,7 @@ class PaytabsHolder
         if ($diff != 0) {
             $_logParams = json_encode($pay);
 
-            if (abs($diff) > self::THRESHOLD && self::THRESHOLD >= 0) {
+            if (self::THRESHOLD >= 0 && abs($diff) > self::THRESHOLD) {
                 PaytabsHelper::log("PaytabsHelper::round_amount: diff = {$diff}, [{$_logParams}]", 3);
             } else {
                 PaytabsHelper::log("PaytabsHelper::round_amount: diff = {$diff} added to 'other_charges', [{$_logParams}]", 2);
