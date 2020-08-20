@@ -18,9 +18,9 @@ Official WooCommerce plugin for PayTabs
 ### Install using WordPress Admin panel
 
 1. Download the latest release of the plugin [3.5.5](<https://github.com/paytabscom/paytabs-woocommerce/releases/download/3.5.5/paytabs-woocommerce.zip>)
-2. Go to `"Wordpress admin panel" >> Plugins >> Add New`
+2. Go to `"WordPress admin panel" >> Plugins >> Add New`
 3. Select `Upload Plugin`
-4. Click `Browse` and Select the downloaded zip file (`paytabs-woocommerce.zip`)
+4. Click `Browse` and select the downloaded zip file (`paytabs-woocommerce.zip`)
 5. Click `Install Now`
 6. If a previous version exists, select `Replace current with uploaded`
 
@@ -35,9 +35,9 @@ Official WooCommerce plugin for PayTabs
 
 ## Configure the Plugin
 
-1. Go to `"Wordpress admin panel" >> WooCommerce >> Settings`
+1. Go to `"WordPress admin panel" >> WooCommerce >> Settings`
 2. Select `Payments` tab
-3. Select the prefered payment method from the available list of PayTabs payment methods
+3. Select the preferred payment method from the available list of PayTabs payment methods
 4. Check the `Enable Payment Gateway`
 5. Enter the primary credentials:
    - **Merchant e-Mail**: enter the email id of your PayTabs merchant account
