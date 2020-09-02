@@ -2,7 +2,7 @@
 
 /**
  * PayTabs PHP SDK
- * Version: 1.2.2
+ * Version: 1.2.3
  */
 
 
@@ -895,9 +895,9 @@ class PaytabsHolder
     {
         $this->payment = [
             'currency'      => $currency,
-            'amount'        => $amount,
-            'other_charges' => $other_charges,
-            'discount'      => $discount,
+            'amount'        => round($amount, 3),
+            'other_charges' => round($other_charges, 3),
+            'discount'      => round($discount, 3),
         ];
 
         return $this;
