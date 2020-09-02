@@ -235,9 +235,11 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             // $orderId = wc_get_order_id_by_order_key($key);
             $order = wc_get_order($orderId);
             if ($order) {
-                $payment_id = $this->getPaymentMethod($order);
-                if ($payment_id == $this->id) {
-                    $this->callback($payment_reference, $orderId, $order);
+                if ($order->needs_payment()) {
+                    $payment_id = $this->getPaymentMethod($order);
+                    if ($payment_id == $this->id) {
+                        $this->callback($payment_reference, $orderId, $order);
+                    }
                 }
             } else {
                 PaytabsHelper::log("callback failed for Order {$orderId}, payemnt_reference [{$payment_reference}]", 3);
