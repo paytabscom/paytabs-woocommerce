@@ -347,10 +347,11 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $total = $order->get_total();
         $discount = $order->get_total_discount();
         $shipping = $order->get_total_shipping();
+        $fees = $order->get_total_fees();
         $tax = $order->get_total_tax();
 
         $amount = $total + $discount;
-        $other_charges = $shipping + $tax;
+        $other_charges = $shipping + $tax + $fees;
         // $totals = $order->get_order_item_totals();
 
         $currency = $order->get_currency();
