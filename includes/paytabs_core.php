@@ -2,7 +2,7 @@
 
 /**
  * PayTabs PHP SDK
- * Version: 1.2.3
+ * Version: 1.2.4
  */
 
 
@@ -941,6 +941,9 @@ class PaytabsHolder
         PaytabsHelper::pt_fillIfEmpty($firstname);
         PaytabsHelper::pt_fillIfEmpty($lastname);
 
+        PaytabsHelper::pt_fillIfEmpty($phone_prefix);
+        PaytabsHelper::pt_fillIfEmpty($phone_number);
+
         //
 
         $this->customer_info = [
@@ -964,6 +967,8 @@ class PaytabsHolder
 
         $this->_fill($postal_code, '11111');
         $postal_code = PaytabsHelper::convertAr2En($postal_code);
+
+        $this->_fill($country, 'SAU');
 
         //
 
