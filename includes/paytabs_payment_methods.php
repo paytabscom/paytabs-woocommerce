@@ -204,9 +204,11 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             return false;
         }
 
+        $refund_reason = $reason ? $reason : 'Admin request';
+
         $pt_refundHolder = new PaytabsRefundHolder();
         $pt_refundHolder
-            ->set01RefundInfo($amount, $reason)
+            ->set01RefundInfo($amount, $refund_reason)
             ->set02Transaction($transaction_id);
 
         $values = $pt_refundHolder->pt_build();
@@ -323,7 +325,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     {
         wc_add_notice($message, 'error');
 
-        $order->update_status('failed', __('Payment Cancelled', 'error'));
+        $order->update_status('failed', $message);
 
         // wp_redirect($order->get_cancel_order_url());
     }
