@@ -43,3 +43,15 @@ Official WooCommerce plugin for PayTabs
    - **Merchant e-Mail**: enter the email id of your PayTabs merchant account
    - **Secret Key**: `Merchant’s Dashboard >> Secret Key`
 6. Click `Save changes`
+
+- - -
+
+## Log Access
+
+### PayTabs custome log
+
+1. Access `debug_paytabs.log` file found at: `/wp-content/debug_paytabs.log`
+
+- - -
+
+Done
