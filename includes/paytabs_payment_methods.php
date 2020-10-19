@@ -87,7 +87,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     {
         $orderStatuses = wc_get_order_statuses();
         $orderStatuses = array_merge(
-            ['default' => 'Default'],
+            ['default' => 'Default (recommended option)'],
             $orderStatuses
         );
 
@@ -150,13 +150,13 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             'status_success' => array(
                 'title'       => __('Success Order status', 'PayTabs'),
                 'type'        => 'select',
-                'description' => 'Set the Order status after successful payment.',
+                'description' => 'Set the Order status after successful payment. <br><strong>Warning</strong> Be very careful when you change the Default option because when you change it, you change the normal flow of the Order into the WooCommerce system, you may encounter some consequences based on the new value you set',
                 'options'     => $orderStatuses,
             ),
             'status_failed' => array(
                 'title'       => __('Failed Order status', 'PayTabs'),
                 'type'        => 'select',
-                'description' => 'Set the Order status after failed payment.',
+                'description' => 'Set the Order status after failed payment. <br><strong>Warning</strong> Be very careful when you change the Default option because when you change it, you change the normal flow of the Order into the WooCommerce system, you may encounter some consequences based on the new value you set',
                 'options'     => $orderStatuses,
             ),
         );
