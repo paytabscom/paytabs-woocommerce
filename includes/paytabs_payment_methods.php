@@ -432,11 +432,17 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $lang_code = get_locale();
         $lang = ($lang_code == 'ar' || substr($lang_code, 0, 3) == 'ar_') ? 'Arabic' : 'English';
 
+        $title = PaytabsHelper::getNonEmpty(
+            $order->get_formatted_billing_full_name(),
+            $order->get_formatted_shipping_full_name(),
+            'N/A'
+        );
+
         $holder = new PaytabsHolder();
         $holder
             ->set01PaymentCode($this->_code)
             ->set02ReferenceNum($order->get_id())
-            ->set03InvoiceInfo($order->get_formatted_billing_full_name(), $lang)
+            ->set03InvoiceInfo($title, $lang)
             ->set04Payment(
                 $currency,
                 $amount,
@@ -539,11 +545,17 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $lang_code = get_locale();
         $lang = ($lang_code == 'ar' || substr($lang_code, 0, 3) == 'ar_') ? 'Arabic' : 'English';
 
+        $title = PaytabsHelper::getNonEmpty(
+            $order->get_formatted_billing_full_name(),
+            $order->get_formatted_shipping_full_name(),
+            'N/A'
+        );
+
         $holder = new PaytabsHolder();
         $holder
             ->set01PaymentCode($this->_code)
             ->set02ReferenceNum($order->id)
-            ->set03InvoiceInfo($order->get_formatted_billing_full_name(), $lang)
+            ->set03InvoiceInfo($title, $lang)
             ->set04Payment(
                 $currency,
                 $amount,
