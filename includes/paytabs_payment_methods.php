@@ -42,6 +42,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $this->hide_shipping = $this->get_option('hide_shipping') == 'yes';
 
+        $this->order_status_success = $this->get_option('status_success');
+        $this->order_status_failed  = $this->get_option('status_failed');
+
         if ($this->_code == 'valu') {
             $this->valu_product_id = $this->get_option('valu_product_id');
         }
@@ -83,6 +86,12 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
      */
     public function init_form_fields()
     {
+        $orderStatuses = wc_get_order_statuses();
+        $orderStatuses = array_merge(
+            ['default' => 'Default (recommended option)'],
+            $orderStatuses
+        );
+
         $this->form_fields = array(
             'enabled' => array(
                 'title'       => __('Enable/Disable', 'PayTabs'),
@@ -125,6 +134,18 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 'type'        => 'checkbox',
                 'description' => 'Enable if you wish to hide Shipping info of the customer in PayTabs payment page.',
                 'default'     => 'no'
+            ),
+            'status_success' => array(
+                'title'       => __('Success Order status', 'PayTabs'),
+                'type'        => 'select',
+                'description' => 'Set the Order status after successful payment. <br><strong>Warning</strong> Be very careful when you change the Default option because when you change it, you change the normal flow of the Order into the WooCommerce system, you may encounter some consequences based on the new value you set',
+                'options'     => $orderStatuses,
+            ),
+            'status_failed' => array(
+                'title'       => __('Failed Order status', 'PayTabs'),
+                'type'        => 'select',
+                'description' => 'Set the Order status after failed payment. <br><strong>Warning</strong> Be very careful when you change the Default option because when you change it, you change the normal flow of the Order into the WooCommerce system, you may encounter some consequences based on the new value you set',
+                'options'     => $orderStatuses,
             ),
         );
     }
@@ -306,6 +327,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $order->payment_complete($transaction_id);
         // $order->reduce_order_stock();
 
+        $this->setNewStatus($order, true);
+
         $woocommerce->cart->empty_cart();
 
         $order->add_order_note($message, true);
@@ -324,7 +347,27 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $order->update_status('failed', $message);
 
+        $this->setNewStatus($order, false);
+
         // wp_redirect($order->get_cancel_order_url());
+    }
+
+
+    private function setNewStatus($order, $isSuccess)
+    {
+        if ($isSuccess) {
+            $configStatus = $this->order_status_success;
+            $defaultStatus = 'wc-processing';
+        } else {
+            $configStatus = $this->order_status_failed;
+            $defaultStatus = 'wc-failed';
+        }
+        $isDefault = $configStatus == 'default' || $configStatus == $defaultStatus;
+
+        if (!$isDefault) {
+            $newMsg = "Order status changed as in the admin configuration!";
+            $order->update_status($configStatus, $newMsg, true);
+        }
     }
 
 
