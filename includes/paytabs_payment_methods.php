@@ -322,7 +322,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     {
         wc_add_notice($message, 'error');
 
-        $order->update_status('failed', __('Payment Cancelled', 'error'));
+        $order->update_status('failed', $message);
 
         // wp_redirect($order->get_cancel_order_url());
     }
