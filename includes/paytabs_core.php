@@ -2,7 +2,7 @@
 
 /**
  * PayTabs PHP SDK
- * Version: 1.2.4
+ * Version: 1.2.5
  */
 
 
@@ -51,7 +51,7 @@ class PaytabsHelper
     public static function getNonEmpty(...$vars)
     {
         foreach ($vars as $var) {
-            if (!empty($var)) return $var;
+            if (!empty(trim($var))) return $var;
         }
         return false;
     }
