@@ -37,6 +37,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $this->enabled = $this->get_option('enabled');
 
         // PT
+        $this->paytabs_endpoint = $this->get_option('endpoint');
         $this->merchant_id = $this->get_option('profile_id');
         $this->merchant_key = $this->get_option('server_key');
 
@@ -92,6 +93,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             $orderStatuses
         );
 
+        $endpoints = PaytabsApi::getEndpoints();
+
         $this->form_fields = array(
             'enabled' => array(
                 'title'       => __('Enable/Disable', 'PayTabs'),
@@ -99,6 +102,12 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 'type'        => 'checkbox',
                 'description' => '',
                 'default'     => 'no'
+            ),
+            'endpoint' => array(
+                'title'       => __('PayTabs endpoint region', 'PayTabs'),
+                'type'        => 'select',
+                'description' => 'Select your domain',
+                'options'     => $endpoints,
             ),
             'title' => array(
                 'title'       => __('Title', 'PayTabs'),
@@ -169,7 +178,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $values = WooCommerce2 ? $this->prepareOrder2($order) : $this->prepareOrder($order);
 
-        $_paytabsApi = PaytabsApi::getInstance($this->merchant_id, $this->merchant_key);
+        $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
         $paypage = $_paytabsApi->create_pay_page($values);
 
 
@@ -225,7 +234,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $values = $pt_refundHolder->pt_build();
 
-        $_paytabsApi = PaytabsApi::getInstance($this->merchant_id, $this->merchant_key);
+        $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
         $refundRes = $_paytabsApi->refund($values);
 
         $success = $refundRes->success;
@@ -276,7 +285,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     {
         if (!$payment_reference) return;
 
-        $_paytabsApi = PaytabsApi::getInstance($this->merchant_id, $this->merchant_key);
+        $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
         $result = $_paytabsApi->verify_payment($payment_reference);
         // $valid_redirect = $_paytabsApi->is_valid_redirect($_POST);
 

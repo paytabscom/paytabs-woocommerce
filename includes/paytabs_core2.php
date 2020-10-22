@@ -2,7 +2,7 @@
 
 /**
  * PayTabs 2 PHP SDK
- * Version: 1.1.0
+ * Version: 1.3.0
  */
 
 
@@ -745,6 +745,11 @@ class PaytabsHolder2
      */
     private $lang;
 
+    /**
+     * framed
+     */
+    private $framed;
+
 
     //
 
@@ -904,6 +909,43 @@ class PaytabsHolder2
 
         return $this;
     }
+
+    public function set09Framed($on = false)
+    {
+        $this->framed = [
+            'framed' => $on,
+        ];
+
+        return $this;
+    }
+}
+
+
+class PaytabsTokenHolder extends PaytabsHolder2
+{
+    /**
+     * payment_token
+     */
+    private $payment_token;
+
+
+    public function set20Token($payment_token)
+    {
+        $this->payment_token = [
+            'payment_token' => $payment_token
+        ];
+
+        return $this;
+    }
+
+    public function pt_build()
+    {
+        $all = parent::pt_build();
+
+        $all = array_merge($all, $this->payment_token);
+
+        return $all;
+    }
 }
 
 
@@ -985,16 +1027,48 @@ class PaytabsApi
         '10' => ['name' => 'amex', 'title' => 'PayTabs - Amex', 'currencies' => ['AED', 'SAR']],
         '11' => ['name' => 'valu', 'title' => 'PayTabs - valU', 'currencies' => ['EGP']],
     ];
-    const BASE_URL = 'https://secure.paytabs.com/';
+    const BASE_URLS = [
+        'ARE' => [
+            'title' => 'United Arab Emirates',
+            'endpoint' => 'https://secure.paytabs.com/'
+        ],
+        'SAU' => [
+            'title' => 'Saudi Arabia',
+            'endpoint' => 'https://secure.paytabs.sa/'
+        ],
+        'OMN' => [
+            'title' => 'Oman',
+            'endpoint' => 'https://secure-oman.paytabs.com/'
+        ],
+        'JOR' => [
+            'title' => 'Jordan',
+            'endpoint' => 'https://secure-jordan.paytabs.com/'
+        ],
+        'EGY' => [
+            'title' => 'Egypt',
+            'endpoint' => 'https://secure-egypt.paytabs.com/'
+        ],
+        'GLOBAL' => [
+            'title' => 'Global',
+            'endpoint' => 'https://secure-global.paytabs.com/'
+        ],
+        'DEMO' => [
+            'title' => 'Demo',
+            'endpoint' => 'https://secure-demo.paytabs.com/'
+        ],
+    ];
 
-    const URL_REQUEST = PaytabsApi::BASE_URL . 'payment/request';
-    const URL_QUERY   = PaytabsApi::BASE_URL . 'payment/query';
+    // const BASE_URL = 'https://secure.paytabs.com/';
 
-    const URL_TOKEN        = PaytabsApi::BASE_URL . 'payment/token';
-    const URL_TOKEN_DELETE = PaytabsApi::BASE_URL . 'payment/token/delete';
+    const URL_REQUEST = 'payment/request';
+    const URL_QUERY   = 'payment/query';
+
+    const URL_TOKEN_QUERY  = 'payment/token';
+    const URL_TOKEN_DELETE = 'payment/token/delete';
 
     //
 
+    private $base_url;
     private $profile_id;
     private $server_key;
 
@@ -1004,10 +1078,19 @@ class PaytabsApi
 
     //
 
-    public static function getInstance($merchant_id, $key)
+    public static function getEndpoints()
+    {
+        $endpoints = [];
+        foreach (PaytabsApi::BASE_URLS as $key => $value) {
+            $endpoints[$key] = $value['title'];
+        }
+        return $endpoints;
+    }
+
+    public static function getInstance($region, $merchant_id, $key)
     {
         if (self::$instance == null) {
-            self::$instance = new PaytabsApi($merchant_id, $key);
+            self::$instance = new PaytabsApi($region, $merchant_id, $key);
         }
 
         // self::$instance->setAuth($merchant_email, $secret_key);
@@ -1015,8 +1098,9 @@ class PaytabsApi
         return self::$instance;
     }
 
-    private function __construct($profile_id, $server_key)
+    private function __construct($region, $profile_id, $server_key)
     {
+        $this->base_url = self::BASE_URLS[$region]['endpoint'];
         $this->setAuth($profile_id, $server_key);
     }
 
@@ -1034,9 +1118,12 @@ class PaytabsApi
         // $serverIP = getHostByName(getHostName());
         // $values['ip_merchant'] = PaytabsHelper::getNonEmpty($serverIP, $_SERVER['SERVER_ADDR'], 'NA');
 
+        $isTokenize = array_key_exists('payment_token', $values);
 
-        $res = json_decode($this->sendRequest(self::URL_REQUEST, $values));
-        $paypage = $this->enhance($res);
+        $response = $this->sendRequest(self::URL_REQUEST, $values);
+
+        $res = json_decode($response);
+        $paypage = $isTokenize ? $this->enhanceTokenization($res) : $this->enhance($res);
 
         return $paypage;
     }
@@ -1059,6 +1146,24 @@ class PaytabsApi
         return $refund;
     }
 
+    function token_query($token)
+    {
+        $values = ['token' => $token];
+        $res = json_decode($this->sendRequest(self::URL_TOKEN_QUERY, $values));
+
+        return $res;
+    }
+
+    function token_delete($token)
+    {
+        $values = ['token' => $token];
+        $res = json_decode($this->sendRequest(self::URL_TOKEN_DELETE, $values));
+
+        return $res;
+    }
+
+    //
+
     function is_valid_redirect($post_values)
     {
         $serverKey = $this->server_key;
@@ -1067,7 +1172,7 @@ class PaytabsApi
         // 'signature' (hexadecimal encoding for hmac of sorted post form fields)
         $requestSignature = $post_values["signature"];
         unset($post_values["signature"]);
-        $fields = $post_values;
+        $fields = array_filter($post_values);
 
         // Sort form fields 
         ksort($fields);
@@ -1118,6 +1223,8 @@ class PaytabsApi
             $_verify = new stdClass();
             $_verify->success = false;
             $_verify->message = 'Verifying paytabs payment failed';
+        } else if (isset($verify->code, $verify->message)) {
+            $_verify->success = false;
         } else {
             if (isset($verify->payment_result)) {
                 $_verify->success = $verify->payment_result->response_status == "A";
@@ -1154,11 +1261,40 @@ class PaytabsApi
         return $_refund;
     }
 
+    private function enhanceTokenization($paypage)
+    {
+        $_paypage = $paypage;
+
+        if (!$paypage) {
+            $_paypage = new stdClass();
+            $_paypage->success = false;
+            $_paypage->message = 'Create paytabs tokenization payment failed';
+        } else {
+            $is_redirect = isset($paypage->tran_ref, $paypage->redirect_url) && !empty($paypage->redirect_url);
+            $is_completed = isset($paypage->payment_result);
+
+            if ($is_redirect) {
+                $_paypage->success = true;
+                $_paypage->payment_url = $paypage->redirect_url;
+            } else if ($is_completed) {
+                $_paypage = $this->enhanceVerify($paypage);
+            } else {
+                $_paypage = $this->enhance($paypage);
+            }
+
+            $_paypage->is_redirect = $is_redirect;
+            $_paypage->is_completed = $is_completed;
+        }
+
+        return $_paypage;
+    }
+
     /** end: Local calls */
 
-    private function sendRequest($gateway_url, $values)
+    private function sendRequest($request_url, $values)
     {
         $auth_key = $this->server_key;
+        $gateway_url = $this->base_url . $request_url;
 
         $headers = [
             'Content-Type: application/json',
