@@ -441,7 +441,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $holder
             ->set01PaymentCode($this->_code)
             ->set02Transaction('sale', 'ecom')
-            ->set03Cart($order->get_id(), $currency, $amount, json_encode($items_arr))
+            ->set03Cart($order->get_id(), $currency, $amount, "Order total amount".round($amount))//Fix: Passing JSOn will cause ApplePay to fail sometime
             ->set04CustomerDetails(
                 $order->get_formatted_billing_full_name(),
                 $order->get_billing_email(),
@@ -536,7 +536,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $holder
             ->set01PaymentCode($this->_code)
             ->set02Transaction('sale', 'ecom')
-            ->set03Cart($order->id, $currency, $amount, json_encode($items_arr))
+            ->set03Cart($order->id, $currency, $amount, "Order total amount".round($amount))//Fix: Passing JSOn will cause ApplePay to fail sometime
             ->set04CustomerDetails(
                 $order->get_formatted_billing_full_name(),
                 $order->billing_email,
