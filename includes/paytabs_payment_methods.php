@@ -416,12 +416,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $products = $order->get_items();
         $items_arr = array_map(function ($p) {
-            return [
-                'name' => $p->get_name(),
-                'quantity' => $p->get_quantity(),
-                'price' => $p->get_subtotal() / $p->get_quantity()
-            ];
+            return "{$p->get_name()} ({$p->get_quantity()})";
         }, $products);
+
+        $cart_desc = implode(", ", $items_arr);
 
         // $cdetails = PaytabsHelper::getCountryDetails($order->get_billing_country());
         // $phoneext = $cdetails['phone'];
@@ -429,10 +427,16 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $telephone = $order->get_billing_phone();
 
         $countryBilling = PaytabsHelper::countryGetiso3($order->get_billing_country());
-        $countryShipping = PaytabsHelper::countryGetiso3($order->get_shipping_country());
-
         $addressBilling = trim($order->get_billing_address_1() . ' ' . $order->get_billing_address_2());
-        $addressShipping = trim($order->get_shipping_address_1() . ' ' . $order->get_shipping_address_2());
+
+        $is_diff_shipping_address = (bool) $_POST["ship_to_different_address"];
+        if ($is_diff_shipping_address) {
+            $countryShipping = PaytabsHelper::countryGetiso3($order->get_shipping_country());
+            $addressShipping = trim($order->get_shipping_address_1() . ' ' . $order->get_shipping_address_2());
+        } else {
+            $addressShipping = null;
+            $countryShipping = null;
+        }
 
         $lang_code = get_locale();
         // $lang = ($lang_code == 'ar' || substr($lang_code, 0, 3) == 'ar_') ? 'Arabic' : 'English';
@@ -441,7 +445,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $holder
             ->set01PaymentCode($this->_code)
             ->set02Transaction('sale', 'ecom')
-            ->set03Cart($order->get_id(), $currency, $amount, "Order total amount".round($amount))//Fix: Passing JSOn will cause ApplePay to fail sometime
+            ->set03Cart($order->get_id(), $currency, $amount, $cart_desc)
             ->set04CustomerDetails(
                 $order->get_formatted_billing_full_name(),
                 $order->get_billing_email(),
@@ -452,8 +456,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 $countryBilling,
                 $order->get_billing_postcode(),
                 $ip_customer
-            )
-            ->set05ShippingDetails(
+            )->set05ShippingDetails(
+                !$is_diff_shipping_address,
                 $order->get_formatted_shipping_full_name(),
                 $order->get_billing_email(),
                 null,
@@ -492,7 +496,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         // $order->add_order_note();
 
         $total = $order->get_total();
-        $discount = $order->get_total_discount();
+        // $discount = $order->get_total_discount();
         // $shipping = $order->get_total_shipping();
         // $tax = $order->get_total_tax();
 
@@ -511,12 +515,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $products = $order->get_items();
         $items_arr = array_map(function ($p) {
-            return [
-                'name' => $p['name'],
-                'quantity' => $p['qty'],
-                'price' => round($p['line_subtotal'] / $p['qty'], 2)
-            ];
+            return "{$p['name']} ({$p['qty']})";
         }, $products);
+
+        $cart_desc = implode(", ", $items_arr);
 
         // $cdetails = PaytabsHelper::getCountryDetails($order->billing_country);
         // $phoneext = $cdetails['phone'];
@@ -524,19 +526,25 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $telephone = $order->billing_phone;
 
         $countryBilling = PaytabsHelper::countryGetiso3($order->billing_country);
-        $countryShipping = PaytabsHelper::countryGetiso3($order->shipping_country);
-
         $addressBilling = trim($order->billing_address_1 . ' ' . $order->billing_address_2);
-        $addressShipping = trim($order->shipping_address_1 . ' ' . $order->shipping_address_2);
+
+        $is_diff_shipping_address = (bool) $_POST["ship_to_different_address"];
+        if ($is_diff_shipping_address) {
+            $addressShipping = trim($order->shipping_address_1 . ' ' . $order->shipping_address_2);
+            $countryShipping = PaytabsHelper::countryGetiso3($order->shipping_country);
+        } else {
+            $addressShipping = null;
+            $countryShipping = null;
+        }
 
         $lang_code = get_locale();
         // $lang = ($lang_code == 'ar' || substr($lang_code, 0, 3) == 'ar_') ? 'Arabic' : 'English';
 
-        $holder = new PaytabsHolder();
+        $holder = new PaytabsHolder2();
         $holder
             ->set01PaymentCode($this->_code)
             ->set02Transaction('sale', 'ecom')
-            ->set03Cart($order->id, $currency, $amount, "Order total amount".round($amount))//Fix: Passing JSOn will cause ApplePay to fail sometime
+            ->set03Cart($order->id, $currency, $amount, $cart_desc)
             ->set04CustomerDetails(
                 $order->get_formatted_billing_full_name(),
                 $order->billing_email,
@@ -549,6 +557,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 null
             )
             ->set05ShippingDetails(
+                !$is_diff_shipping_address,
                 $order->get_formatted_shipping_full_name(),
                 $order->billing_email,
                 null,
@@ -559,7 +568,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 $order->shipping_postcode,
                 null
             )
-            ->set06HideShipping(false)
+            ->set06HideShipping($this->hide_shipping)
             ->set07URLs(
                 $return_url,
                 null

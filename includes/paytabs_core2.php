@@ -2,7 +2,7 @@
 
 /**
  * PayTabs 2 PHP SDK
- * Version: 1.3.0
+ * Version: 1.3.1
  */
 
 
@@ -869,9 +869,11 @@ class PaytabsHolder2
         return $this;
     }
 
-    public function set05ShippingDetails($name, $email, $phone, $address, $city, $state, $country, $zip, $ip)
+    public function set05ShippingDetails($same_as_billing, $name, $email, $phone, $address, $city, $state, $country, $zip, $ip)
     {
-        $infos = $this->setCustomerDetails($name, $email, $phone, $address, $city, $state, $country, $zip, $ip);
+        $infos = $same_as_billing
+            ? $this->customer_details['customer_details']
+            : $this->setCustomerDetails($name, $email, $phone, $address, $city, $state, $country, $zip, $ip);
 
         //
 
