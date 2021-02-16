@@ -10,14 +10,14 @@ Official WooCommerce plugin for PayTabs
 
 ### Install using FTP method
 
-1. Download the latest release of the plugin [2.3.6.1](<https://github.com/paytabscom/paytabs-woocommerce/releases/download/3.6.1/paytabs-woocommerce-PT2.zip>)
+1. Download the latest release of the plugin [2.3.7.1]
 2. Upload the folder `paytabs-woocommerce` to the wordpress installation directory: `wp-content/plugins/`
 
 *Note: Delete any previous PayTabs plugin.*
 
 ### Install using WordPress Admin panel
 
-1. Download the latest release of the plugin [2.3.6.1](<https://github.com/paytabscom/paytabs-woocommerce/releases/download/3.6.1/paytabs-woocommerce-PT2.zip>)
+1. Download the latest release of the plugin [2.3.7.1]
 2. Go to `"WordPress admin panel" >> Plugins >> Add New`
 3. Select `Upload Plugin`
 4. Click `Browse` and select the downloaded zip file (`paytabs-woocommerce.zip`)
