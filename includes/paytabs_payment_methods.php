@@ -419,19 +419,19 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             return "{$p->get_name()} ({$p->get_quantity()})";
         }, $products);
 
-        $cart_desc = implode(", ", $items_arr);
+        $cart_desc = implode(', ', $items_arr);
 
         // $cdetails = PaytabsHelper::getCountryDetails($order->get_billing_country());
         // $phoneext = $cdetails['phone'];
 
         $telephone = $order->get_billing_phone();
 
-        $countryBilling = PaytabsHelper::countryGetiso3($order->get_billing_country());
+        $countryBilling = $order->get_billing_country();
         $addressBilling = trim($order->get_billing_address_1() . ' ' . $order->get_billing_address_2());
 
         $is_diff_shipping_address = (bool) $_POST["ship_to_different_address"];
         if ($is_diff_shipping_address) {
-            $countryShipping = PaytabsHelper::countryGetiso3($order->get_shipping_country());
+            $countryShipping = $order->get_shipping_country();
             $addressShipping = trim($order->get_shipping_address_1() . ' ' . $order->get_shipping_address_2());
         } else {
             $addressShipping = null;
@@ -439,7 +439,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         }
 
         $lang_code = get_locale();
-        // $lang = ($lang_code == 'ar' || substr($lang_code, 0, 3) == 'ar_') ? 'Arabic' : 'English';
+        $lang = ($lang_code == 'ar' || substr($lang_code, 0, 3) == 'ar_') ? 'ar' : 'en';
 
         $holder = new PaytabsHolder2();
         $holder
@@ -456,8 +456,11 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 $countryBilling,
                 $order->get_billing_postcode(),
                 $ip_customer
-            )->set05ShippingDetails(
-                !$is_diff_shipping_address,
+            );
+
+        if ($is_diff_shipping_address) {
+            $holder->set05ShippingDetails(
+                false,
                 $order->get_formatted_shipping_full_name(),
                 $order->get_billing_email(),
                 null,
@@ -467,13 +470,17 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 $countryShipping,
                 $order->get_shipping_postcode(),
                 null
-            )
-            ->set06HideShipping($this->hide_shipping)
+            );
+        } else if (!$this->hide_shipping) {
+            $holder->set05ShippingDetails(true);
+        }
+
+        $holder->set06HideShipping($this->hide_shipping)
             ->set07URLs(
                 $return_url,
                 null
             )
-            ->set08Lang($lang_code);
+            ->set08Lang($lang);
 
         if ($this->_code == 'valu') {
             // $holder->set20ValuParams($this->valu_product_id, 0);
@@ -518,27 +525,27 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             return "{$p['name']} ({$p['qty']})";
         }, $products);
 
-        $cart_desc = implode(", ", $items_arr);
+        $cart_desc = implode(', ', $items_arr);
 
         // $cdetails = PaytabsHelper::getCountryDetails($order->billing_country);
         // $phoneext = $cdetails['phone'];
 
         $telephone = $order->billing_phone;
 
-        $countryBilling = PaytabsHelper::countryGetiso3($order->billing_country);
+        $countryBilling = $order->billing_country;
         $addressBilling = trim($order->billing_address_1 . ' ' . $order->billing_address_2);
 
         $is_diff_shipping_address = (bool) $_POST["ship_to_different_address"];
         if ($is_diff_shipping_address) {
             $addressShipping = trim($order->shipping_address_1 . ' ' . $order->shipping_address_2);
-            $countryShipping = PaytabsHelper::countryGetiso3($order->shipping_country);
+            $countryShipping = $order->shipping_country;
         } else {
             $addressShipping = null;
             $countryShipping = null;
         }
 
         $lang_code = get_locale();
-        // $lang = ($lang_code == 'ar' || substr($lang_code, 0, 3) == 'ar_') ? 'Arabic' : 'English';
+        $lang = ($lang_code == 'ar' || substr($lang_code, 0, 3) == 'ar_') ? 'ar' : 'en';
 
         $holder = new PaytabsHolder2();
         $holder
@@ -555,9 +562,11 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 $countryBilling,
                 $order->billing_postcode,
                 null
-            )
-            ->set05ShippingDetails(
-                !$is_diff_shipping_address,
+            );
+
+        if ($is_diff_shipping_address) {
+            $holder->set05ShippingDetails(
+                false,
                 $order->get_formatted_shipping_full_name(),
                 $order->billing_email,
                 null,
@@ -567,13 +576,17 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 $countryShipping,
                 $order->shipping_postcode,
                 null
-            )
-            ->set06HideShipping($this->hide_shipping)
+            );
+        } else if (!$this->hide_shipping) {
+            $holder->set05ShippingDetails(true);
+        }
+
+        $holder->set06HideShipping($this->hide_shipping)
             ->set07URLs(
                 $return_url,
                 null
             )
-            ->set08Lang($lang_code);
+            ->set08Lang($lang);
 
         if ($this->_code == 'valu') {
             // $holder->set20ValuParams($this->valu_product_id, 0);
