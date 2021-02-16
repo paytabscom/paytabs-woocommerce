@@ -2,7 +2,7 @@
 
 /**
  * PayTabs 2 PHP SDK
- * Version: 1.3.1
+ * Version: 1.3.6
  */
 
 
@@ -770,7 +770,8 @@ class PaytabsHolder2
             $this->customer_details,
             $this->shipping_details,
             $this->hide_shipping,
-            $this->lang
+            $this->lang,
+            $this->framed
         );
 
         return $all;
@@ -869,7 +870,7 @@ class PaytabsHolder2
         return $this;
     }
 
-    public function set05ShippingDetails($same_as_billing, $name, $email, $phone, $address, $city, $state, $country, $zip, $ip)
+    public function set05ShippingDetails($same_as_billing, $name = null, $email = null, $phone = null, $address = null, $city = null, $state = null, $country = null, $zip = null, $ip = null)
     {
         $infos = $same_as_billing
             ? $this->customer_details['customer_details']
@@ -912,10 +913,15 @@ class PaytabsHolder2
         return $this;
     }
 
-    public function set09Framed($on = false)
+    /**
+     * @param string $redirect_target "parent" or "top" or "iframe"
+     */
+    public function set09Framed($on = false, $redirect_target = 'iframe')
     {
         $this->framed = [
             'framed' => $on,
+            'framed_return_parent' => $redirect_target == 'parent',
+            'framed_return_top' => $redirect_target == 'top'
         ];
 
         return $this;
@@ -1010,6 +1016,131 @@ class PaytabsRefundHolder
         return $this;
     }
 }
+
+
+/**
+ * Holder class that holds PayTabs's request's values
+ */
+class PaytabsCaptureHolder
+{
+
+    /**
+     * cart_amount
+     * cart_currency
+     */
+    private $captureInfo;
+
+    /**
+     * transaction_id
+     */
+    private $transaction_id;
+
+
+    //
+
+    /**
+     * @return array
+     */
+    public function pt_build()
+    {
+        $all = array_merge(
+            [
+                'tran_type' => 'capture',
+                'tran_class' => 'ecom'
+            ],
+            $this->captureInfo,
+            $this->transaction_id
+        );
+
+        return $all;
+    }
+
+    //
+
+    public function set01CaptureInfo($amount, $cart_currency)
+    {
+        $this->captureInfo = [
+            'cart_amount' => (float) $amount,
+            'cart_currency' => $cart_currency,
+        ];
+
+        return $this;
+    }
+
+    public function set02Transaction($cart_id, $transaction_id, $reason)
+    {
+        $this->transaction_id = [
+            'tran_ref' => $transaction_id,
+            'cart_id'  => "{$cart_id}",
+            'cart_description' => $reason,
+        ];
+
+        return $this;
+    }
+}
+
+
+/**
+ * Holder class that holds PayTabs's request's values
+ */
+class PaytabsVoidHolder
+{
+
+    /**
+     * cart_amount
+     * cart_currency
+     */
+    private $voidInfo;
+
+    /**
+     * transaction_id
+     */
+    private $transaction_id;
+
+
+    //
+
+    /**
+     * @return array
+     */
+    public function pt_build()
+    {
+        $all = array_merge(
+            [
+                'tran_type' => 'void',
+                'tran_class' => 'ecom'
+            ],
+            $this->voidInfo,
+            $this->transaction_id
+        );
+
+        return $all;
+    }
+
+    //
+
+    public function set01VoidInfo($amount, $cart_currency)
+    {
+        $this->voidInfo = [
+            'cart_amount' => (float) $amount,
+            'cart_currency' => $cart_currency,
+        ];
+
+        return $this;
+    }
+
+    public function set02Transaction($cart_id, $transaction_id, $reason)
+    {
+        $this->transaction_id = [
+            'tran_ref' => $transaction_id,
+            'cart_id'  => "{$cart_id}",
+            'cart_description' => $reason,
+        ];
+
+        return $this;
+    }
+}
+
 
 /**
  * API class which contacts PayTabs server's API
@@ -1140,7 +1271,7 @@ class PaytabsApi
         return $verify;
     }
 
-    function refund($values)
+    function request_followup($values)
     {
         $res = json_decode($this->sendRequest(self::URL_REQUEST, $values));
         $refund = $this->enhanceRefund($res);

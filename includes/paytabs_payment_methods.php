@@ -235,7 +235,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $values = $pt_refundHolder->pt_build();
 
         $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
-        $refundRes = $_paytabsApi->refund($values);
+        $refundRes = $_paytabsApi->request_followup($values);
 
         $success = $refundRes->success;
         $message = $refundRes->message;
