@@ -188,6 +188,37 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         return (bool) $_POST[$this->tokenise_param];
     }
 
+    private function get_token()
+    {
+        $token_id = $_POST[$this->token_id_param];
+
+        if (!$token_id) {
+            return null;
+        }
+
+        if ($token_id === 'new') {
+            return false;
+        }
+
+        $tokenObj = WC_Payment_Tokens::get($token_id);
+
+        if ($tokenObj->get_user_id() !== get_current_user_id()) {
+            // Optionally display a notice with `wc_add_notice`
+            return null;
+        }
+
+        // $tokens = WC_Payment_Tokens::get_customer_tokens(get_current_user_id());
+        // $token = WC_Payment_Tokens::get_customer_default_token(get_current_user_id());
+
+        // Get tokens associated with Order
+        // $tokens = WC_Payment_Tokens::get_order_tokens($order_id);
+        // $tokens = $order->get_payment_tokens();
+
+        // WC_Payment_Tokens::delete(10);
+        // $order->add_payment_token($token);
+
+        return $tokenObj;
+    }
 
     /**
      * We're processing the payments here
@@ -196,23 +227,36 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     {
         $order = wc_get_order($order_id);
 
-        $values = WooCommerce2 ? $this->prepareOrder2($order) : $this->prepareOrder($order);
-
         $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
+
+
+        $saved_token = $this->get_token();
+        if ($saved_token) {
+            $values = $this->prepareOrder_Tokenised($order, $saved_token);
+        } else {
+            $values = WooCommerce2 ? $this->prepareOrder2($order) : $this->prepareOrder($order);
+        }
+
         $paypage = $_paytabsApi->create_pay_page($values);
 
         //
 
         $success = $paypage->success;
         $message = $paypage->message;
+        $is_redirect = @$paypage->is_redirect;
+        $is_completed = @$paypage->is_completed;
 
         if ($success) {
-            $payment_url = $paypage->payment_url;
+            if ($is_completed) {
+                return $this->validate_payment($paypage, $order_id, $order, true);
+            } else {
+                $payment_url = $paypage->payment_url;
 
-            return array(
-                'result'   => 'success',
-                'redirect' => $payment_url,
-            );
+                return array(
+                    'result'   => 'success',
+                    'redirect' => $payment_url,
+                );
+            }
         } else {
             $_logPaypage = json_encode($paypage);
             $_logParams = json_encode($values);
@@ -309,7 +353,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     }
 
 
-    private function validate_payment($result, $order_id, $order)
+    private function validate_payment($result, $order_id, $order, $is_tokenise = false)
     {
         $success = $result->success;
         $message = $result->message;
@@ -334,7 +378,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         }
 
         if ($success) {
-            $this->orderSuccess($order, $transaction_ref, $token, $message);
+            return $this->orderSuccess($order, $transaction_ref, $token, $message, $is_tokenise);
 
             // exit;
         } else {
@@ -352,7 +396,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     /**
      * Payment successed => Order status change to success
      */
-    private function orderSuccess($order, $transaction_id, $token_str, $message)
+    private function orderSuccess($order, $transaction_id, $token_str, $message, $is_tokenise)
     {
         global $woocommerce;
 
@@ -383,7 +427,15 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         }
 
         $redirect_url = $this->get_return_url($order);
-        wp_redirect($redirect_url);
+
+        if ($is_tokenise) {
+            return array(
+                'result' => 'success',
+                'redirect' => $redirect_url,
+            );
+        } else {
+            wp_redirect($redirect_url);
+        }
     }
 
 
@@ -630,6 +682,44 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 null
             )
             ->set08Lang($lang);
+
+        if ($this->_code == 'valu') {
+            // $holder->set20ValuParams($this->valu_product_id, 0);
+        }
+
+        $post_arr = $holder->pt_build(true);
+
+        return $post_arr;
+    }
+
+    //
+
+    private function prepareOrder_Tokenised($order, $tokenObj)
+    {
+        $amount = $order->get_total();
+        $currency = $order->get_currency();
+
+        //
+
+        $token = $tokenObj->get_token();
+        $tran_ref = $tokenObj->get_tran_ref();
+
+        //
+
+        $products = $order->get_items();
+        $items_arr = array_map(function ($p) {
+            return "{$p->get_name()} ({$p->get_quantity()})";
+        }, $products);
+
+        $cart_desc = implode(', ', $items_arr);
+
+        //
+
+        $holder = new PaytabsTokenHolder();
+        $holder
+            ->set02Transaction('sale', 'recurring')
+            ->set03Cart($order->get_id(), $currency, $amount, $cart_desc)
+            ->set20Token($token, $tran_ref);
 
         if ($this->_code == 'valu') {
             // $holder->set20ValuParams($this->valu_product_id, 0);
