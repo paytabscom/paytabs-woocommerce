@@ -24,7 +24,11 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         // Supports simple payments
         $this->supports = array(
             'products',
-            'refunds'
+            'refunds',
+
+            'tokenization',
+            // 'token_editor',
+            // 'add_payment_method',
         );
 
         // Method with all the options fields
@@ -53,6 +57,11 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         // This action hook saves the settings
         add_action("woocommerce_update_options_payment_gateways_{$this->id}", array($this, 'process_admin_options'));
 
+
+        //
+
+        $this->tokenise_param = "wc-{$this->id}-new-payment-method";
+        $this->token_id_param = "wc-{$this->id}-payment-token";
 
         // We need custom JavaScript to obtain a token
         // add_action('wp_enqueue_scripts', array($this, 'payment_scripts'));
@@ -166,6 +175,17 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     function payment_fields()
     {
         if ($this->description) echo wpautop(wptexturize($this->description));
+
+        $this->tokenization_script();
+        $this->saved_payment_methods();
+        $this->save_payment_method_checkbox();
+        // $this->form();
+    }
+
+
+    private function is_tokenise()
+    {
+        return (bool) $_POST[$this->tokenise_param];
     }
 
 
@@ -181,11 +201,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
         $paypage = $_paytabsApi->create_pay_page($values);
 
-
-        /**
-         * Your API interaction could be built with wp_remote_post()
-         */
-        // $response = wp_remote_post('{payment processor endpoint}', $args);
+        //
 
         $success = $paypage->success;
         $message = $paypage->message;
@@ -194,8 +210,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             $payment_url = $paypage->payment_url;
 
             return array(
-                'result'    => 'success',
-                'redirect'  => $payment_url,
+                'result'   => 'success',
+                'redirect' => $payment_url,
             );
         } else {
             $_logPaypage = json_encode($paypage);
@@ -289,10 +305,17 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $result = $_paytabsApi->verify_payment($payment_reference);
         // $valid_redirect = $_paytabsApi->is_valid_redirect($_POST);
 
+        $this->validate_payment($result, $order_id, $order);
+    }
+
+
+    private function validate_payment($result, $order_id, $order)
+    {
         $success = $result->success;
         $message = $result->message;
         $orderId = @$result->reference_no;
         $transaction_ref = @$result->transaction_id;
+        $token = @$result->token;
 
         $_logVerify = json_encode($result);
 
@@ -311,7 +334,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         }
 
         if ($success) {
-            $this->orderSuccess($order, $transaction_ref, $message);
+            $this->orderSuccess($order, $transaction_ref, $token, $message);
 
             // exit;
         } else {
@@ -329,7 +352,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     /**
      * Payment successed => Order status change to success
      */
-    private function orderSuccess($order, $transaction_id, $message)
+    private function orderSuccess($order, $transaction_id, $token_str, $message)
     {
         global $woocommerce;
 
@@ -343,7 +366,24 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $order->add_order_note($message, true);
         // wc_add_notice(__('Thank you for shopping with us. Your account has been charged and your transaction is successful. We will be shipping your order to you soon.', 'woocommerce'), 'success');
 
-        wp_redirect($this->get_return_url($order));
+        if ($token_str) {
+            $token = new WC_Payment_Token_Paytabs();
+
+            $token->set_token($token_str);
+            $token->set_tran_ref($transaction_id);
+
+            $token->set_gateway_id($this->id);
+            $user_id = $order->user_id;
+            $token->set_user_id($user_id);
+
+            $tokeId = $token->save();
+
+            $order->add_payment_token($token);
+            $order->save();
+        }
+
+        $redirect_url = $this->get_return_url($order);
+        wp_redirect($redirect_url);
     }
 
 
@@ -395,6 +435,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         // global $woocommerce;
 
         // $order->add_order_note();
+
+        $tokenise = $this->is_tokenise();
 
         $total = $order->get_total();
         // $discount = $order->get_total_discount();
@@ -480,7 +522,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 $return_url,
                 null
             )
-            ->set08Lang($lang);
+            ->set08Lang($lang)
+            ->set10Tokenise($tokenise);
 
         if ($this->_code == 'valu') {
             // $holder->set20ValuParams($this->valu_product_id, 0);

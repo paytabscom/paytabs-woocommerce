@@ -55,6 +55,7 @@ function woocommerce_paytabs_init()
   require_once PAYTABS_PAYPAGE_DIR . "includes/paytabs_core2.php";
   require_once PAYTABS_PAYPAGE_DIR . "includes/paytabs_payment_methods.php";
   require_once PAYTABS_PAYPAGE_DIR . "includes/paytabs_gateways.php";
+  require_once PAYTABS_PAYPAGE_DIR . "includes/paytabs_payment_token.php";
 
 
   /**
