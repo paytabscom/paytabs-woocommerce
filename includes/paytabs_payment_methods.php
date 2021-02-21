@@ -26,6 +26,18 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             'products',
             'refunds',
 
+            'subscriptions',
+            'subscription_cancellation',
+            'subscription_suspension',
+            'subscription_reactivation',
+            'subscription_amount_changes',
+            'subscription_date_changes',
+            'subscription_payment_method_change',
+            'subscription_payment_method_change_customer',
+            'subscription_payment_method_change_admin',
+            'multiple_subscriptions',
+
+            'pre-orders',
             'tokenization',
             // 'token_editor',
             // 'add_payment_method',
@@ -57,6 +69,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         // This action hook saves the settings
         add_action("woocommerce_update_options_payment_gateways_{$this->id}", array($this, 'process_admin_options'));
 
+        add_action('woocommerce_scheduled_subscription_payment_' . $this->id, array($this, 'scheduled_subscription_payment'), 10, 2);
 
         //
 
@@ -267,6 +280,30 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             wc_add_notice($errorMessage, 'error');
             return null;
         }
+    }
+
+    public function scheduled_subscription_payment($amount_to_charge, $renewal_order)
+    {
+        $user_id = $renewal_order->user_id;
+        $tokenObj = WC_Payment_Tokens::get_customer_default_token($user_id);
+        $values = $this->prepareOrder_Tokenised($renewal_order, $tokenObj, $amount_to_charge);
+
+        $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
+        $paypage = $_paytabsApi->create_pay_page($values);
+
+        $success = $paypage->success;
+        $transaction_id = @$paypage->tran_ref;
+        $message = $paypage->message;
+        $is_completed = @$paypage->is_completed;
+        if ($success) {
+            // $this->validate_payment($paypage, $renewal_order->get_id(), $renewal_order, true);
+            $renewal_order->payment_complete($transaction_id);
+            return true;
+        }
+
+        return false;
+
+        // $this->process_subscription_payment($amount_to_charge, $renewal_order, true, false);
     }
 
 
@@ -694,9 +731,12 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
     //
 
-    private function prepareOrder_Tokenised($order, $tokenObj)
+    private function prepareOrder_Tokenised($order, $tokenObj, $amount_to_charge = null)
     {
         $amount = $order->get_total();
+        if ($amount_to_charge) {
+            $amount = $amount_to_charge;
+        }
         $currency = $order->get_currency();
 
         //
