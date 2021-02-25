@@ -7,6 +7,8 @@ class WC_Gateway_Paytabs_Creditcard extends WC_Gateway_Paytabs
     protected $_code = 'creditcard';
     protected $_title = 'PayTabs - CreditCard';
     protected $_description = 'PayTabs - CreditCard payment method';
+
+    protected $_icon = "creditcard.svg";
 }
 
 class WC_Gateway_Paytabs_Mada extends WC_Gateway_Paytabs

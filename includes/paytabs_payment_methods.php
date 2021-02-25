@@ -7,6 +7,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     protected $_code = '';
     protected $_title = '';
     protected $_description = '';
+    protected $_icon = null;
     //
     protected $_paytabsApi;
 
@@ -94,10 +95,12 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
      */
     private function getIcon()
     {
-        $iconPath = PAYTABS_PAYPAGE_DIR . "icons/{$this->_code}.png";
+        $icon_name = $this->_icon ?? "{$this->_code}.png";
+
+        $iconPath = PAYTABS_PAYPAGE_DIR . "icons/{$icon_name}";
         $icon = '';
         if (file_exists($iconPath)) {
-            $icon = PAYTABS_PAYPAGE_ICONS_URL . "{$this->_code}.png";
+            $icon = PAYTABS_PAYPAGE_ICONS_URL . "{$icon_name}";
         }
 
         return $icon;
