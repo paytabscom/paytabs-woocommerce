@@ -236,6 +236,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         return $tokenObj;
     }
 
+
     /**
      * We're processing the payments here
      **/
@@ -284,6 +285,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             return null;
         }
     }
+
 
     public function scheduled_subscription_payment($amount_to_charge, $renewal_order)
     {
@@ -575,20 +577,30 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $lang_code = get_locale();
         $lang = ($lang_code == 'ar' || substr($lang_code, 0, 3) == 'ar_') ? 'ar' : 'en';
 
+        //
+
+        $nameBilling = $order->get_formatted_billing_full_name();
+        $email = $order->get_billing_email();
+        $cityBilling = $order->get_billing_city();
+        $stateBilling = $order->get_billing_state();
+        $zipBilling = $order->get_billing_postcode();
+
+        //
+
         $holder = new PaytabsHolder2();
         $holder
             ->set01PaymentCode($this->_code)
             ->set02Transaction('sale', 'ecom')
             ->set03Cart($order->get_id(), $currency, $amount, $cart_desc)
             ->set04CustomerDetails(
-                $order->get_formatted_billing_full_name(),
-                $order->get_billing_email(),
+                $nameBilling,
+                $email,
                 $telephone,
                 $addressBilling,
-                $order->get_billing_city(),
-                $order->get_billing_state(),
+                $cityBilling,
+                $stateBilling,
                 $countryBilling,
-                $order->get_billing_postcode(),
+                $zipBilling,
                 $ip_customer
             );
 
