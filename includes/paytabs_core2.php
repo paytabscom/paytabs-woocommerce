@@ -2,7 +2,7 @@
 
 /**
  * PayTabs 2 PHP SDK
- * Version: 1.4.0
+ * Version: 1.4.1
  */
 
 
@@ -767,7 +767,7 @@ class PaytabsHolder2
             $this->transaction,
             $this->cart
         );
-        
+
         $this->pt_merges(
             $all,
             $this->payment_code,
@@ -1209,10 +1209,10 @@ class PaytabsApi
             'title' => 'Global',
             'endpoint' => 'https://secure-global.paytabs.com/'
         ],
-        'DEMO' => [
-            'title' => 'Demo',
-            'endpoint' => 'https://secure-demo.paytabs.com/'
-        ],
+        // 'DEMO' => [
+        //     'title' => 'Demo',
+        //     'endpoint' => 'https://secure-demo.paytabs.com/'
+        // ],
     ];
 
     // const BASE_URL = 'https://secure.paytabs.com/';
