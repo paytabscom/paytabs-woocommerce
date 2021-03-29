@@ -2,7 +2,7 @@
 
 /**
  * PayTabs 2 PHP SDK
- * Version: 1.4.1
+ * Version: 1.5.0
  */
 
 
@@ -1172,6 +1172,7 @@ class PaytabsVoidHolder
 class PaytabsApi
 {
     const PAYMENT_TYPES = [
+        '0'  => ['name' => 'all', 'title' => 'PayTabs - All', 'currencies' => null],
         '1'  => ['name' => 'stcpay', 'title' => 'PayTabs - StcPay', 'currencies' => ['SAR']],
         '2'  => ['name' => 'stcpayqr', 'title' => 'PayTabs - StcPay(QR)', 'currencies' => ['SAR']],
         '3'  => ['name' => 'applepay', 'title' => 'PayTabs - ApplePay', 'currencies' => ['AED', 'SAR']],
