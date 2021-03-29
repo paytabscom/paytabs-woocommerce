@@ -299,6 +299,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     {
         $user_id = $renewal_order->get_user_id();
         $tokenObj = WC_Payment_Tokens::get_customer_default_token($user_id);
+        if (!$tokenObj) {
+            paytabs_error_log("Subscription renewal error: The User {$user_id} does not have saved Token.");
+            return false;
+        }
         $values = $this->prepareOrder_Tokenised($renewal_order, $tokenObj, $amount_to_charge);
 
         $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
