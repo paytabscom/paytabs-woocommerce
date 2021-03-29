@@ -199,6 +199,14 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     }
 
 
+    private function has_subscription($order_id)
+    {
+        return (function_exists('wcs_order_contains_subscription') &&
+            (wcs_order_contains_subscription($order_id) ||
+                wcs_is_subscription($order_id) ||
+                wcs_order_contains_renewal($order_id)));
+    }
+
     private function is_tokenise()
     {
         return (bool) $_POST[$this->tokenise_param];
@@ -289,7 +297,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
     public function scheduled_subscription_payment($amount_to_charge, $renewal_order)
     {
-        $user_id = $renewal_order->user_id;
+        $user_id = $renewal_order->get_user_id();
         $tokenObj = WC_Payment_Tokens::get_customer_default_token($user_id);
         $values = $this->prepareOrder_Tokenised($renewal_order, $tokenObj, $amount_to_charge);
 
@@ -459,7 +467,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             $token->set_tran_ref($transaction_id);
 
             $token->set_gateway_id($this->id);
-            $user_id = $order->user_id;
+            $user_id = $order->get_user_id();
             $token->set_user_id($user_id);
 
             $tokeId = $token->save();
@@ -530,7 +538,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         // $order->add_order_note();
 
-        $tokenise = $this->is_tokenise();
+        $is_subscription = $this->has_subscription($order->get_id());
+        $tokenise = $this->is_tokenise() || $is_subscription;
 
         $total = $order->get_total();
         // $discount = $order->get_total_discount();
