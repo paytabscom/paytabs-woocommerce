@@ -58,6 +58,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $this->merchant_id = $this->get_option('profile_id');
         $this->merchant_key = $this->get_option('server_key');
 
+        $this->always_tokenise = $this->get_option('always_tokenise') == 'yes';
         $this->hide_shipping = $this->get_option('hide_shipping') == 'yes';
 
         $this->order_status_success = $this->get_option('status_success');
@@ -161,6 +162,13 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 'description' => __('Please enter your PayTabs "Server Key". You can find it on your Merchant’s Portal', 'PayTabs'),
                 'default'     => '',
                 'required'    => true
+            ),
+            'always_tokenise' => array(
+                'title'       => __('Alwayes tokenise', 'PayTabs'),
+                'label'       => __('Alwayes tokenise the payments', 'PayTabs'),
+                'type'        => 'checkbox',
+                'description' => 'Enable if you wish to always tokenise the customers payment.',
+                'default'     => 'no'
             ),
             'hide_shipping' => array(
                 'title'       => __('Hide shipping info', 'PayTabs'),
@@ -542,8 +550,15 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         // $order->add_order_note();
 
-        $is_subscription = $this->has_subscription($order->get_id());
-        $tokenise = $this->is_tokenise() || $is_subscription;
+        $tokenise = false;
+
+        if ($this->always_tokenise) {
+            $tokenise = true;
+        } else {
+            $is_subscription = $this->has_subscription($order->get_id());
+            $tokenise = $this->is_tokenise() || $is_subscription;
+        }
+
 
         $total = $order->get_total();
         // $discount = $order->get_total_discount();
