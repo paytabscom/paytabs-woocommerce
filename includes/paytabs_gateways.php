@@ -5,7 +5,7 @@ defined('PAYTABS_PAYPAGE_VERSION') or die;
 class WC_Gateway_Paytabs_All extends WC_Gateway_Paytabs
 {
     protected $_code = 'all';
-    protected $_title = 'PayTabs - Think Cashless';
+    protected $_title = 'Online payments powered by PayTabs';
     protected $_description = 'PayTabs - All supported payment methods';
 
     protected $_icon = "paytabs.png";
