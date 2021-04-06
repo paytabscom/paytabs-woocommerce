@@ -542,7 +542,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     private function prepareOrder($order)
     {
         // PT
-        // global $woocommerce;
+        global $woocommerce;
 
         // $order->add_order_note();
 
@@ -644,7 +644,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 null
             )
             ->set08Lang($lang)
-            ->set10Tokenise($tokenise);
+            ->set10Tokenise($tokenise)
+            ->set99PluginInfo('WooCommerce', $woocommerce->version, PAYTABS_PAYPAGE_VERSION);
 
         if ($this->_code == 'valu') {
             // $holder->set20ValuParams($this->valu_product_id, 0);
@@ -662,7 +663,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     private function prepareOrder2($order)
     {
         // PT
-        // global $woocommerce;
+        global $woocommerce;
 
         // $order->add_order_note();
 
@@ -750,7 +751,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 $return_url,
                 null
             )
-            ->set08Lang($lang);
+            ->set08Lang($lang)
+            ->set99PluginInfo('WooCommerce', $woocommerce->version, PAYTABS_PAYPAGE_VERSION);
 
         if ($this->_code == 'valu') {
             // $holder->set20ValuParams($this->valu_product_id, 0);
