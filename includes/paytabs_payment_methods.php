@@ -300,6 +300,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $user_id = $renewal_order->get_user_id();
         $tokenObj = WC_Payment_Tokens::get_customer_default_token($user_id);
         if (!$tokenObj) {
+            // ToDo: Try to fetch User's Tokens
             paytabs_error_log("Subscription renewal error: The User {$user_id} does not have saved Token.");
             return false;
         }
@@ -316,6 +317,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             // $this->validate_payment($paypage, $renewal_order->get_id(), $renewal_order, true);
             $renewal_order->payment_complete($transaction_id);
             return true;
+        } else {
+            $renewal_order->add_order_note("Renewal failed [{$message}]");
         }
 
         return false;
@@ -341,10 +344,11 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $currency = $order->get_currency();
         if (empty($reason)) $reason = 'Admin request';
 
-        $pt_refundHolder = new PaytabsRefundHolder();
+        $pt_refundHolder = new PaytabsFollowupHolder();
         $pt_refundHolder
-            ->set01RefundInfo($amount, $currency)
-            ->set02Transaction($order_id, $transaction_id, $reason);
+            ->set02Transaction(PaytabsEnum::TRAN_TYPE_REFUND, PaytabsEnum::TRAN_CLASS_ECOM)
+            ->set03Cart($order_id, $currency, $amount, $reason)
+            ->set30TransactionInfo($transaction_id);
 
         $values = $pt_refundHolder->pt_build();
 
@@ -600,10 +604,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         //
 
-        $holder = new PaytabsHolder2();
+        $holder = new PaytabsRequestHolder();
         $holder
             ->set01PaymentCode($this->_code)
-            ->set02Transaction('sale', 'ecom')
+            ->set02Transaction(PaytabsEnum::TRAN_TYPE_SALE, PaytabsEnum::TRAN_CLASS_ECOM)
             ->set03Cart($order->get_id(), $currency, $amount, $cart_desc)
             ->set04CustomerDetails(
                 $nameBilling,
@@ -707,10 +711,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $lang_code = get_locale();
         $lang = ($lang_code == 'ar' || substr($lang_code, 0, 3) == 'ar_') ? 'ar' : 'en';
 
-        $holder = new PaytabsHolder2();
+        $holder = new PaytabsRequestHolder();
         $holder
             ->set01PaymentCode($this->_code)
-            ->set02Transaction('sale', 'ecom')
+            ->set02Transaction(PaytabsEnum::TRAN_TYPE_SALE, PaytabsEnum::TRAN_CLASS_ECOM)
             ->set03Cart($order->id, $currency, $amount, $cart_desc)
             ->set04CustomerDetails(
                 $order->get_formatted_billing_full_name(),
@@ -785,7 +789,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $holder = new PaytabsTokenHolder();
         $holder
-            ->set02Transaction('sale', 'recurring')
+            ->set02Transaction(PaytabsEnum::TRAN_TYPE_SALE, PaytabsEnum::TRAN_CLASS_RECURRING)
             ->set03Cart($order->get_id(), $currency, $amount, $cart_desc)
             ->set20Token($token, $tran_ref);
 
