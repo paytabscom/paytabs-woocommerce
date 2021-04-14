@@ -2,7 +2,7 @@
 
 /**
  * PayTabs v2 PHP SDK
- * Version: 2.0.2
+ * Version: 2.0.3
  */
 
 
@@ -486,9 +486,11 @@ class PaytabsRequestHolder extends PaytabsHolder
     public function set99PluginInfo($platform_name, $platform_version, $plugin_version)
     {
         $this->plugin_info = [
-            'cart_name'    => $platform_name,
-            'cart_version' => $platform_version,
-            'plugin_version' => $plugin_version,
+            'plugin_info' => [
+                'cart_name'    => $platform_name,
+                'cart_version' => "{$platform_version}",
+                'plugin_version' => "{$plugin_version}",
+            ]
         ];
 
         return $this;
