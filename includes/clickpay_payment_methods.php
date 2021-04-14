@@ -1,21 +1,21 @@
 <?php
 
-defined('PAYTABS_PAYPAGE_VERSION') or die;
+defined('CLICKPAY_PAYPAGE_VERSION') or die;
 
-class WC_Gateway_Paytabs extends WC_Payment_Gateway
+class WC_Gateway_Clickpay extends WC_Payment_Gateway
 {
     protected $_code = '';
     protected $_title = '';
     protected $_description = '';
     protected $_icon = null;
     //
-    protected $_paytabsApi;
+    protected $_clickpayApi;
 
     //
 
     public function __construct()
     {
-        $this->id = "paytabs_{$this->_code}"; // payment gateway plugin ID
+        $this->id = "clickpay_{$this->_code}"; // payment gateway plugin ID
         $this->icon = $this->getIcon(); // URL of the icon that will be displayed on checkout page near the gateway name
         $this->has_fields = false; // in case you need a custom credit card form
         $this->method_title = $this->_title;
@@ -53,8 +53,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $this->description = $this->get_option('description');
         $this->enabled = $this->get_option('enabled');
 
-        // PT
-        $this->paytabs_endpoint = $this->get_option('endpoint');
+        // CP
+        $this->clickpay_endpoint = $this->get_option('endpoint');
         $this->merchant_id = $this->get_option('profile_id');
         $this->merchant_key = $this->get_option('server_key');
 
@@ -81,7 +81,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         // add_action('wp_enqueue_scripts', array($this, 'payment_scripts'));
 
         // Register a webhook
-        // add_action('woocommerce_api_paytabs_callback', array($this, 'callback'));
+        // add_action('woocommerce_api_clickpay_callback', array($this, 'callback'));
 
         $this->checkCallback();
     }
@@ -97,10 +97,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     {
         $icon_name = $this->_icon ?? "{$this->_code}.png";
 
-        $iconPath = PAYTABS_PAYPAGE_DIR . "icons/{$icon_name}";
+        $iconPath = CLICKPAY_PAYPAGE_DIR . "icons/{$icon_name}";
         $icon = '';
         if (file_exists($iconPath)) {
-            $icon = PAYTABS_PAYPAGE_ICONS_URL . "{$icon_name}";
+            $icon = CLICKPAY_PAYPAGE_ICONS_URL . "{$icon_name}";
         }
 
         return $icon;
@@ -118,65 +118,65 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             $orderStatuses
         );
 
-        $endpoints = PaytabsApi::getEndpoints();
+        $endpoints = ClickpayApi::getEndpoints();
 
         $this->form_fields = array(
             'enabled' => array(
-                'title'       => __('Enable/Disable', 'PayTabs'),
-                'label'       => __('Enable Payment Gateway.', 'PayTabs'),
+                'title'       => __('Enable/Disable', 'ClickPay'),
+                'label'       => __('Enable Payment Gateway.', 'ClickPay'),
                 'type'        => 'checkbox',
                 'description' => '',
                 'default'     => 'no'
             ),
             'endpoint' => array(
-                'title'       => __('PayTabs endpoint region', 'PayTabs'),
+                'title'       => __('ClickPay endpoint region', 'ClickPay'),
                 'type'        => 'select',
                 'description' => 'Select your domain',
                 'options'     => $endpoints,
             ),
             'title' => array(
-                'title'       => __('Title', 'PayTabs'),
+                'title'       => __('Title', 'ClickPay'),
                 'type'        => 'text',
-                'description' => __('This controls the title which the user sees during checkout.', 'PayTabs'),
+                'description' => __('This controls the title which the user sees during checkout.', 'ClickPay'),
                 'default'     => $this->_title,
                 'desc_tip'    => true,
             ),
             'description' => array(
-                'title'       => __('Description', 'PayTabs'),
+                'title'       => __('Description', 'ClickPay'),
                 'type'        => 'textarea',
-                'description' => __('This controls the description which the user sees during checkout.', 'PayTabs'),
-                'default'     => __('Pay securely through PayTabs Secure Servers.', 'PayTabs'),
+                'description' => __('This controls the description which the user sees during checkout.', 'ClickPay'),
+                'default'     => __('Pay securely through ClickPay Secure Servers.', 'ClickPay'),
             ),
             // PT
             'profile_id' => array(
-                'title'       => __('Profile ID', 'PayTabs'),
+                'title'       => __('Profile ID', 'ClickPay'),
                 'type'        => 'text',
-                'description' => __('Please enter the "Profile ID" of your PayTabs Merchant account.', 'PayTabs'),
+                'description' => __('Please enter the "Profile ID" of your ClickPay Merchant account.', 'ClickPay'),
                 'default'     => '',
                 'required'    => true
             ),
             'server_key' => array(
-                'title'       => __('Server Key', 'PayTabs'),
+                'title'       => __('Server Key', 'ClickPay'),
                 'type'        => 'text',
-                'description' => __('Please enter your PayTabs "Server Key". You can find it on your Merchant’s Portal', 'PayTabs'),
+                'description' => __('Please enter your ClickPay "Server Key". You can find it on your Merchant’s Portal', 'ClickPay'),
                 'default'     => '',
                 'required'    => true
             ),
             'hide_shipping' => array(
-                'title'       => __('Hide shipping info', 'PayTabs'),
-                'label'       => __('Hide shipping info', 'PayTabs'),
+                'title'       => __('Hide shipping info', 'ClickPay'),
+                'label'       => __('Hide shipping info', 'ClickPay'),
                 'type'        => 'checkbox',
-                'description' => 'Enable if you wish to hide Shipping info of the customer in PayTabs payment page.',
+                'description' => 'Enable if you wish to hide Shipping info of the customer in ClickPay payment page.',
                 'default'     => 'no'
             ),
             'status_success' => array(
-                'title'       => __('Success Order status', 'PayTabs'),
+                'title'       => __('Success Order status', 'ClickPay'),
                 'type'        => 'select',
                 'description' => 'Set the Order status after successful payment. <br><strong>Warning</strong> Be very careful when you change the Default option because when you change it, you change the normal flow of the Order into the WooCommerce system, you may encounter some consequences based on the new value you set',
                 'options'     => $orderStatuses,
             ),
             'status_failed' => array(
-                'title'       => __('Failed Order status', 'PayTabs'),
+                'title'       => __('Failed Order status', 'ClickPay'),
                 'type'        => 'select',
                 'description' => 'Set the Order status after failed payment. <br><strong>Warning</strong> Be very careful when you change the Default option because when you change it, you change the normal flow of the Order into the WooCommerce system, you may encounter some consequences based on the new value you set',
                 'options'     => $orderStatuses,
@@ -186,7 +186,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
 
     /**
-     *  There are no payment fields for paytabs, but we want to show the description if set.
+     *  There are no payment fields for ClickPay, but we want to show the description if set.
      **/
     function payment_fields()
     {
@@ -251,8 +251,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     public function process_payment($order_id)
     {
         $order = wc_get_order($order_id);
-
-        $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
+        $_clickpayApi = ClickpayApi::getInstance($this->clickpay_endpoint, $this->merchant_id, $this->merchant_key);
 
 
         $saved_token = $this->get_token();
@@ -262,7 +261,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             $values = WooCommerce2 ? $this->prepareOrder2($order) : $this->prepareOrder($order);
         }
 
-        $paypage = $_paytabsApi->create_pay_page($values);
+        $paypage = $_clickpayApi->create_pay_page($values);
 
         //
 
@@ -285,10 +284,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         } else {
             $_logPaypage = json_encode($paypage);
             $_logParams = json_encode($values);
-            PaytabsHelper::log("create PayPage failed for Order {$order_id}, [{$_logPaypage}], [{$_logParams}]", 3);
+            ClickpayHelper::log("create PayPage failed for Order {$order_id}, [{$_logPaypage}], [{$_logParams}]", 3);
 
             $errorMessage = $message;
-
             wc_add_notice($errorMessage, 'error');
             return null;
         }
@@ -301,13 +299,13 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $tokenObj = WC_Payment_Tokens::get_customer_default_token($user_id);
         if (!$tokenObj) {
             // ToDo: Try to fetch User's Tokens
-            paytabs_error_log("Subscription renewal error: The User {$user_id} does not have saved Token.");
+            clickpay_error_log("Subscription renewal error: The User {$user_id} does not have saved Token.");
             return false;
         }
         $values = $this->prepareOrder_Tokenised($renewal_order, $tokenObj, $amount_to_charge);
 
-        $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
-        $paypage = $_paytabsApi->create_pay_page($values);
+        $_clickpayApi = ClickpayApi::getInstance($this->clickpay_endpoint, $this->merchant_id, $this->merchant_key);
+        $paypage = $_clickpayApi->create_pay_page($values);
 
         $success = $paypage->success;
         $transaction_id = @$paypage->tran_ref;
@@ -344,16 +342,16 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $currency = $order->get_currency();
         if (empty($reason)) $reason = 'Admin request';
 
-        $pt_refundHolder = new PaytabsFollowupHolder();
+        $pt_refundHolder = new ClickpayFollowupHolder();
         $pt_refundHolder
-            ->set02Transaction(PaytabsEnum::TRAN_TYPE_REFUND, PaytabsEnum::TRAN_CLASS_ECOM)
+            ->set02Transaction(ClickpayEnum::TRAN_TYPE_REFUND, ClickpayEnum::TRAN_CLASS_ECOM)
             ->set03Cart($order_id, $currency, $amount, $reason)
             ->set30TransactionInfo($transaction_id);
 
         $values = $pt_refundHolder->pt_build();
 
-        $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
-        $refundRes = $_paytabsApi->request_followup($values);
+        $_clickpayApi = ClickpayApi::getInstance($this->clickpay_endpoint, $this->merchant_id, $this->merchant_key);
+        $refundRes = $_clickpayApi->request_followup($values);
 
         $success = $refundRes->success;
         $message = $refundRes->message;
@@ -362,9 +360,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $order->add_order_note('Refund status: ' . $message, true);
 
         if ($success) {
-            $order->update_status('refunded', __('Payment Refunded: ', 'PayTabs'));
+            $order->update_status('refunded', __('Payment Refunded: ', 'ClickPay'));
         } else if ($pending_success) {
-            $order->update_status('on-hold', __('Payment Pending Refund: ', 'PayTabs'));
+            $order->update_status('on-hold', __('Payment Pending Refund: ', 'ClickPay'));
         }
 
         return $success;
@@ -373,7 +371,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
     private function checkCallback()
     {
-        // PT
+        // CP
         $param_paymentRef = 'tranRef';
 
         if (isset($_POST[$param_paymentRef], $_POST['cartId'])) {
@@ -390,7 +388,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                     }
                 }
             } else {
-                PaytabsHelper::log("callback failed for Order {$orderId}, payemnt_reference [{$payment_reference}]", 3);
+                ClickpayHelper::log("callback failed for Order {$orderId}, payemnt_reference [{$payment_reference}]", 3);
             }
         }
     }
@@ -403,9 +401,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     {
         if (!$payment_reference) return;
 
-        $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
-        $result = $_paytabsApi->verify_payment($payment_reference);
-        // $valid_redirect = $_paytabsApi->is_valid_redirect($_POST);
+        $_clickpayApi = ClickpayApi::getInstance($this->clickpay_endpoint, $this->merchant_id, $this->merchant_key);
+        $result = $_clickpayApi->verify_payment($payment_reference);
+        // $valid_redirect = $_clickpayApi->is_valid_redirect($_POST);
 
         $this->validate_payment($result, $order_id, $order);
     }
@@ -422,7 +420,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $_logVerify = json_encode($result);
 
         if (!$orderId) {
-            PaytabsHelper::log("callback failed for Order {$order_id}, response [{$_logVerify}]", 3);
+            ClickpayHelper::log("callback failed for Order {$order_id}, response [{$_logVerify}]", 3);
             wc_add_notice($message, 'error');
 
             // return false;
@@ -431,7 +429,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         }
 
         if ($orderId != $order_id) {
-            PaytabsHelper::log("callback failed for Order {$order_id}, Order mismatch [{$_logVerify}]", 3);
+            ClickpayHelper::log("callback failed for Order {$order_id}, Order mismatch [{$_logVerify}]", 3);
             return;
         }
 
@@ -442,7 +440,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         } else {
             $_data = WooCommerce2 ? $order->data : $order->get_data();
             $_logOrder = (json_encode($_data));
-            PaytabsHelper::log("callback failed for Order {$order_id}, response [{$_logVerify}], Order [{$_logOrder}]", 3);
+            ClickpayHelper::log("callback failed for Order {$order_id}, response [{$_logVerify}], Order [{$_logOrder}]", 3);
 
             $this->orderFailed($order, $message);
 
@@ -469,7 +467,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         // wc_add_notice(__('Thank you for shopping with us. Your account has been charged and your transaction is successful. We will be shipping your order to you soon.', 'woocommerce'), 'success');
 
         if ($token_str) {
-            $token = new WC_Payment_Token_Paytabs();
+            $token = new WC_Payment_Token_ClickPay();
 
             $token->set_token($token_str);
             $token->set_tran_ref($transaction_id);
@@ -541,7 +539,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
      */
     private function prepareOrder($order)
     {
-        // PT
+        // CP
         // global $woocommerce;
 
         // $order->add_order_note();
@@ -565,7 +563,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         // $siteUrl = get_site_url();
         $return_url = $order->get_checkout_payment_url(true);
-        // $return_url = "$siteUrl?wc-api=paytabs_callback&order={$order->id}";
+        // $return_url = "$siteUrl?wc-api=Clickpay_callback&order={$order->id}";
 
         $products = $order->get_items();
         $items_arr = array_map(function ($p) {
@@ -574,7 +572,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $cart_desc = implode(', ', $items_arr);
 
-        // $cdetails = PaytabsHelper::getCountryDetails($order->get_billing_country());
+        // $cdetails = ClickpayHelper::getCountryDetails($order->get_billing_country());
         // $phoneext = $cdetails['phone'];
 
         $telephone = $order->get_billing_phone();
@@ -604,10 +602,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         //
 
-        $holder = new PaytabsRequestHolder();
+        $holder = new ClickpayRequestHolder();
         $holder
             ->set01PaymentCode($this->_code)
-            ->set02Transaction(PaytabsEnum::TRAN_TYPE_SALE, PaytabsEnum::TRAN_CLASS_ECOM)
+            ->set02Transaction(ClickpayEnum::TRAN_TYPE_SALE, ClickpayEnum::TRAN_CLASS_ECOM)
             ->set03Cart($order->get_id(), $currency, $amount, $cart_desc)
             ->set04CustomerDetails(
                 $nameBilling,
@@ -661,7 +659,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
      */
     private function prepareOrder2($order)
     {
-        // PT
+        // CP
         // global $woocommerce;
 
         // $order->add_order_note();
@@ -682,7 +680,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         // $siteUrl = get_site_url();
         $return_url = $order->get_checkout_payment_url(true);
-        // $return_url = "$siteUrl?wc-api=paytabs_callback&order={$order->id}";
+        // $return_url = "$siteUrl?wc-api=Clickpay_callback&order={$order->id}";
 
         $products = $order->get_items();
         $items_arr = array_map(function ($p) {
@@ -691,7 +689,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $cart_desc = implode(', ', $items_arr);
 
-        // $cdetails = PaytabsHelper::getCountryDetails($order->billing_country);
+        // $cdetails = ClickpayHelper::getCountryDetails($order->billing_country);
         // $phoneext = $cdetails['phone'];
 
         $telephone = $order->billing_phone;
@@ -711,10 +709,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $lang_code = get_locale();
         $lang = ($lang_code == 'ar' || substr($lang_code, 0, 3) == 'ar_') ? 'ar' : 'en';
 
-        $holder = new PaytabsRequestHolder();
+        $holder = new ClickpayRequestHolder();
         $holder
             ->set01PaymentCode($this->_code)
-            ->set02Transaction(PaytabsEnum::TRAN_TYPE_SALE, PaytabsEnum::TRAN_CLASS_ECOM)
+            ->set02Transaction(ClickpayEnum::TRAN_TYPE_SALE, ClickpayEnum::TRAN_CLASS_ECOM)
             ->set03Cart($order->id, $currency, $amount, $cart_desc)
             ->set04CustomerDetails(
                 $order->get_formatted_billing_full_name(),
@@ -787,9 +785,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         //
 
-        $holder = new PaytabsTokenHolder();
+        $holder = new ClickpayTokenHolder();
         $holder
-            ->set02Transaction(PaytabsEnum::TRAN_TYPE_SALE, PaytabsEnum::TRAN_CLASS_RECURRING)
+            ->set02Transaction(ClickpayEnum::TRAN_TYPE_SALE, ClickpayEnum::TRAN_CLASS_RECURRING)
             ->set03Cart($order->get_id(), $currency, $amount, $cart_desc)
             ->set20Token($token, $tran_ref);
 

@@ -1,22 +1,22 @@
 <?php
 
 /**
- * PayTabs v2 PHP SDK
+ * ClickPay v2 PHP SDK
  * Version: 2.0.2
  */
 
 
-abstract class PaytabsHelper
+abstract class ClickpayHelper
 {
     static function paymentType($key)
     {
-        return PaytabsApi::PAYMENT_TYPES[$key]['name'];
+        return ClickpayApi::PAYMENT_TYPES[$key]['name'];
     }
 
     static function paymentAllowed($code, $currencyCode)
     {
         $row = null;
-        foreach (PaytabsApi::PAYMENT_TYPES as $key => $value) {
+        foreach (ClickpayApi::PAYMENT_TYPES as $key => $value) {
             if ($value['name'] === $code) {
                 $row = $value;
                 break;
@@ -35,9 +35,9 @@ abstract class PaytabsHelper
         return in_array($currencyCode, $list);
     }
 
-    static function isPayTabsPayment($code)
+    static function isClickPayPayment($code)
     {
-        foreach (PaytabsApi::PAYMENT_TYPES as $key => $value) {
+        foreach (ClickpayApi::PAYMENT_TYPES as $key => $value) {
             if ($value['name'] === $code) {
                 return true;
             }
@@ -121,12 +121,12 @@ abstract class PaytabsHelper
     public static function log($msg, $severity = 1)
     {
         try {
-            paytabs_error_log($msg, $severity);
+            clickpay_error_log($msg, $severity);
         } catch (\Throwable $th) {
             try {
-                $_prefix = date('c') . ' PayTabs: ';
+                $_prefix = date('c') . ' ClickPay: ';
                 $_msg = ($_prefix . $msg . PHP_EOL);
-                file_put_contents('debug_paytabs.log', $_msg, FILE_APPEND);
+                file_put_contents('debug_clickpay.log', $_msg, FILE_APPEND);
             } catch (\Throwable $th) {
                 // var_export($th);
             }
@@ -154,9 +154,9 @@ abstract class PaytabsHelper
 
 
 /**
- * @abstract class: Enum for static values of PayTabs requests
+ * @abstract class: Enum for static values of ClickPay requests
  */
-abstract class PaytabsEnum
+abstract class ClickpayEnum
 {
     const TRAN_TYPE_AUTH    = 'auth';
     const TRAN_TYPE_CAPTURE = 'capture';
@@ -177,9 +177,9 @@ abstract class PaytabsEnum
 
 
 /**
- * Holder class: Holds & Generates the parameters array that pass to PayTabs' API
+ * Holder class: Holds & Generates the parameters array that pass to ClickPay' API
  */
-class PaytabsHolder
+class ClickpayHolder
 {
     /**
      * tran_type
@@ -222,7 +222,7 @@ class PaytabsHolder
 
     //
 
-    public function set02Transaction($tran_type, $tran_class = PaytabsEnum::TRAN_CLASS_ECOM)
+    public function set02Transaction($tran_type, $tran_class = ClickpayEnum::TRAN_CLASS_ECOM)
     {
         $this->transaction = [
             'tran_type' => $tran_type,
@@ -247,10 +247,10 @@ class PaytabsHolder
 
 
 /**
- * Holder class, Inherit class PaytabsHolder
- * Holds & Generates the parameters array that pass to PayTabs' API
+ * Holder class, Inherit class ClickpayHolder
+ * Holds & Generates the parameters array that pass to Clickpay' API
  */
-class PaytabsRequestHolder extends PaytabsHolder
+class ClickpayRequestHolder extends ClickpayHolder
 {
     /**
      * payment_type
@@ -354,19 +354,19 @@ class PaytabsRequestHolder extends PaytabsHolder
 
     private function setCustomerDetails($name, $email, $phone, $address, $city, $state, $country, $zip, $ip)
     {
-        // PaytabsHelper::pt_fillIfEmpty($name);
+        // ClickpayHelper::pt_fillIfEmpty($name);
         // $this->_fill($address, 'NA');
 
-        // PaytabsHelper::pt_fillIfEmpty($city);
+        // ClickpayHelper::pt_fillIfEmpty($city);
 
         // $this->_fill($state, $city, 'NA');
 
         if ($zip) {
-            $zip = PaytabsHelper::convertAr2En($zip);
+            $zip = ClickpayHelper::convertAr2En($zip);
         }
 
         if (!$ip) {
-            PaytabsHelper::pt_fillIP($ip);
+            ClickpayHelper::pt_fillIP($ip);
         }
 
         //
@@ -497,10 +497,10 @@ class PaytabsRequestHolder extends PaytabsHolder
 
 
 /**
- * Holder class, Inherit class PaytabsHolder
+ * Holder class, Inherit class ClickpayHolder
  * Holds & Generates the parameters array for the Tokenised payments
  */
-class PaytabsTokenHolder extends PaytabsHolder
+class ClickpayTokenHolder extends ClickpayHolder
 {
     /**
      * token
@@ -531,14 +531,14 @@ class PaytabsTokenHolder extends PaytabsHolder
 
 
 /**
- * Holder class, Inherit class PaytabsHolder
+ * Holder class, Inherit class ClickpayHolder
  * Holder & Generates the parameters array for the Followup requests
  * Followup requests:
  * - Capture (follows Auth)
  * - Void    (follows Auth)
  * - Refund  (follows Capture or Sale)
  */
-class PaytabsFollowupHolder extends PaytabsHolder
+class ClickpayFollowupHolder extends ClickpayHolder
 {
     /**
      * transaction_id
@@ -573,56 +573,31 @@ class PaytabsFollowupHolder extends PaytabsHolder
 
 
 /**
- * API class which contacts PayTabs server's API
+ * API class which contacts ClickPay server's API
  */
-class PaytabsApi
+class ClickpayApi
 {
     const PAYMENT_TYPES = [
-        '0'  => ['name' => 'all', 'title' => 'PayTabs - All', 'currencies' => null],
-        '1'  => ['name' => 'stcpay', 'title' => 'PayTabs - StcPay', 'currencies' => ['SAR']],
-        '2'  => ['name' => 'stcpayqr', 'title' => 'PayTabs - StcPay(QR)', 'currencies' => ['SAR']],
-        '3'  => ['name' => 'applepay', 'title' => 'PayTabs - ApplePay', 'currencies' => ['AED', 'SAR']],
-        '4'  => ['name' => 'omannet', 'title' => 'PayTabs - OmanNet', 'currencies' => ['OMR']],
-        '5'  => ['name' => 'mada', 'title' => 'PayTabs - Mada', 'currencies' => ['SAR']],
-        '6'  => ['name' => 'creditcard', 'title' => 'PayTabs - CreditCard', 'currencies' => null],
-        '7'  => ['name' => 'sadad', 'title' => 'PayTabs - Sadad', 'currencies' => ['SAR']],
-        '8'  => ['name' => 'atfawry', 'title' => 'PayTabs - @Fawry', 'currencies' => ['EGP']],
-        '9'  => ['name' => 'knpay', 'title' => 'PayTabs - KnPay', 'currencies' => ['KWD']],
-        '10' => ['name' => 'amex', 'title' => 'PayTabs - Amex', 'currencies' => ['AED', 'SAR']],
-        '11' => ['name' => 'valu', 'title' => 'PayTabs - valU', 'currencies' => ['EGP']],
+        '0'  => ['name' => 'all', 'title' => 'ClickPay - All', 'currencies' => null],
+        '1'  => ['name' => 'stcpay', 'title' => 'ClickPay - StcPay', 'currencies' => ['SAR']],
+        '2'  => ['name' => 'stcpayqr', 'title' => 'ClickPay - StcPay(QR)', 'currencies' => ['SAR']],
+        '3'  => ['name' => 'applepay', 'title' => 'ClickPay - ApplePay', 'currencies' => ['AED', 'SAR']],
+        '4'  => ['name' => 'omannet', 'title' => 'ClickPay - OmanNet', 'currencies' => ['OMR']],
+        '5'  => ['name' => 'mada', 'title' => 'ClickPay - Mada', 'currencies' => ['SAR']],
+        '6'  => ['name' => 'creditcard', 'title' => 'ClickPay - CreditCard', 'currencies' => null],
+        '7'  => ['name' => 'sadad', 'title' => 'ClickPay - Sadad', 'currencies' => ['SAR']],
+        '8'  => ['name' => 'atfawry', 'title' => 'ClickPay - @Fawry', 'currencies' => ['EGP']],
+        '9'  => ['name' => 'knpay', 'title' => 'ClickPay - KnPay', 'currencies' => ['KWD']],
+        '10' => ['name' => 'amex', 'title' => 'ClickPay - Amex', 'currencies' => ['AED', 'SAR']],
+        '11' => ['name' => 'valu', 'title' => 'ClickPay - valU', 'currencies' => ['EGP']],
     ];
     const BASE_URLS = [
-        'ARE' => [
-            'title' => 'United Arab Emirates',
-            'endpoint' => 'https://secure.paytabs.com/'
-        ],
         'SAU' => [
             'title' => 'Saudi Arabia',
-            'endpoint' => 'https://secure.paytabs.sa/'
-        ],
-        'OMN' => [
-            'title' => 'Oman',
-            'endpoint' => 'https://secure-oman.paytabs.com/'
-        ],
-        'JOR' => [
-            'title' => 'Jordan',
-            'endpoint' => 'https://secure-jordan.paytabs.com/'
-        ],
-        'EGY' => [
-            'title' => 'Egypt',
-            'endpoint' => 'https://secure-egypt.paytabs.com/'
-        ],
-        'GLOBAL' => [
-            'title' => 'Global',
-            'endpoint' => 'https://secure-global.paytabs.com/'
-        ],
-        // 'DEMO' => [
-        //     'title' => 'Demo',
-        //     'endpoint' => 'https://secure-demo.paytabs.com/'
-        // ],
+            'endpoint' => 'https://secure.clickpay.com.sa/'
+        ]
     ];
 
-    // const BASE_URL = 'https://secure.paytabs.com/';
 
     const URL_REQUEST = 'payment/request';
     const URL_QUERY   = 'payment/query';
@@ -645,7 +620,7 @@ class PaytabsApi
     public static function getEndpoints()
     {
         $endpoints = [];
-        foreach (PaytabsApi::BASE_URLS as $key => $value) {
+        foreach (ClickpayApi::BASE_URLS as $key => $value) {
             $endpoints[$key] = $value['title'];
         }
         return $endpoints;
@@ -654,7 +629,7 @@ class PaytabsApi
     public static function getInstance($region, $merchant_id, $key)
     {
         if (self::$instance == null) {
-            self::$instance = new PaytabsApi($region, $merchant_id, $key);
+            self::$instance = new ClickpayApi($region, $merchant_id, $key);
         }
 
         // self::$instance->setAuth($merchant_email, $secret_key);
@@ -680,7 +655,7 @@ class PaytabsApi
     function create_pay_page($values)
     {
         // $serverIP = getHostByName(getHostName());
-        // $values['ip_merchant'] = PaytabsHelper::getNonEmpty($serverIP, $_SERVER['SERVER_ADDR'], 'NA');
+        // $values['ip_merchant'] = ClickpayHelper::getNonEmpty($serverIP, $_SERVER['SERVER_ADDR'], 'NA');
 
         $isTokenize = array_key_exists('token', $values);
 
@@ -769,7 +744,7 @@ class PaytabsApi
         if (!$paypage) {
             $_paypage = new stdClass();
             $_paypage->success = false;
-            $_paypage->message = 'Create paytabs payment failed';
+            $_paypage->message = 'Create ClickPay payment failed';
         } else {
             $_paypage->success = isset($paypage->tran_ref, $paypage->redirect_url) && !empty($paypage->redirect_url);
 
@@ -786,7 +761,7 @@ class PaytabsApi
         if (!$verify) {
             $_verify = new stdClass();
             $_verify->success = false;
-            $_verify->message = 'Verifying paytabs payment failed';
+            $_verify->message = 'Verifying ClickPay payment failed';
         } else if (isset($verify->code, $verify->message)) {
             $_verify->success = false;
         } else {
@@ -811,7 +786,7 @@ class PaytabsApi
         if (!$refund) {
             $_refund = new stdClass();
             $_refund->success = false;
-            $_refund->message = 'Verifying paytabs Refund failed';
+            $_refund->message = 'Verifying ClickPay Refund failed';
         } else {
             if (isset($refund->payment_result)) {
                 $_refund->success = $refund->payment_result->response_status == "A";
@@ -832,7 +807,7 @@ class PaytabsApi
         if (!$paypage) {
             $_paypage = new stdClass();
             $_paypage->success = false;
-            $_paypage->message = 'Create paytabs tokenization payment failed';
+            $_paypage->message = 'Create ClickPay tokenization payment failed';
         } else {
             $is_redirect = isset($paypage->tran_ref, $paypage->redirect_url) && !empty($paypage->redirect_url);
             $is_completed = isset($paypage->payment_result);

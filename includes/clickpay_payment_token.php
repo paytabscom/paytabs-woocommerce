@@ -1,12 +1,12 @@
 <?php
 
-defined('PAYTABS_PAYPAGE_VERSION') or die;
+defined('CLICKPAY_PAYPAGE_VERSION') or die;
 
 
-class WC_Payment_Token_PayTabs extends WC_Payment_Token
+class WC_Payment_Token_ClickPay extends WC_Payment_Token
 {
     /** @protected string Token Type String */
-    protected $type = 'PayTabs';
+    protected $type = 'ClickPay';
 
 
     protected $extra_data = array(
