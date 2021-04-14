@@ -2,7 +2,7 @@
 
 /**
  * PayTabs v2 PHP SDK
- * Version: 2.0.3
+ * Version: 2.0.6
  */
 
 
@@ -118,6 +118,11 @@ abstract class PaytabsHelper
         $string = $_SERVER['REMOTE_ADDR'];
     }
 
+    /**
+     * <b>paytabs_error_log<b> should be defined,
+     * Main functionality: use the platform logger to log the error messages
+     * If not found: create a new log file and log the messages
+     */
     public static function log($msg, $severity = 1)
     {
         try {
@@ -173,6 +178,15 @@ abstract class PaytabsEnum
 
     //
 
+    static function TranIsAuth($tran_type)
+    {
+        return strcasecmp($tran_type, PaytabsEnum::TRAN_TYPE_AUTH) == 0;
+    }
+
+    static function TranIsSale($tran_type)
+    {
+        return strcasecmp($tran_type, PaytabsEnum::TRAN_TYPE_SALE) == 0;
+    }
 }
 
 
@@ -589,7 +603,7 @@ class PaytabsApi
         '6'  => ['name' => 'creditcard', 'title' => 'PayTabs - CreditCard', 'currencies' => null],
         '7'  => ['name' => 'sadad', 'title' => 'PayTabs - Sadad', 'currencies' => ['SAR']],
         '8'  => ['name' => 'atfawry', 'title' => 'PayTabs - @Fawry', 'currencies' => ['EGP']],
-        '9'  => ['name' => 'knpay', 'title' => 'PayTabs - KnPay', 'currencies' => ['KWD']],
+        '9'  => ['name' => 'knet', 'title' => 'PayTabs - KnPay', 'currencies' => ['KWD']],
         '10' => ['name' => 'amex', 'title' => 'PayTabs - Amex', 'currencies' => ['AED', 'SAR']],
         '11' => ['name' => 'valu', 'title' => 'PayTabs - valU', 'currencies' => ['EGP']],
     ];
@@ -881,10 +895,19 @@ class PaytabsApi
         @curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
         @curl_setopt($ch, CURLOPT_VERBOSE, true);
         // @curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+
         $result = @curl_exec($ch);
-        if (!$result) {
-            die(curl_error($ch));
+
+        $error_num = curl_errno($ch);
+        if ($error_num) {
+            $error_msg = curl_error($ch);
+            PaytabsHelper::log("Paytabs Admin: Response [($error_num) $error_msg], [$result]", 3);
+
+            $result = json_encode([
+                'message' => 'Sorry, unable to process your transaction, Contact the site Administrator'
+            ]);
         }
+
         @curl_close($ch);
 
         return $result;

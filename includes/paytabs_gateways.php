@@ -71,7 +71,7 @@ class WC_Gateway_Paytabs_Atfawry extends WC_Gateway_Paytabs
 
 class WC_Gateway_Paytabs_Knpay extends WC_Gateway_Paytabs
 {
-    protected $_code = 'knpay';
+    protected $_code = 'knet';
     protected $_title = 'PayTabs - KnPay';
     protected $_description = 'PayTabs - KnPay payment method';
 }
