@@ -2,7 +2,7 @@
 
 /**
  * PayTabs v2 PHP SDK
- * Version: 2.0.6
+ * Version: 2.0.8
  */
 
 
@@ -209,6 +209,14 @@ class PaytabsHolder
      */
     private $cart;
 
+    /**
+     * cart_name
+     * cart_version
+     * plugin_version
+     */
+    private $plugin_info;
+
+
     //
 
 
@@ -219,7 +227,8 @@ class PaytabsHolder
     {
         $all = array_merge(
             $this->transaction,
-            $this->cart
+            $this->cart,
+            $this->plugin_info
         );
 
         return $all;
@@ -253,6 +262,19 @@ class PaytabsHolder
             'cart_currency'    => "$currency",
             'cart_amount'      => (float) $amount,
             'cart_description' => $cart_description,
+        ];
+
+        return $this;
+    }
+
+    public function set99PluginInfo($platform_name, $platform_version, $plugin_version)
+    {
+        $this->plugin_info = [
+            'plugin_info' => [
+                'cart_name'    => $platform_name,
+                'cart_version' => "{$platform_version}",
+                'plugin_version' => "{$plugin_version}",
+            ]
         ];
 
         return $this;
@@ -332,13 +354,6 @@ class PaytabsRequestHolder extends PaytabsHolder
      */
     private $tokenise;
 
-    /**
-     * cart_name
-     * cart_version
-     * plugin_version
-     */
-    private $plugin_info;
-
 
     //
 
@@ -358,8 +373,7 @@ class PaytabsRequestHolder extends PaytabsHolder
             $this->hide_shipping,
             $this->lang,
             $this->framed,
-            $this->tokenise,
-            $this->plugin_info
+            $this->tokenise
         );
 
         return $all;
@@ -492,20 +506,6 @@ class PaytabsRequestHolder extends PaytabsHolder
                 'show_save_card' => $optional
             ];
         }
-
-        return $this;
-    }
-
-
-    public function set99PluginInfo($platform_name, $platform_version, $plugin_version)
-    {
-        $this->plugin_info = [
-            'plugin_info' => [
-                'cart_name'    => $platform_name,
-                'cart_version' => "{$platform_version}",
-                'plugin_version' => "{$plugin_version}",
-            ]
-        ];
 
         return $this;
     }
@@ -760,7 +760,22 @@ class PaytabsApi
         // Generate URL-encoded query string of Post fields except signature field.
         $query = http_build_query($fields);
 
-        $signature = hash_hmac('sha256', $query, $serverKey);
+        return $this->is_genuine($query, $requestSignature, $serverKey);
+    }
+
+
+    function is_valid_ipn($data, $signature, $serverkey = false)
+    {
+        $server_key = $serverKey ?? $this->server_key;
+
+        return $this->is_genuine($data, $signature, $server_key);
+    }
+
+
+    private function is_genuine($data, $requestSignature, $serverKey)
+    {
+        $signature = hash_hmac('sha256', $data, $serverKey);
+
         if (hash_equals($signature, $requestSignature) === TRUE) {
             // VALID Redirect
             return true;

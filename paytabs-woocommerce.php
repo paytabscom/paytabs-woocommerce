@@ -8,10 +8,10 @@
  * Plugin Name:   PayTabs - WooCommerce Payment Gateway
  * Plugin URI:    https://paytabs.com/
  * Description:   PayTabs is a <strong>3rd party payment gateway</strong>. Ideal payment solutions for your internet business.
- * Version:       4.3.2
+ * Version:       4.3.3
  * Author:        PayTabs
- * Author URI:    https://paytabs.com/
- * Revision Date: 14/April/2021
+ * Author URI:    w.kammoun@paytabs.com
+ * Revision Date: 29/April/2021
  */
 
 if (!function_exists('add_action')) {
@@ -21,7 +21,7 @@ if (!function_exists('add_action')) {
 //load plugin function when woocommerce loaded
 add_action('plugins_loaded', 'woocommerce_paytabs_init', 0);
 
-define('PAYTABS_PAYPAGE_VERSION', '4.3.2');
+define('PAYTABS_PAYPAGE_VERSION', '4.3.3');
 define('PAYTABS_PAYPAGE_DIR', plugin_dir_path(__FILE__));
 define('PAYTABS_PAYPAGE_ICONS_URL', plugins_url("icons/", __FILE__));
 define('PAYTABS_DEBUG_FILE', WP_CONTENT_DIR . "/debug_paytabs.log");
@@ -65,9 +65,9 @@ function woocommerce_paytabs_init()
   function woocommerce_add_paytabs_gateway($gateways)
   {
     global $PAYTABS_PAYPAGE_METHODS;
-    foreach ($PAYTABS_PAYPAGE_METHODS as $code => $paytabs_gateway) {
-      $gateways[] = $paytabs_gateway;
-    }
+
+    $paytabs_gateways = array_values($PAYTABS_PAYPAGE_METHODS);
+    $gateways = array_merge($gateways, $paytabs_gateways);
 
     return $gateways;
   }
@@ -83,20 +83,14 @@ function woocommerce_paytabs_init()
 
 
     foreach ($load_gateways as $gateway) {
-      $add = true;
 
-      foreach ($PAYTABS_PAYPAGE_METHODS as $code => $paytabs_gateway) {
-        if ($paytabs_gateway == $gateway) {
-          $allowed = PaytabsHelper::paymentAllowed($code, $currency);
-          if (!$allowed) {
-            $add = false;
-            break;
-          }
+      $code = array_search($gateway, $PAYTABS_PAYPAGE_METHODS);
+
+      if ($code) {
+        $allowed = PaytabsHelper::paymentAllowed($code, $currency);
+        if ($allowed) {
+          $gateways[] = $gateway;
         }
-      }
-
-      if ($add) {
-        $gateways[] = $gateway;
       }
     }
 

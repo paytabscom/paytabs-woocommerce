@@ -329,6 +329,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
     public function process_refund($order_id, $amount = null, $reason = '')
     {
+        global $woocommerce;
+
         if (!$amount) {
             return false;
         }
@@ -348,7 +350,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $pt_refundHolder
             ->set02Transaction(PaytabsEnum::TRAN_TYPE_REFUND, PaytabsEnum::TRAN_CLASS_ECOM)
             ->set03Cart($order_id, $currency, $amount, $reason)
-            ->set30TransactionInfo($transaction_id);
+            ->set30TransactionInfo($transaction_id)
+            ->set99PluginInfo('WooCommerce', $woocommerce->version, PAYTABS_PAYPAGE_VERSION);
 
         $values = $pt_refundHolder->pt_build();
 
@@ -767,6 +770,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
     private function prepareOrder_Tokenised($order, $tokenObj, $amount_to_charge = null)
     {
+        global $woocommerce;
+
         $amount = $order->get_total();
         if ($amount_to_charge) {
             $amount = $amount_to_charge;
@@ -793,7 +798,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $holder
             ->set02Transaction(PaytabsEnum::TRAN_TYPE_SALE, PaytabsEnum::TRAN_CLASS_RECURRING)
             ->set03Cart($order->get_id(), $currency, $amount, $cart_desc)
-            ->set20Token($token, $tran_ref);
+            ->set20Token($token, $tran_ref)
+            ->set99PluginInfo('WooCommerce', $woocommerce->version, PAYTABS_PAYPAGE_VERSION);
 
         if ($this->_code == 'valu') {
             // $holder->set20ValuParams($this->valu_product_id, 0);
