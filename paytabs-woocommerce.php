@@ -8,11 +8,11 @@
  * Plugin Name:   PayTabs - WooCommerce Payment Gateway
  * Plugin URI:    https://paytabs.com/
  * Description:   PayTabs is a <strong>3rd party payment gateway</strong>. Ideal payment solutions for your internet business.
- * Version:       4.3.4
+ * Version:       4.3.5
  * Requires PHP:  7.0
  * Author:        PayTabs
  * Author URI:    w.kammoun@paytabs.com
- * Revision Date: 03/May/2021
+ * Revision Date: 04/May/2021
  */
 
 if (!function_exists('add_action')) {
@@ -20,7 +20,7 @@ if (!function_exists('add_action')) {
 }
 
 
-define('PAYTABS_PAYPAGE_VERSION', '4.3.4');
+define('PAYTABS_PAYPAGE_VERSION', '4.3.5');
 define('PAYTABS_PAYPAGE_DIR', plugin_dir_path(__FILE__));
 define('PAYTABS_PAYPAGE_ICONS_URL', plugins_url("icons/", __FILE__));
 define('PAYTABS_DEBUG_FILE', WP_CONTENT_DIR . "/debug_paytabs.log");
@@ -73,24 +73,23 @@ function woocommerce_paytabs_init()
     return $gateways;
   }
 
+
   function paytabs_filter_gateways($load_gateways)
   {
-    if (is_admin()) return $load_gateways;
-
     $gateways = [];
     $currency = get_woocommerce_currency();
 
     foreach ($load_gateways as $gateway) {
 
-      $code = array_search($gateway, PAYTABS_PAYPAGE_METHODS);
+      if (!isset($gateway::$is_paytabs)) {
+        $gateways[] = $gateway;
+        continue;
+      }
 
-      if ($code) {
-        $allowed = PaytabsHelper::paymentAllowed($code, $currency);
-        if ($allowed) {
-          $gateways[] = $gateway;
-        }
-      } else {
-        // Not PayTabs Gateway
+      $code = $gateway->getCode();
+
+      $allowed = PaytabsHelper::paymentAllowed($code, $currency);
+      if ($allowed) {
         $gateways[] = $gateway;
       }
     }
@@ -113,6 +112,6 @@ function woocommerce_paytabs_init()
 
 
   add_filter('woocommerce_payment_gateways', 'woocommerce_add_paytabs_gateway');
-  add_filter('woocommerce_payment_gateways', 'paytabs_filter_gateways', 10, 1);
+  add_filter('woocommerce_available_payment_gateways', 'paytabs_filter_gateways', 10, 1);
   add_filter('plugin_action_links_' . plugin_basename(__FILE__), 'paytabs_add_action_links');
 }
