@@ -4,7 +4,6 @@ defined('PAYTABS_PAYPAGE_VERSION') or die;
 
 class WC_Gateway_Paytabs extends WC_Payment_Gateway
 {
-    public static $is_paytabs = true;
     protected $_code = '';
     protected $_title = '';
     protected $_description = '';
@@ -13,12 +12,6 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     protected $_paytabsApi;
 
     //
-
-    public function getCode()
-    {
-        return $this->_code;
-    }
-
 
     public function __construct()
     {
@@ -77,9 +70,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         // This action hook saves the settings
         add_action("woocommerce_update_options_payment_gateways_{$this->id}", array($this, 'process_admin_options'));
 
-        //
-
         add_action('woocommerce_scheduled_subscription_payment_' . $this->id, array($this, 'scheduled_subscription_payment'), 10, 2);
+
+        //
 
         $this->tokenise_param = "wc-{$this->id}-new-payment-method";
         $this->token_id_param = "wc-{$this->id}-payment-token";
