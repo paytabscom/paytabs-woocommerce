@@ -48,12 +48,12 @@ function woocommerce_paytabs_init()
 {
   require_once PAYTABS_PAYPAGE_DIR . 'includes/paytabs_functions.php';
 
-  define('WooCommerce2', !woocommerce_paytabs_version_check('3.0'));
-
   if (!class_exists('WooCommerce') || !class_exists('WC_Payment_Gateway')) {
     add_action('admin_notices', 'woocommerce_paytabs_missing_wc_notice');
     return;
   }
+
+  define('WooCommerce2', !woocommerce_paytabs_version_check('3.0'));
 
   // PT
   require_once PAYTABS_PAYPAGE_DIR . 'includes/paytabs_core.php';
