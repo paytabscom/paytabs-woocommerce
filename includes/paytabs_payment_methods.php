@@ -8,6 +8,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     protected $_title = '';
     protected $_description = '';
     protected $_icon = null;
+    protected $payment_form;
     //
     protected $_paytabsApi;
 
@@ -50,6 +51,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $this->title = $this->get_option('title');
         $this->description = $this->get_option('description');
         $this->enabled = $this->get_option('enabled');
+        $this->payment_form     = $this->get_option( 'payment_form' );
 
         // PT
         $this->paytabs_endpoint = $this->get_option('endpoint');
@@ -82,6 +84,22 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         // add_action('woocommerce_api_paytabs_callback', array($this, 'callback'));
 
         $this->checkCallback();
+    }
+
+
+    /**
+     * Register scripts for front-end
+     *
+     * @access public
+     * @return void
+     */
+
+    public function script_manager() {
+
+        // wp_register_script template ( $handle, $src, $deps, $ver, $in_footer );
+        wp_register_script( 'wc-paytabs-iframe', plugins_url( '/assets/js/paytabs-iframe-handler.js', dirname( __FILE__ ) ), array( 'jquery' ), false, true );
+        wp_enqueue_script( 'wc-paytabs-iframe' );
+
     }
 
 
@@ -125,6 +143,17 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 'type'        => 'checkbox',
                 'description' => '',
                 'default'     => 'no'
+            ),
+            'payment_form'         => array(
+                'title'       => __( 'Payment form type', 'PayTabs' ),
+                'type'        => 'select',
+                'options'     => array(
+                    'redirect' => __( 'Redirect to hosted form on PayTabs server', 'PayTabs' ),
+                    'iframe'   => __( 'iFrame payment form integrated into checkout', 'PayTabs' ),
+                ),
+                'description' => __( "Hosted form on PayTabs server is the secure solution of choice, while iFrame provides better customer experience (https strongly advised)", 'PayTabs' ),
+                'default'     => 'redirect',
+                'desc_tip'    => false,
             ),
             'endpoint' => array(
                 'title'       => __('PayTabs endpoint region', 'PayTabs'),
@@ -275,10 +304,26 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             } else {
                 $payment_url = $paypage->payment_url;
 
-                return array(
-                    'result'   => 'success',
-                    'redirect' => $payment_url,
-                );
+
+                // iFrame should be used IF configured in settings OR doing payment with existing token
+
+                if ($this->payment_form === 'iframe') {
+                    $this->script_manager();
+                    echo $this->generate_iframe_form_html( $payment_url );
+                    return array(
+                        'result'   => 'success',
+                        'redirect' => $order->get_checkout_payment_url( true ),
+
+                    );
+                }
+                else
+                {
+                    return array(
+                        'result'   => 'success',
+                        'redirect' => $payment_url,
+
+                    );
+                }
             }
         } else {
             $_logPaypage = json_encode($paypage);
@@ -291,6 +336,44 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             return null;
         }
     }
+
+
+
+
+    /**
+     * Build iFrame form for receipt page
+     *
+     * @param array $args
+     *
+     * @return string
+     */
+    protected function generate_iframe_form_html( $payment_url ) {
+
+        global $woocommerce;
+
+        $html         = '';
+        $cancel_style = '';
+
+        $html .= '<div class="wc_paytabs_iframe_messager" id="wc_paytabs_iframe_messager">';
+        $html .= apply_filters( 'wc_paytabs_iframe_processing', __( 'Processing payment with saved card...', 'paytabs' ) );
+        $html .= '</div>' . PHP_EOL;
+        $html .= '<div class="wc_paytabs_iframe_form_detail" id="wc_paytabs_iframe_payment_container" style="display: none;">' . PHP_EOL;
+        $cancel_style = 'style="display: none;"';
+
+        $html .= '<iframe id="wc_paytabs_iframe" name="wc_paytabs_iframe" width="358" height="409" style="border: 0;" src="'.$payment_url.'"></iframe>' . PHP_EOL;
+        $html .= '</div>' . PHP_EOL;
+
+        return $html;
+    }
+
+    /**
+     * Build redirect form & autosubmit for receipt page
+     *
+     * @param array $args
+     * @param WC_Order $order
+     *
+     * @return string
+     */
 
 
     public function scheduled_subscription_payment($amount_to_charge, $renewal_order)
