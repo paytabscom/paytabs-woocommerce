@@ -2,8 +2,10 @@
 
 /**
  * PayTabs v2 PHP SDK
- * Version: 2.0.8
+ * Version: 2.1.0
  */
+
+define('PAYTABS_SDK_VERSION', '2.1.0');
 
 
 abstract class PaytabsHelper
@@ -137,24 +139,6 @@ abstract class PaytabsHelper
             }
         }
     }
-
-    static function getTokenInfo($return_values)
-    {
-        $fields = [
-            'pt_token',
-            'pt_customer_email',
-            'pt_customer_password'
-        ];
-
-        $tokenInfo = [];
-
-        foreach ($fields as $field) {
-            if (!isset($return_values[$field])) return false;
-            $tokenInfo[$field] = $return_values[$field];
-        }
-
-        return $tokenInfo;
-    }
 }
 
 
@@ -163,9 +147,10 @@ abstract class PaytabsHelper
  */
 abstract class PaytabsEnum
 {
-    const TRAN_TYPE_AUTH    = 'auth';
-    const TRAN_TYPE_CAPTURE = 'capture';
-    const TRAN_TYPE_SALE    = 'sale';
+    const TRAN_TYPE_AUTH     = 'auth';
+    const TRAN_TYPE_CAPTURE  = 'capture';
+    const TRAN_TYPE_SALE     = 'sale';
+    const TRAN_TYPE_REGISTER = 'register';
 
     const TRAN_TYPE_VOID    = 'void';
     const TRAN_TYPE_REFUND  = 'refund';
@@ -178,6 +163,10 @@ abstract class PaytabsEnum
 
     //
 
+    const PP_ERR_DUPLICATE = 4;
+
+    //
+
     static function TranIsAuth($tran_type)
     {
         return strcasecmp($tran_type, PaytabsEnum::TRAN_TYPE_AUTH) == 0;
@@ -186,6 +175,19 @@ abstract class PaytabsEnum
     static function TranIsSale($tran_type)
     {
         return strcasecmp($tran_type, PaytabsEnum::TRAN_TYPE_SALE) == 0;
+    }
+
+    static function TranIsRegister($tran_type)
+    {
+        return strcasecmp($tran_type, PaytabsEnum::TRAN_TYPE_REGISTER) == 0;
+    }
+
+    //
+
+    static function PPIsDuplicate($paypage)
+    {
+        $err_code = @$paypage->code;
+        return $err_code == PaytabsEnum::PP_ERR_DUPLICATE;
     }
 }
 
@@ -248,7 +250,7 @@ class PaytabsHolder
     public function set02Transaction($tran_type, $tran_class = PaytabsEnum::TRAN_CLASS_ECOM)
     {
         $this->transaction = [
-            'tran_type' => $tran_type,
+            'tran_type'  => $tran_type,
             'tran_class' => $tran_class,
         ];
 
@@ -267,8 +269,12 @@ class PaytabsHolder
         return $this;
     }
 
-    public function set99PluginInfo($platform_name, $platform_version, $plugin_version)
+    public function set99PluginInfo($platform_name, $platform_version, $plugin_version = null)
     {
+        if (!$plugin_version) {
+            $plugin_version = PAYTABS_SDK_VERSION;
+        }
+
         $this->plugin_info = [
             'plugin_info' => [
                 'cart_name'    => $platform_name,
@@ -525,12 +531,15 @@ class PaytabsTokenHolder extends PaytabsHolder
     private $token_info;
 
 
-    public function set20Token($token, $tran_ref)
+    public function set20Token($tran_ref, $token = null)
     {
         $this->token_info = [
-            'token'    => $token,
             'tran_ref' => $tran_ref
         ];
+
+        if ($token) {
+            $this->token_info['token'] = $token;
+        }
 
         return $this;
     }
@@ -602,11 +611,17 @@ class PaytabsApi
         '5'  => ['name' => 'mada', 'title' => 'PayTabs - Mada', 'currencies' => ['SAR']],
         '6'  => ['name' => 'creditcard', 'title' => 'PayTabs - CreditCard', 'currencies' => null],
         '7'  => ['name' => 'sadad', 'title' => 'PayTabs - Sadad', 'currencies' => ['SAR']],
-        '8'  => ['name' => 'atfawry', 'title' => 'PayTabs - @Fawry', 'currencies' => ['EGP']],
+        '8'  => ['name' => 'fawry', 'title' => 'PayTabs - @Fawry', 'currencies' => ['EGP']],
         '9'  => ['name' => 'knet', 'title' => 'PayTabs - KnPay', 'currencies' => ['KWD']],
         '10' => ['name' => 'amex', 'title' => 'PayTabs - Amex', 'currencies' => ['AED', 'SAR']],
         '11' => ['name' => 'valu', 'title' => 'PayTabs - valU', 'currencies' => ['EGP']],
+
+        '12' => ['name' => 'meeza', 'title' => 'PayTabs - Meeza', 'currencies' => ['EGP']],
+        '13' => ['name' => 'meezaqr', 'title' => 'PayTabs - Meeza (QR)', 'currencies' => ['EGP']],
+        '14' => ['name' => 'unionpay', 'title' => 'PayTabs - UnionPay', 'currencies' => ['AED']],
+        '15' => ['name' => 'samsungpay', 'title' => 'PayTabs - SamsungPay', 'currencies' => ['AED', 'SAR']],
     ];
+
     const BASE_URLS = [
         'ARE' => [
             'title' => 'United Arab Emirates',
@@ -637,8 +652,6 @@ class PaytabsApi
         //     'endpoint' => 'https://secure-demo.paytabs.com/'
         // ],
     ];
-
-    // const BASE_URL = 'https://secure.paytabs.com/';
 
     const URL_REQUEST = 'payment/request';
     const URL_QUERY   = 'payment/query';
@@ -673,8 +686,6 @@ class PaytabsApi
             self::$instance = new PaytabsApi($region, $merchant_id, $key);
         }
 
-        // self::$instance->setAuth($merchant_email, $secret_key);
-
         return self::$instance;
     }
 
@@ -698,7 +709,7 @@ class PaytabsApi
         // $serverIP = getHostByName(getHostName());
         // $values['ip_merchant'] = PaytabsHelper::getNonEmpty($serverIP, $_SERVER['SERVER_ADDR'], 'NA');
 
-        $isTokenize = array_key_exists('token', $values);
+        $isTokenize = $values['tran_class'] == PaytabsEnum::TRAN_CLASS_RECURRING;
 
         $response = $this->sendRequest(self::URL_REQUEST, $values);
 
@@ -764,7 +775,7 @@ class PaytabsApi
     }
 
 
-    function is_valid_ipn($data, $signature, $serverkey = false)
+    function is_valid_ipn($data, $signature, $serverKey = false)
     {
         $server_key = $serverKey ?? $this->server_key;
 
