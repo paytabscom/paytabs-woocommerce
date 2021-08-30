@@ -33,7 +33,7 @@ define('PAYTABS_PAYPAGE_METHODS', [
   'applepay'   => 'WC_Gateway_Paytabs_Applepay',
   'omannet'    => 'WC_Gateway_Paytabs_Omannet',
   'sadad'      => 'WC_Gateway_Paytabs_Sadad',
-  'atfawry'    => 'WC_Gateway_Paytabs_Atfawry',
+  'fawry'      => 'WC_Gateway_Paytabs_Fawry',
   'knet'       => 'WC_Gateway_Paytabs_Knpay',
   'amex'       => 'WC_Gateway_Paytabs_Amex',
   'valu'       => 'WC_Gateway_Paytabs_Valu',
