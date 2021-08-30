@@ -796,7 +796,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $holder
             ->set02Transaction(PaytabsEnum::TRAN_TYPE_SALE, PaytabsEnum::TRAN_CLASS_RECURRING)
             ->set03Cart($order->get_id(), $currency, $amount, $cart_desc)
-            ->set20Token($token, $tran_ref)
+            ->set20Token($tran_ref, $token)
             ->set99PluginInfo('WooCommerce', $woocommerce->version, PAYTABS_PAYPAGE_VERSION);
 
         if ($this->_code == 'valu') {
