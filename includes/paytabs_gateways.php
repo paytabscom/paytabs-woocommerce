@@ -103,3 +103,31 @@ class WC_Gateway_Paytabs_Valu extends WC_Gateway_Paytabs
         );
     }
 }
+
+class WC_Gateway_Paytabs_Meeza extends WC_Gateway_Paytabs
+{
+    protected $_code = 'meeza';
+    protected $_title = 'PayTabs - Meeza';
+    protected $_description = 'PayTabs - Meeza payment method';
+}
+
+class WC_Gateway_Paytabs_Meezaqr extends WC_Gateway_Paytabs
+{
+    protected $_code = 'meezaqr';
+    protected $_title = 'PayTabs - Meeza QR';
+    protected $_description = 'PayTabs - Meeza QR payment method';
+}
+
+class WC_Gateway_Paytabs_Unionpay extends WC_Gateway_Paytabs
+{
+    protected $_code = 'unionpay';
+    protected $_title = 'PayTabs - UnionPay';
+    protected $_description = 'PayTabs - UnionPay payment method';
+}
+
+class WC_Gateway_Paytabs_Samsungpay extends WC_Gateway_Paytabs
+{
+    protected $_code = 'samsungpay';
+    protected $_title = 'PayTabs - SamsungPay';
+    protected $_description = 'PayTabs - SamsungPay payment method';
+}

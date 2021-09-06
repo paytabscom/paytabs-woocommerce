@@ -37,6 +37,10 @@ define('PAYTABS_PAYPAGE_METHODS', [
   'knet'       => 'WC_Gateway_Paytabs_Knpay',
   'amex'       => 'WC_Gateway_Paytabs_Amex',
   'valu'       => 'WC_Gateway_Paytabs_Valu',
+  'meeza'      => 'WC_Gateway_Paytabs_Meeza',
+  'meezaqr'    => 'WC_Gateway_Paytabs_Meezaqr',
+  'unionpay'   => 'WC_Gateway_Paytabs_Unionpay',
+  // 'samsungpay' => 'WC_Gateway_Paytabs_Samsungpay',
 ]);
 
 

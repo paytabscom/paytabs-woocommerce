@@ -2,10 +2,10 @@
 
 /**
  * PayTabs v2 PHP SDK
- * Version: 2.1.0
+ * Version: 2.2.0
  */
 
-define('PAYTABS_SDK_VERSION', '2.1.0');
+define('PAYTABS_SDK_VERSION', '2.2.0');
 
 
 abstract class PaytabsHelper
@@ -615,7 +615,6 @@ class PaytabsApi
         '9'  => ['name' => 'knet', 'title' => 'PayTabs - KnPay', 'currencies' => ['KWD']],
         '10' => ['name' => 'amex', 'title' => 'PayTabs - Amex', 'currencies' => ['AED', 'SAR']],
         '11' => ['name' => 'valu', 'title' => 'PayTabs - valU', 'currencies' => ['EGP']],
-
         '12' => ['name' => 'meeza', 'title' => 'PayTabs - Meeza', 'currencies' => ['EGP']],
         '13' => ['name' => 'meezaqr', 'title' => 'PayTabs - Meeza (QR)', 'currencies' => ['EGP']],
         '14' => ['name' => 'unionpay', 'title' => 'PayTabs - UnionPay', 'currencies' => ['AED']],
@@ -642,6 +641,10 @@ class PaytabsApi
         'EGY' => [
             'title' => 'Egypt',
             'endpoint' => 'https://secure-egypt.paytabs.com/'
+        ],
+        'IRQ' => [
+            'title' => 'Iraq',
+            'endpoint' => 'https://secure-iraq.paytabs.com/'
         ],
         'GLOBAL' => [
             'title' => 'Global',
