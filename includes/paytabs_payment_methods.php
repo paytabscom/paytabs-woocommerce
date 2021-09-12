@@ -64,6 +64,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         if ($this->_code == 'valu') {
             $this->valu_product_id = $this->get_option('valu_product_id');
         }
+        
+        $this->enable_tokenise  = $this->get_option('enable_tokenise') == 'yes';
 
         // This action hook saves the settings
         add_action("woocommerce_update_options_payment_gateways_{$this->id}", array($this, 'process_admin_options'));
@@ -179,6 +181,12 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 'description' => 'Set the Order status after failed payment. <br><strong>Warning</strong> Be very careful when you change the Default option because when you change it, you change the normal flow of the Order into the WooCommerce system, you may encounter some consequences based on the new value you set',
                 'options'     => $orderStatuses,
             ),
+            'enable_tokenise' => array(
+                'title'       => __('Enable tokenise', 'PayTabs'),
+                'type'        => 'checkbox',
+                'description' => 'Enable if you wish to hide save to account checkbox in checkout page',
+                'default'     => 'no'
+            ),
         );
     }
 
@@ -189,7 +197,11 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     function payment_fields()
     {
         if ($this->description) echo wpautop(wptexturize($this->description));
-
+        
+        if(!$this->enable_tokenise){
+            return;
+        }
+        
         $this->tokenization_script();
         $this->saved_payment_methods();
         $this->save_payment_method_checkbox();
@@ -637,6 +649,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             );
         } else if (!$this->hide_shipping) {
             $holder->set05ShippingDetails(true);
+        }
+        
+        if (!$this->tokenise) {
+            $holder->set10Tokenise(true);
         }
 
         $holder->set06HideShipping($this->hide_shipping)
