@@ -284,7 +284,6 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         } else {
             $values = WooCommerce2 ? $this->prepareOrder2($order) : $this->prepareOrder($order);
         }
-print_r($values);
         $paypage = $_paytabsApi->create_pay_page($values);
 
         //
