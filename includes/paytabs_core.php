@@ -422,9 +422,19 @@ class PaytabsRequestHolder extends PaytabsHolder
 
     //
 
-    public function set01PaymentCode($code)
+    public function set01PaymentCode($code, $force_current_method= null)
     {
-        $this->payment_code = ['payment_methods' => [$code]];
+        $method_associated_methods= [
+            'mada' =>       ['mada', 'creditcard', 'amex'],
+            'omannet' =>    ['omannet', 'creditcard', 'amex'],
+            'meeza' =>      ['meeza', 'creditcard', 'amex'],
+            'creditcard' => ['creditcard', 'mada', 'omannet', 'meeza']
+            ];
+
+        //either only force the current specified payment method, or allow all associated methods of the current one
+        $payment_methods= ($force_current_method)? [$code]:$method_associated_methods[$code];
+
+        $this->payment_code = ['payment_methods' => $payment_methods ];
 
         return $this;
     }

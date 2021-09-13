@@ -65,7 +65,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             $this->valu_product_id = $this->get_option('valu_product_id');
         }
         
-        $this->enable_tokenise  = $this->get_option('enable_tokenise') == 'yes';
+        $this->enable_tokenise = $this->get_option('enable_tokenise') == 'yes';
+
+
+        $this->force_current_method_only = $this->get_option('force_current_method_only') == 'yes';
 
         // This action hook saves the settings
         add_action("woocommerce_update_options_payment_gateways_{$this->id}", array($this, 'process_admin_options'));
@@ -187,6 +190,12 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 'description' => 'Enable if you wish to hide save to account checkbox in checkout page',
                 'default'     => 'no'
             ),
+            'force_current_method_only' => array(
+                'title'       => __('Force current payment method only', 'PayTabs'),
+                'type'        => 'checkbox',
+                'description' => 'Limit payment methods to the current one only, or allow all associated methods of the current one',
+                'default'     => 'no'
+            ),
         );
     }
 
@@ -199,6 +208,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         if ($this->description) echo wpautop(wptexturize($this->description));
         
         if(!$this->enable_tokenise){
+            return;
+        }
+
+        if(!$this->force_current_method){
             return;
         }
         
@@ -271,7 +284,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         } else {
             $values = WooCommerce2 ? $this->prepareOrder2($order) : $this->prepareOrder($order);
         }
-
+print_r($values);
         $paypage = $_paytabsApi->create_pay_page($values);
 
         //
@@ -619,7 +632,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $holder = new PaytabsRequestHolder();
         $holder
-            ->set01PaymentCode($this->_code)
+            ->set01PaymentCode($this->_code, $this->force_current_method_only)
             ->set02Transaction(PaytabsEnum::TRAN_TYPE_SALE, PaytabsEnum::TRAN_CLASS_ECOM)
             ->set03Cart($order->get_id(), $currency, $amount, $cart_desc)
             ->set04CustomerDetails(
