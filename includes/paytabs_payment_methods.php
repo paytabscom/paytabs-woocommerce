@@ -211,7 +211,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             return;
         }
 
-        if(!$this->force_current_method){
+        if(!$this->force_current_method_only){
             return;
         }
         
