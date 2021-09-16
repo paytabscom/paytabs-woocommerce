@@ -22,7 +22,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $this->method_description = $this->_description;
 
         //
-        $support_tokenise = PaytabsHelper::supportTokenization($this->_code);
+        $this->_is_card_method = PaytabsHelper::isCardPayment($this->_code);
+        $this->_support_tokenise = PaytabsHelper::supportTokenization($this->_code);
 
         $tokenise_features = [
             'tokenization',
@@ -48,7 +49,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             // 'add_payment_method',
         );
 
-        if ($support_tokenise) {
+        if ($this->_support_tokenise) {
             $this->supports = array_merge($this->supports, $tokenise_features);
         }
 
@@ -132,7 +133,27 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $endpoints = PaytabsApi::getEndpoints();
 
-        $this->form_fields = array(
+        $addional_fields = [];
+
+        if ($this->_is_card_method) {
+            $addional_fields['allow_associated_methods'] = [
+                'title'       => __('Allow associated methods', 'PayTabs'),
+                'type'        => 'checkbox',
+                'description' => 'Allow all associated methods of the current payment method, limit payment methods to the current one only',
+                'default'     => 'yes'
+            ];
+        }
+
+        if ($this->_support_tokenise) {
+            $addional_fields['enable_tokenise'] = [
+                'title'       => __('Enable Tokenise', 'PayTabs'),
+                'type'        => 'checkbox',
+                'description' => 'Allow your customers to save their payment methods for later use.',
+                'default'     => 'yes'
+            ];
+        }
+
+        $fields = array(
             'enabled' => array(
                 'title'       => __('Enable/Disable', 'PayTabs'),
                 'label'       => __('Enable Payment Gateway.', 'PayTabs'),
@@ -192,20 +213,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 'type'        => 'select',
                 'description' => 'Set the Order status after failed payment. <br><strong>Warning</strong> Be very careful when you change the Default option because when you change it, you change the normal flow of the Order into the WooCommerce system, you may encounter some consequences based on the new value you set',
                 'options'     => $orderStatuses,
-            ),
-            'enable_tokenise' => array(
-                'title'       => __('Enable Tokenise', 'PayTabs'),
-                'type'        => 'checkbox',
-                'description' => 'Allow your customers to save their payment methods for later use.',
-                'default'     => 'yes'
-            ),
-            'allow_associated_methods' => array(
-                'title'       => __('Allow all associated methods of the current payment method', 'PayTabs'),
-                'type'        => 'checkbox',
-                'description' => 'Allow all associated methods of the current payment method, limit payment methods to the current one only',
-                'default'     => 'no'
-            ),
+            )
         );
+
+        $this->form_fields = array_merge($fields, $addional_fields);
     }
 
 
@@ -216,10 +227,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     {
         if ($this->description) echo wpautop(wptexturize($this->description));
 
-        if (!$this->supports('tokenization')) {
-            return;
-        }
-        if (!$this->enable_tokenise) {
+        if (!$this->supports('tokenization') || !$this->enable_tokenise) {
             return;
         }
 
