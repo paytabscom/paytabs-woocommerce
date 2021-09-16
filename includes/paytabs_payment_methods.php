@@ -139,7 +139,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             $addional_fields['allow_associated_methods'] = [
                 'title'       => __('Allow associated methods', 'PayTabs'),
                 'type'        => 'checkbox',
-                'description' => 'Allow all associated methods of the current payment method, limit payment methods to the current one only',
+                'description' => 'Accept all associated methods of the current payment method, do not limit to this one only.',
                 'default'     => 'yes'
             ];
         }
