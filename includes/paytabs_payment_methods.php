@@ -21,9 +21,11 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $this->method_title = $this->_title;
         $this->method_description = $this->_description;
 
-        $this->supports = array(
-            'products',
-            'refunds',
+        //
+        $support_tokenise = PaytabsHelper::supportTokenization($this->_code);
+
+        $tokenise_features = [
+            'tokenization',
 
             'subscriptions',
             'subscription_cancellation',
@@ -31,16 +33,24 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             'subscription_reactivation',
             'subscription_amount_changes',
             'subscription_date_changes',
-            'subscription_payment_method_change',
-            'subscription_payment_method_change_customer',
-            'subscription_payment_method_change_admin',
             'multiple_subscriptions',
+            // 'subscription_payment_method_change',
+            // 'subscription_payment_method_change_customer',
+            // 'subscription_payment_method_change_admin',
+        ];
+
+        $this->supports = array(
+            'products',
+            'refunds',
 
             'pre-orders',
-            'tokenization',
             // 'token_editor',
             // 'add_payment_method',
         );
+
+        if ($support_tokenise) {
+            $this->supports = array_merge($this->supports, $tokenise_features);
+        }
 
         // Method with all the options fields
         $this->init_form_fields();
@@ -198,6 +208,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     {
         if ($this->description) echo wpautop(wptexturize($this->description));
 
+        if (!$this->supports('tokenization')) {
+            return;
+        }
         if (!$this->enable_tokenise) {
             return;
         }
