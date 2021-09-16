@@ -64,7 +64,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         if ($this->_code == 'valu') {
             $this->valu_product_id = $this->get_option('valu_product_id');
         }
-        
+
         $this->enable_tokenise  = $this->get_option('enable_tokenise') == 'yes';
 
         // This action hook saves the settings
@@ -182,10 +182,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 'options'     => $orderStatuses,
             ),
             'enable_tokenise' => array(
-                'title'       => __('Enable tokenise', 'PayTabs'),
+                'title'       => __('Enable Tokenise', 'PayTabs'),
                 'type'        => 'checkbox',
-                'description' => 'Enable if you wish to hide save to account checkbox in checkout page',
-                'default'     => 'no'
+                'description' => 'Allow your customers to save their payment methods for later use.',
+                'default'     => 'yes'
             ),
         );
     }
@@ -197,11 +197,11 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     function payment_fields()
     {
         if ($this->description) echo wpautop(wptexturize($this->description));
-        
-        if(!$this->enable_tokenise){
+
+        if (!$this->enable_tokenise) {
             return;
         }
-        
+
         $this->tokenization_script();
         $this->saved_payment_methods();
         $this->save_payment_method_checkbox();
@@ -650,7 +650,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         } else if (!$this->hide_shipping) {
             $holder->set05ShippingDetails(true);
         }
-        
+
         if (!$this->tokenise) {
             $holder->set10Tokenise(true);
         }
