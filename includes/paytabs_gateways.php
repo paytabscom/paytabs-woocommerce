@@ -25,6 +25,8 @@ class WC_Gateway_Paytabs_Mada extends WC_Gateway_Paytabs
     protected $_code = 'mada';
     protected $_title = 'PayTabs - Mada';
     protected $_description = 'PayTabs - Mada payment method';
+
+    protected $_icon = "mada.svg";
 }
 
 class WC_Gateway_Paytabs_Stcpay extends WC_Gateway_Paytabs
