@@ -71,6 +71,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $this->order_status_success = $this->get_option('status_success');
         $this->order_status_failed  = $this->get_option('status_failed');
+        $this->trans_type = $this->get_option('trans_type');
+
+
 
         if ($this->_code == 'valu') {
             $this->valu_product_id = $this->get_option('valu_product_id');
@@ -201,6 +204,17 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 'type'        => 'checkbox',
                 'description' => 'Enable if you wish to hide Shipping info of the customer in PayTabs payment page.',
                 'default'     => 'no'
+            ),
+            'trans_type' => array(
+                'title'       => __('Transaction Type', 'PayTabs'),
+                'label'       => __('Transaction Type', 'PayTabs'),
+                'type'        => 'select',
+                'description' => 'Set the transaction type to Auth or Sale',
+                'options'     => array(
+                    'SALE' => __( 'Sale', 'PayTabs' ),
+                    'AUTH'   => __( 'Auth', 'PayTabs' ),
+                ),
+                'default'     => 'SALE'
             ),
             'status_success' => array(
                 'title'       => __('Success Order status', 'PayTabs'),
@@ -556,7 +570,13 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
     private function setNewStatus($order, $isSuccess)
     {
-        if ($isSuccess) {
+        $transaction_type = $this->get_transaction_type($order);
+
+        if ($isSuccess && $transaction_type == "Auth") {
+            $configStatus = 'on-hold';
+            $defaultStatus = 'wc-on-hold';
+        }
+        else if ($isSuccess && transaction_type == "Sale") {
             $configStatus = $this->order_status_success;
             $defaultStatus = 'wc-processing';
         } else {
@@ -649,7 +669,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $holder = new PaytabsRequestHolder();
         $holder
             ->set01PaymentCode($this->_code, $this->allow_associated_methods)
-            ->set02Transaction(PaytabsEnum::TRAN_TYPE_SALE, PaytabsEnum::TRAN_CLASS_ECOM)
+            ->set02Transaction($this->trans_type, PaytabsEnum::TRAN_CLASS_ECOM)
             ->set03Cart($order->get_id(), $currency, $amount, $cart_desc)
             ->set04CustomerDetails(
                 $nameBilling,
@@ -757,7 +777,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $holder = new PaytabsRequestHolder();
         $holder
             ->set01PaymentCode($this->_code)
-            ->set02Transaction(PaytabsEnum::TRAN_TYPE_SALE, PaytabsEnum::TRAN_CLASS_ECOM)
+            ->set02Transaction($this->trans_type, PaytabsEnum::TRAN_CLASS_ECOM)
             ->set03Cart($order->id, $currency, $amount, $cart_desc)
             ->set04CustomerDetails(
                 $order->get_formatted_billing_full_name(),
@@ -835,7 +855,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $holder = new PaytabsTokenHolder();
         $holder
-            ->set02Transaction(PaytabsEnum::TRAN_TYPE_SALE, PaytabsEnum::TRAN_CLASS_RECURRING)
+            ->set02Transaction($this->trans_type, PaytabsEnum::TRAN_CLASS_RECURRING)
             ->set03Cart($order->get_id(), $currency, $amount, $cart_desc)
             ->set20Token($tran_ref, $token)
             ->set99PluginInfo('WooCommerce', $woocommerce->version, PAYTABS_PAYPAGE_VERSION);
@@ -854,5 +874,23 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     private function getPaymentMethod($order)
     {
         return WooCommerce2 ? $order->payment_method : $order->get_payment_method();
+    }
+
+    private function get_transaction_type($order)
+    {
+        global $woocommerce;
+        $transaction_id = $order->get_transaction_id();
+
+        if (!$transaction_id) 
+        {
+            return false;
+        }
+
+    
+        $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
+        $transaction_type = $_paytabsApi->verify_payment($transaction_id);
+        $transaction_type = $transaction_type->tran_type;
+
+    return $transaction_type;
     }
 }
