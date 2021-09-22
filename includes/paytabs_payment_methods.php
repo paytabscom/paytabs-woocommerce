@@ -247,6 +247,18 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     }
 
 
+    public function is_available()
+    {
+        if (is_add_payment_method_page()) {
+            if (!$this->supports('add_payment_method')) {
+                return false;
+            }
+        }
+
+        return parent::is_available();
+    }
+
+
     /**
      *  There are no payment fields for paytabs, but we want to show the description if set.
      **/
@@ -258,9 +270,19 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             return;
         }
 
+        if (!is_checkout()) {
+            return;
+        }
+
         $this->tokenization_script();
         $this->saved_payment_methods();
-        $this->save_payment_method_checkbox();
+
+        $has_subscription = WC_Subscriptions_Cart::cart_contains_subscription();
+        if ($has_subscription) {
+            echo wpautop('Will Save to Account');
+        } else {
+            $this->save_payment_method_checkbox();
+        }
         // $this->form();
     }
 
@@ -360,14 +382,43 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         }
     }
 
+    /**
+     * return the last saved Token for the selected payment method
+     */
+    private function get_user_token($user_id)
+    {
+        /*
+        $token_default = WC_Payment_Tokens::get_customer_default_token($user_id);
+        if ($token_default) {
+            return $token_default;
+        }
+        */
+
+        $tokens = WC_Payment_Tokens::get_customer_tokens($user_id, $this->id);
+        if ($tokens && count($tokens) > 0) {
+            return end($tokens);
+        }
+
+        /*
+        $tokens = WC_Payment_Tokens::get_customer_tokens($user_id);
+        if ($tokens && count($tokens) > 0) {
+            return end($tokens);
+        }
+        */
+
+        // $tokens1 = WC_Payment_Tokens::get_order_tokens();
+
+        return false;
+    }
 
     public function scheduled_subscription_payment($amount_to_charge, $renewal_order)
     {
         $user_id = $renewal_order->get_user_id();
-        $tokenObj = WC_Payment_Tokens::get_customer_default_token($user_id);
+        $tokenObj = $this->get_user_token($user_id);
+
         if (!$tokenObj) {
-            // ToDo: Try to fetch User's Tokens
-            paytabs_error_log("Subscription renewal error: The User {$user_id} does not have saved Token.");
+            $renewal_order->add_order_note("Renewal failed [No Saved payment token found]");
+            paytabs_error_log("Subscription renewal error: The User {$user_id} does not have saved Tokens.");
             return false;
         }
         $values = $this->prepareOrder_Tokenised($renewal_order, $tokenObj, $amount_to_charge);
@@ -539,19 +590,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         // wc_add_notice(__('Thank you for shopping with us. Your account has been charged and your transaction is successful. We will be shipping your order to you soon.', 'woocommerce'), 'success');
 
         if ($token_str) {
-            $token = new WC_Payment_Token_Paytabs();
-
-            $token->set_token($token_str);
-            $token->set_tran_ref($transaction_id);
-
-            $token->set_gateway_id($this->id);
-            $user_id = $order->get_user_id();
-            $token->set_user_id($user_id);
-
-            $tokeId = $token->save();
-
-            $order->add_payment_token($token);
-            $order->save();
+            $this->saveToken($order, $token_str, $transaction_id);
         }
 
         $redirect_url = $this->get_return_url($order);
@@ -564,6 +603,22 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         } else {
             wp_redirect($redirect_url);
         }
+    }
+
+
+    private function saveToken($order, $token_str, $transaction_id)
+    {
+        $user_id = $order->get_user_id();
+
+        $token = new WC_Payment_Token_Paytabs();
+        $token->set_token($token_str);
+        $token->set_tran_ref($transaction_id);
+        $token->set_gateway_id($this->id);
+        $token->set_user_id($user_id);
+        $tokeId = $token->save();
+
+        $order->add_payment_token($token);
+        $order->save();
     }
 
 
