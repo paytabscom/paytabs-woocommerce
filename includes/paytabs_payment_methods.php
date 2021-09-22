@@ -681,7 +681,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $holder = new PaytabsRequestHolder();
         $holder
-            ->set01PaymentCode($this->_code, $this->allow_associated_methods)
+            ->set01PaymentCode($this->_code, $this->allow_associated_methods, $currency)
             ->set02Transaction($this->trans_type, PaytabsEnum::TRAN_CLASS_ECOM)
             ->set03Cart($order->get_id(), $currency, $amount, $cart_desc)
             ->set04CustomerDetails(
