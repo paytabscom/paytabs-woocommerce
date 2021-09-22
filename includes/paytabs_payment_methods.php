@@ -24,6 +24,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         //
         $this->_is_card_method = PaytabsHelper::isCardPayment($this->_code);
         $this->_support_tokenise = PaytabsHelper::supportTokenization($this->_code);
+        $this->_support_auth_capture = PaytabsHelper::supportAuthCapture($this->_code);
 
         $tokenise_features = [
             'tokenization',
@@ -71,8 +72,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $this->order_status_success = $this->get_option('status_success');
         $this->order_status_failed  = $this->get_option('status_failed');
-        $this->trans_type = $this->get_option('trans_type');
 
+        $this->trans_type = $this->get_option('trans_type', PaytabsEnum::TRAN_TYPE_SALE);
+        $this->order_status_auth_success = $this->get_option('status_auth_success', 'wc-on-hold');
 
 
         if ($this->_code == 'valu') {
@@ -156,6 +158,28 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             ];
         }
 
+        if ($this->_support_auth_capture) {
+            $addional_fields['trans_type'] = [
+                'title'       => __('Transaction Type', 'PayTabs'),
+                'label'       => __('Transaction Type', 'PayTabs'),
+                'type'        => 'select',
+                'description' => 'Set the transaction type to Auth or Sale',
+                'options'     => array(
+                    PaytabsEnum::TRAN_TYPE_SALE => __('Sale', 'PayTabs'),
+                    PaytabsEnum::TRAN_TYPE_AUTH => __('Auth', 'PayTabs'),
+                ),
+                'default'     => PaytabsEnum::TRAN_TYPE_SALE
+            ];
+
+            $addional_fields['status_auth_success'] = [
+                'title'       => __('Auth Order status', 'PayTabs'),
+                'type'        => 'select',
+                'description' => 'Set the Order status if the Auth succeed.',
+                'options'     => $orderStatuses,
+                'default'     => 'wc-on-hold'
+            ];
+        }
+
         $fields = array(
             'enabled' => array(
                 'title'       => __('Enable/Disable', 'PayTabs'),
@@ -205,27 +229,16 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 'description' => 'Enable if you wish to hide Shipping info of the customer in PayTabs payment page.',
                 'default'     => 'no'
             ),
-            'trans_type' => array(
-                'title'       => __('Transaction Type', 'PayTabs'),
-                'label'       => __('Transaction Type', 'PayTabs'),
-                'type'        => 'select',
-                'description' => 'Set the transaction type to Auth or Sale',
-                'options'     => array(
-                    'SALE' => __( 'Sale', 'PayTabs' ),
-                    'AUTH'   => __( 'Auth', 'PayTabs' ),
-                ),
-                'default'     => 'SALE'
-            ),
             'status_success' => array(
-                'title'       => __('Success Order status', 'PayTabs'),
+                'title'       => __('Captured Order status', 'PayTabs'),
                 'type'        => 'select',
-                'description' => 'Set the Order status after successful payment. <br><strong>Warning</strong> Be very careful when you change the Default option because when you change it, you change the normal flow of the Order into the WooCommerce system, you may encounter some consequences based on the new value you set',
+                'description' => 'Set the Order status after successful payment. <br><strong>Warning</strong> Be very careful when you change the Default option because when you change it, you change the normal flow of the Order into WooCommerce system, you may encounter some consequences based on the new value you set',
                 'options'     => $orderStatuses,
             ),
             'status_failed' => array(
                 'title'       => __('Failed Order status', 'PayTabs'),
                 'type'        => 'select',
-                'description' => 'Set the Order status after failed payment. <br><strong>Warning</strong> Be very careful when you change the Default option because when you change it, you change the normal flow of the Order into the WooCommerce system, you may encounter some consequences based on the new value you set',
+                'description' => 'Set the Order status after failed payment. <br><strong>Warning</strong> Be very careful when you change the Default option because when you change it, you change the normal flow of the Order into WooCommerce system, you may encounter some consequences based on the new value you set',
                 'options'     => $orderStatuses,
             )
         );
@@ -473,6 +486,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $message = $result->message;
         $orderId = @$result->reference_no;
         $transaction_ref = @$result->transaction_id;
+        $transaction_type = $result->tran_type;
         $token = @$result->token;
 
         $_logVerify = json_encode($result);
@@ -492,7 +506,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         }
 
         if ($success) {
-            return $this->orderSuccess($order, $transaction_ref, $token, $message, $is_tokenise);
+            return $this->orderSuccess($order, $transaction_ref, $transaction_type, $token, $message, $is_tokenise);
 
             // exit;
         } else {
@@ -510,14 +524,14 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     /**
      * Payment successed => Order status change to success
      */
-    private function orderSuccess($order, $transaction_id, $token_str, $message, $is_tokenise)
+    private function orderSuccess($order, $transaction_id, $transaction_type, $token_str, $message, $is_tokenise)
     {
         global $woocommerce;
 
         $order->payment_complete($transaction_id);
         // $order->reduce_order_stock();
 
-        $this->setNewStatus($order, true);
+        $this->setNewStatus($order, true, $transaction_type);
 
         $woocommerce->cart->empty_cart();
 
@@ -568,17 +582,16 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     }
 
 
-    private function setNewStatus($order, $isSuccess)
+    private function setNewStatus($order, $isSuccess, $transaction_type = null)
     {
-        $transaction_type = $this->get_transaction_type($order);
-
-        if ($isSuccess && $transaction_type == "Auth") {
-            $configStatus = 'on-hold';
-            $defaultStatus = 'wc-on-hold';
-        }
-        else if ($isSuccess && transaction_type == "Sale") {
-            $configStatus = $this->order_status_success;
-            $defaultStatus = 'wc-processing';
+        if ($isSuccess) {
+            if (PaytabsEnum::TranIsAuth($transaction_type)) {
+                $configStatus = $this->order_status_auth_success;
+                $defaultStatus = 'wc-processing';
+            } elseif (PaytabsEnum::TranIsSale($transaction_type)) {
+                $configStatus = $this->order_status_success;
+                $defaultStatus = 'wc-processing';
+            }
         } else {
             $configStatus = $this->order_status_failed;
             $defaultStatus = 'wc-failed';
@@ -855,7 +868,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $holder = new PaytabsTokenHolder();
         $holder
-            ->set02Transaction($this->trans_type, PaytabsEnum::TRAN_CLASS_RECURRING)
+            ->set02Transaction(PaytabsEnum::TRAN_TYPE_SALE, PaytabsEnum::TRAN_CLASS_RECURRING)
             ->set03Cart($order->get_id(), $currency, $amount, $cart_desc)
             ->set20Token($tran_ref, $token)
             ->set99PluginInfo('WooCommerce', $woocommerce->version, PAYTABS_PAYPAGE_VERSION);
@@ -874,23 +887,5 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     private function getPaymentMethod($order)
     {
         return WooCommerce2 ? $order->payment_method : $order->get_payment_method();
-    }
-
-    private function get_transaction_type($order)
-    {
-        global $woocommerce;
-        $transaction_id = $order->get_transaction_id();
-
-        if (!$transaction_id) 
-        {
-            return false;
-        }
-
-    
-        $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
-        $transaction_type = $_paytabsApi->verify_payment($transaction_id);
-        $transaction_type = $transaction_type->tran_type;
-
-    return $transaction_type;
     }
 }
