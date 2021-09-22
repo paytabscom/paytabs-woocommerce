@@ -2,10 +2,10 @@
 
 /**
  * PayTabs v2 PHP SDK
- * Version: 2.3.0
+ * Version: 2.3.2
  */
 
-define('PAYTABS_SDK_VERSION', '2.3.0');
+define('PAYTABS_SDK_VERSION', '2.3.2');
 
 
 abstract class PaytabsHelper
@@ -59,7 +59,7 @@ abstract class PaytabsHelper
         return false;
     }
 
-    static function getCardPayments($international_only = false)
+    static function getCardPayments($international_only = false, $currency = null)
     {
         $methods = [];
 
@@ -67,7 +67,13 @@ abstract class PaytabsHelper
 
         foreach (PaytabsApi::PAYMENT_TYPES as $key => $value) {
             if (in_array($group, $value['groups'])) {
-                $methods[] = $value['name'];
+                if ($currency) {
+                    if ($value['currencies'] == null || in_array($currency, $value['currencies'])) {
+                        $methods[] = $value['name'];
+                    }
+                } else {
+                    $methods[] = $value['name'];
+                }
             }
         }
         return $methods;
@@ -459,16 +465,16 @@ class PaytabsRequestHolder extends PaytabsHolder
 
     //
 
-    public function set01PaymentCode($code, $allow_associated_methods = true)
+    public function set01PaymentCode($code, $allow_associated_methods = true, $currency = null)
     {
         $codes = [$code];
 
         if (PaytabsHelper::isCardPayment($code)) {
             if ($allow_associated_methods) {
                 if (PaytabsHelper::isCardPayment($code, true)) {
-                    $other_cards = PaytabsHelper::getCardPayments(false);
+                    $other_cards = PaytabsHelper::getCardPayments(false, $currency);
                 } else {
-                    $other_cards = PaytabsHelper::getCardPayments(true);
+                    $other_cards = PaytabsHelper::getCardPayments(true, $currency);
                 }
                 $codes = array_unique(array_merge($other_cards, $codes));
             }
@@ -675,6 +681,8 @@ class PaytabsApi
         '13' => ['name' => 'meezaqr', 'title' => 'PayTabs - Meeza (QR)', 'currencies' => ['EGP'], 'groups' => []],
         '14' => ['name' => 'unionpay', 'title' => 'PayTabs - UnionPay', 'currencies' => ['AED'], 'groups' => []],
         '15' => ['name' => 'samsungpay', 'title' => 'PayTabs - SamsungPay', 'currencies' => ['AED', 'SAR'], 'groups' => []],
+        '16' => ['name' => 'knetdebit', 'title' => 'PayTabs - KnPay (Debit)', 'currencies' => ['KWD'], 'groups' => []],
+        '17' => ['name' => 'knetcredit', 'title' => 'PayTabs - KnPay (Credit)', 'currencies' => ['KWD'], 'groups' => []],
     ];
 
     const BASE_URLS = [
