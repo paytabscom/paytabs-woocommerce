@@ -25,9 +25,9 @@ define('PAYTABS_PAYPAGE_DIR', plugin_dir_path(__FILE__));
 define('PAYTABS_PAYPAGE_ICONS_URL', plugins_url("icons/", __FILE__));
 define('PAYTABS_DEBUG_FILE', WP_CONTENT_DIR . "/debug_paytabs.log");
 define('PAYTABS_PAYPAGE_METHODS', [
+  'mada'       => 'WC_Gateway_Paytabs_Mada',
   'all'        => 'WC_Gateway_Paytabs_All',
   'creditcard' => 'WC_Gateway_Paytabs_Creditcard',
-  'mada'       => 'WC_Gateway_Paytabs_Mada',
   'stcpay'     => 'WC_Gateway_Paytabs_Stcpay',
   // 'stcpayqr' => 'WC_Gateway_Paytabs_Stcpayqr',
   'applepay'   => 'WC_Gateway_Paytabs_Applepay',
