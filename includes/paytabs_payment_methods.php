@@ -277,7 +277,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $this->tokenization_script();
         $this->saved_payment_methods();
 
-        $has_subscription = WC_Subscriptions_Cart::cart_contains_subscription();
+        $has_subscription = class_exists('WC_Subscriptions_Cart') && WC_Subscriptions_Cart::cart_contains_subscription();
         if ($has_subscription) {
             echo wpautop('Will Save to Account');
         } else {
