@@ -48,6 +48,8 @@ class WC_Gateway_Paytabs_Applepay extends WC_Gateway_Paytabs
     protected $_code = 'applepay';
     protected $_title = 'PayTabs - ApplePay';
     protected $_description = 'PayTabs - ApplePay payment method';
+
+    protected $_icon = "applepay.svg";
 }
 
 class WC_Gateway_Paytabs_Omannet extends WC_Gateway_Paytabs
@@ -76,6 +78,8 @@ class WC_Gateway_Paytabs_Knpay extends WC_Gateway_Paytabs
     protected $_code = 'knet';
     protected $_title = 'PayTabs - KnPay';
     protected $_description = 'PayTabs - KnPay payment method';
+
+    protected $_icon = "knet.svg";
 }
 
 class WC_Gateway_Paytabs_Amex extends WC_Gateway_Paytabs
