@@ -98,8 +98,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         // We need custom JavaScript to obtain a token
         // add_action('wp_enqueue_scripts', array($this, 'payment_scripts'));
 
-        // Register a webhook
-        // add_action('woocommerce_api_paytabs_callback', array($this, 'callback'));
+        Register a webhook
+        add_action('woocommerce_api_paytabs_callback', array($this, 'callback'));
+        add_action('woocommerce_api_wc_gateway_paytabs', array($this, 'ipnResponse'));
 
         $this->checkCallback();
     }
@@ -402,7 +403,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         /*
         $tokens = WC_Payment_Tokens::get_customer_tokens($user_id);
         if ($tokens && count($tokens) > 0) {
-            return end($tokens);
+        return end($tokens);
         }
         */
 
@@ -531,6 +532,31 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     }
 
 
+    public function ipnResponse()
+    {
+        $trans_ref = 'tranRef';
+
+        if (isset($_POST[$trans_ref], $_POST['cartId'])) {
+            $payment_reference = $_POST[$trans_ref];
+            $orderId = $_POST['cartId'];
+
+            // $orderId = wc_get_order_id_by_order_key($key);
+            $order = wc_get_order($orderId);
+            if ($order) {
+                if ($order->needs_payment()) {
+                    $payment_id = $this->getPaymentMethod($order);
+                    if ($payment_id == $this->id) {
+                        $this->callback($payment_reference, $orderId, $order);
+                    }
+                }
+            } else {
+                PaytabsHelper::log("callback failed for Order {$orderId}, payemnt_reference [{$payment_reference}]", 3);
+            }
+        }
+    }
+
+
+
     private function validate_payment($result, $order_id, $order, $is_tokenise = false)
     {
         $success = $result->success;
@@ -646,6 +672,18 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             } elseif (PaytabsEnum::TranIsSale($transaction_type)) {
                 $configStatus = $this->order_status_success;
                 $defaultStatus = 'wc-processing';
+            }
+            elseif (PaytabsEnum::TranIsCapture($transaction_type)) {
+                $configStatus = $this->order_status_success;
+                $defaultStatus = 'wc-processing';
+            }
+             elseif (PaytabsEnum::TranIsVoid($transaction_type)) {
+                $configStatus = 'wc-cancelled';
+                $defaultStatus = 'wc-cancelled';
+            }
+            elseif (PaytabsEnum::TranIsRefund($transaction_type)) {
+                $configStatus = 'wc-refunded';
+                $defaultStatus = 'wc-refunded';
             }
         } else {
             $configStatus = $this->order_status_failed;

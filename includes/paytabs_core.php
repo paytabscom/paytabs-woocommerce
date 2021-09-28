@@ -5,7 +5,7 @@
  * Version: 2.3.3
  */
 
-define('PAYTABS_SDK_VERSION', '2.3.3');
+define('PAYTABS_SDK_VERSION', '2.3.4');
 
 
 abstract class PaytabsHelper
@@ -234,6 +234,22 @@ abstract class PaytabsEnum
     {
         return strcasecmp($tran_type, PaytabsEnum::TRAN_TYPE_REGISTER) == 0;
     }
+
+    static function TranIsCapture($tran_type)
+    {
+        return strcasecmp($tran_type, PaytabsEnum::TRAN_TYPE_CAPTURE) == 0;
+    }
+
+    static function TranIsVoid($tran_type)
+    {
+        return strcasecmp($tran_type, PaytabsEnum::TRAN_TYPE_VOID) == 0;
+    }
+
+    static function TranIsRefund($tran_type)
+    {
+        return strcasecmp($tran_type, PaytabsEnum::TRAN_TYPE_REFUND) == 0;
+    }
+
 
     //
 
