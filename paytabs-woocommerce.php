@@ -32,7 +32,7 @@ define('PAYTABS_PAYPAGE_METHODS', [
   // 'stcpayqr' => 'WC_Gateway_Paytabs_Stcpayqr',
   'applepay'   => 'WC_Gateway_Paytabs_Applepay',
   'omannet'    => 'WC_Gateway_Paytabs_Omannet',
-  'sadad'      => 'WC_Gateway_Paytabs_Sadad',
+  // 'sadad'      => 'WC_Gateway_Paytabs_Sadad',
   'fawry'      => 'WC_Gateway_Paytabs_Fawry',
   'knet'       => 'WC_Gateway_Paytabs_Knpay',
   'amex'       => 'WC_Gateway_Paytabs_Amex',
