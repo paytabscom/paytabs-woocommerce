@@ -2,7 +2,7 @@
 
 /**
  * PayTabs v2 PHP SDK
- * Version: 2.3.3
+ * Version: 2.3.4
  */
 
 define('PAYTABS_SDK_VERSION', '2.3.4');

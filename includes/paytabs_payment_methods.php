@@ -98,7 +98,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         // We need custom JavaScript to obtain a token
         // add_action('wp_enqueue_scripts', array($this, 'payment_scripts'));
 
-        Register a webhook
+        // Register a webhook
         add_action('woocommerce_api_paytabs_callback', array($this, 'callback'));
         add_action('woocommerce_api_wc_gateway_paytabs', array($this, 'ipnResponse'));
 
@@ -403,7 +403,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         /*
         $tokens = WC_Payment_Tokens::get_customer_tokens($user_id);
         if ($tokens && count($tokens) > 0) {
-        return end($tokens);
+            return end($tokens);
         }
         */
 
@@ -550,7 +550,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                     }
                 }
             } else {
-                PaytabsHelper::log("callback failed for Order {$orderId}, payemnt_reference [{$payment_reference}]", 3);
+                PaytabsHelper::log("IPN failed for Order {$orderId}, payemnt_reference [{$payment_reference}]", 3);
             }
         }
     }
@@ -672,16 +672,13 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             } elseif (PaytabsEnum::TranIsSale($transaction_type)) {
                 $configStatus = $this->order_status_success;
                 $defaultStatus = 'wc-processing';
-            }
-            elseif (PaytabsEnum::TranIsCapture($transaction_type)) {
+            } elseif (PaytabsEnum::TranIsCapture($transaction_type)) {
                 $configStatus = $this->order_status_success;
                 $defaultStatus = 'wc-processing';
-            }
-             elseif (PaytabsEnum::TranIsVoid($transaction_type)) {
+            } elseif (PaytabsEnum::TranIsVoid($transaction_type)) {
                 $configStatus = 'wc-cancelled';
                 $defaultStatus = 'wc-cancelled';
-            }
-            elseif (PaytabsEnum::TranIsRefund($transaction_type)) {
+            } elseif (PaytabsEnum::TranIsRefund($transaction_type)) {
                 $configStatus = 'wc-refunded';
                 $defaultStatus = 'wc-refunded';
             }
