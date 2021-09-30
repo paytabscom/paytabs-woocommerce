@@ -99,8 +99,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         // add_action('wp_enqueue_scripts', array($this, 'payment_scripts'));
 
         // Register a webhook
-        add_action('woocommerce_api_paytabs_callback', array($this, 'callback'));
-        add_action('woocommerce_api_wc_gateway_paytabs', array($this, 'ipnResponse'));
+        // add_action('woocommerce_api_paytabs_callback', array($this, 'callback'));
+        add_action('woocommerce_api_wc_gateway_' . $this->id, array($this, 'ipn_response'));
 
         $this->checkCallback();
     }
@@ -362,7 +362,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         if ($success) {
             if ($is_completed) {
-                return $this->validate_payment($paypage, $order_id, $order, true);
+                return $this->validate_payment($paypage, $order, true);
             } else {
                 $payment_url = $paypage->payment_url;
 
@@ -504,10 +504,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             // $orderId = wc_get_order_id_by_order_key($key);
             $order = wc_get_order($orderId);
             if ($order) {
-                if ($order->needs_payment()) {
-                    $payment_id = $this->getPaymentMethod($order);
-                    if ($payment_id == $this->id) {
-                        $this->callback($payment_reference, $orderId, $order);
+                $payment_id = $this->getPaymentMethod($order);
+                if ($payment_id == $this->id) {
+                    if ($order->needs_payment()) {
+                        $this->callback($payment_reference, $order, false);
                     }
                 }
             } else {
@@ -518,9 +518,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
 
     /**
-     * In case you need a webhook, like PayPal IPN etc
+     * In case you need a webhook, like IPN etc
      */
-    public function callback($payment_reference, $order_id, $order)
+    public function callback($payment_reference, $order, $is_ipn)
     {
         if (!$payment_reference) return;
 
@@ -528,25 +528,30 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $result = $_paytabsApi->verify_payment($payment_reference);
         // $valid_redirect = $_paytabsApi->is_valid_redirect($_POST);
 
-        $this->validate_payment($result, $order_id, $order);
+        $this->validate_payment($result, $order, $is_ipn);
     }
 
 
-    public function ipnResponse()
+    public function ipn_response()
     {
-        $trans_ref = 'tranRef';
+        $response = file_get_contents('php://input');
+        $data = json_decode($response, true);
 
-        if (isset($_POST[$trans_ref], $_POST['cartId'])) {
-            $payment_reference = $_POST[$trans_ref];
-            $orderId = $_POST['cartId'];
+        if (!$data) return;
+        $trans_ref = $data['tran_ref'];
+        $cart_id = $data['cart_id'];
+
+        if (isset($trans_ref, $cart_id)) {
+            $payment_reference = $trans_ref;
+            $orderId = $cart_id;
 
             // $orderId = wc_get_order_id_by_order_key($key);
             $order = wc_get_order($orderId);
             if ($order) {
-                if ($order->needs_payment()) {
-                    $payment_id = $this->getPaymentMethod($order);
-                    if ($payment_id == $this->id) {
-                        $this->callback($payment_reference, $orderId, $order);
+                $payment_id = $this->getPaymentMethod($order);
+                if ($payment_id == $this->id) {
+                    if ($order->needs_payment()) {
+                        $this->callback($payment_reference, $order, true);
                     }
                 }
             } else {
@@ -557,8 +562,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
 
 
-    private function validate_payment($result, $order_id, $order, $is_tokenise = false)
+    private function validate_payment($result, $order, $is_tokenise = false, $is_ipn = false)
     {
+        $order_id = $order->get_id();
+
         $success = $result->success;
         $message = $result->message;
         $orderId = @$result->reference_no;
@@ -583,7 +590,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         }
 
         if ($success) {
-            return $this->orderSuccess($order, $transaction_ref, $transaction_type, $token, $message, $is_tokenise);
+            return $this->orderSuccess($order, $transaction_ref, $transaction_type, $token, $message, $is_tokenise, $is_ipn);
 
             // exit;
         } else {
@@ -601,7 +608,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     /**
      * Payment successed => Order status change to success
      */
-    private function orderSuccess($order, $transaction_id, $transaction_type, $token_str, $message, $is_tokenise)
+    private function orderSuccess($order, $transaction_id, $transaction_type, $token_str, $message, $is_tokenise, $is_ipn)
     {
         global $woocommerce;
 
@@ -617,6 +624,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         if ($token_str) {
             $this->saveToken($order, $token_str, $transaction_id);
+        }
+
+        if ($is_ipn) {
+            return;
         }
 
         $redirect_url = $this->get_return_url($order);
@@ -730,7 +741,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         // $siteUrl = get_site_url();
         $return_url = $order->get_checkout_payment_url(true);
-        // $return_url = "$siteUrl?wc-api=paytabs_callback&order={$order->id}";
+
+        $callback_url = add_query_arg('wc-api', 'wc_gateway_' . $this->id, home_url('/'));
 
         $products = $order->get_items();
         $items_arr = array_map(function ($p) {
@@ -806,7 +818,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $holder->set06HideShipping($this->hide_shipping)
             ->set07URLs(
                 $return_url,
-                null
+                $callback_url
             )
             ->set08Lang($lang)
             ->set10Tokenise($tokenise)
