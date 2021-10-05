@@ -8,10 +8,10 @@
  * Plugin Name:   Clickpay - WooCommerce Payment Gateway
  * Plugin URI:    https://clickpay.com/
  * Description:   clickpay is a <strong>3rd party payment gateway</strong>. Ideal payment solutions for your internet business.
- * Version:       4.3.0
+ * Version:       4.5.5
  * Author:        Clickpay
  * Author URI:    https://clickpay.com/
- * Revision Date: 12/April/2021
+ * Revision Date: 05/October/2021
  */
 
 if (!function_exists('add_action')) {
@@ -21,7 +21,7 @@ if (!function_exists('add_action')) {
 //load plugin function when woocommerce loaded
 add_action('plugins_loaded', 'woocommerce_clickpay_init', 0);
 
-define('CLICKPAY_PAYPAGE_VERSION', '4.2.0');
+define('CLICKPAY_PAYPAGE_VERSION', '4.5.5');
 define('CLICKPAY_PAYPAGE_DIR', plugin_dir_path(__FILE__));
 define('CLICKPAY_PAYPAGE_ICONS_URL', plugins_url("icons/", __FILE__));
 define('CLICKPAY_DEBUG_FILE', WP_CONTENT_DIR . "/debug_clickpay.log");

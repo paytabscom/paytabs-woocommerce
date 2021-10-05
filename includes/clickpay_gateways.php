@@ -25,6 +25,8 @@ class WC_Gateway_Clickpay_Mada extends WC_Gateway_Clickpay
     protected $_code = 'mada';
     protected $_title = 'ClickPay - Mada';
     protected $_description = 'ClickPay - Mada payment method';
+
+    protected $_icon = "mada.svg";
 }
 
 class WC_Gateway_Clickpay_Stcpay extends WC_Gateway_Clickpay

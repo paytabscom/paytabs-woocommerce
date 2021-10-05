@@ -2,9 +2,9 @@
 
 /**
  * ClickPay v2 PHP SDK
- * Version: 2.0.2
+ * Version: 2.3.0
  */
-
+define('CLICKPAY_SDK_VERSION', '2.3.3');
 
 abstract class ClickpayHelper
 {
@@ -44,6 +44,57 @@ abstract class ClickpayHelper
         }
         return false;
     }
+
+     static function isCardPayment($code, $is_international = false)
+    {
+        $group = $is_international ? ClickpayApi::GROUP_CARDS_INTERNATIONAL : ClickpayApi::GROUP_CARDS;
+
+        foreach (ClickpayApi::PAYMENT_TYPES as $key => $value) {
+            if ($value['name'] === $code) {
+                return in_array($group, $value['groups']);
+            }
+        }
+        return false;
+    }
+
+    static function getCardPayments($international_only = false , $currency = null)
+    {
+        $methods = [];
+
+        $group = $international_only ? ClickpayApi::GROUP_CARDS_INTERNATIONAL : ClickpayApi::GROUP_CARDS;
+
+        foreach (ClickpayApi::PAYMENT_TYPES as $key => $value) {
+           if ($currency) {
+                    if ($value['currencies'] == null || in_array($currency, $value['currencies'])) {
+                        $methods[] = $value['name'];
+                    }
+                } else {
+                    $methods[] = $value['name'];
+                }
+        }
+        return $methods;
+    }
+
+     static function supportAuthCapture($code)
+    {
+        foreach (ClickpayApi::PAYMENT_TYPES as $key => $value) {
+            if ($value['name'] === $code) {
+                return in_array(ClickpayApi::GROUP_AUTH_CAPTURE, $value['groups']);
+            }
+        }
+        return false;
+    }
+
+    static function supportTokenization($code)
+    {
+        foreach (ClickpayApi::PAYMENT_TYPES as $key => $value) {
+            if ($value['name'] === $code) {
+                return in_array(ClickpayApi::GROUP_TOKENIZE, $value['groups']);
+            }
+        }
+        return false;
+    }
+
 
     /**
      * @return the first non-empty var from the vars list
@@ -161,6 +212,7 @@ abstract class ClickpayEnum
     const TRAN_TYPE_AUTH    = 'auth';
     const TRAN_TYPE_CAPTURE = 'capture';
     const TRAN_TYPE_SALE    = 'sale';
+    const TRAN_TYPE_REGISTER = 'register';
 
     const TRAN_TYPE_VOID    = 'void';
     const TRAN_TYPE_REFUND  = 'refund';
@@ -171,8 +223,29 @@ abstract class ClickpayEnum
     const TRAN_CLASS_MOTO = 'moto';
     const TRAN_CLASS_RECURRING = 'recurring';
 
+    const PP_ERR_DUPLICATE = 4;
     //
 
+    static function TranIsAuth($tran_type)
+    {
+        return strcasecmp($tran_type, ClickpayEnum::TRAN_TYPE_AUTH) == 0;
+    }
+
+    static function TranIsSale($tran_type)
+    {
+        return strcasecmp($tran_type, ClickpayEnum::TRAN_TYPE_SALE) == 0;
+    }
+
+    static function TranIsRegister($tran_type)
+    {
+        return strcasecmp($tran_type, ClickpayEnum::TRAN_TYPE_REGISTER) == 0;
+    }
+
+    static function PPIsDuplicate($paypage)
+    {
+        $err_code = @$paypage->code;
+        return $err_code == ClickpayEnum::PP_ERR_DUPLICATE;
+    }
 }
 
 
@@ -388,9 +461,24 @@ class ClickpayRequestHolder extends ClickpayHolder
 
     //
 
-    public function set01PaymentCode($code)
+    public function set01PaymentCode($code, $allow_associated_methods = true, $currency = null)
     {
-        $this->payment_code = ['payment_methods' => [$code]];
+        $codes = [$code];
+
+        if (ClickpayHelper::isCardPayment($code)) {
+            if ($allow_associated_methods) {
+                if (ClickpayHelper::isCardPayment($code, true)) {
+                    $other_cards = ClickpayHelper::getCardPayments(false, $currency);
+                } else {
+                    $other_cards = ClickpayHelper::getCardPayments(true, $currency);
+                }
+                $codes = array_unique(array_merge($other_cards, $codes));
+            }
+        }
+
+        // 'creditcard' => ['creditcard', 'mada', 'omannet', 'meeza']
+
+        $this->payment_code = ['payment_methods' => $codes];
 
         return $this;
     }
@@ -483,8 +571,12 @@ class ClickpayRequestHolder extends ClickpayHolder
     }
 
 
-    public function set99PluginInfo($platform_name, $platform_version, $plugin_version)
+    public function set99PluginInfo($platform_name, $platform_version, $plugin_version = null)
     {
+        if (!$plugin_version) {
+            $plugin_version = CLICKPAY_SDK_VERSION;
+        }
+
         $this->plugin_info = [
             'cart_name'    => $platform_name,
             'cart_version' => $platform_version,
@@ -509,12 +601,15 @@ class ClickpayTokenHolder extends ClickpayHolder
     private $token_info;
 
 
-    public function set20Token($token, $tran_ref)
+    public function set20Token($tran_ref, $token = null)
     {
         $this->token_info = [
-            'token'    => $token,
             'tran_ref' => $tran_ref
         ];
+
+        if ($token) {
+            $this->token_info['token'] = $token;
+        }
 
         return $this;
     }
@@ -577,19 +672,29 @@ class ClickpayFollowupHolder extends ClickpayHolder
  */
 class ClickpayApi
 {
+
+    const GROUP_CARDS = 'cards';
+    const GROUP_CARDS_INTERNATIONAL = 'cards_international';
+    const GROUP_TOKENIZE = 'tokenise';
+    const GROUP_AUTH_CAPTURE = 'auth_capture';
+
     const PAYMENT_TYPES = [
-        '0'  => ['name' => 'all', 'title' => 'ClickPay - All', 'currencies' => null],
-        '1'  => ['name' => 'stcpay', 'title' => 'ClickPay - StcPay', 'currencies' => ['SAR']],
-        '2'  => ['name' => 'stcpayqr', 'title' => 'ClickPay - StcPay(QR)', 'currencies' => ['SAR']],
-        '3'  => ['name' => 'applepay', 'title' => 'ClickPay - ApplePay', 'currencies' => ['AED', 'SAR']],
-        '4'  => ['name' => 'omannet', 'title' => 'ClickPay - OmanNet', 'currencies' => ['OMR']],
-        '5'  => ['name' => 'mada', 'title' => 'ClickPay - Mada', 'currencies' => ['SAR']],
-        '6'  => ['name' => 'creditcard', 'title' => 'ClickPay - CreditCard', 'currencies' => null],
-        '7'  => ['name' => 'sadad', 'title' => 'ClickPay - Sadad', 'currencies' => ['SAR']],
-        '8'  => ['name' => 'atfawry', 'title' => 'ClickPay - @Fawry', 'currencies' => ['EGP']],
-        '9'  => ['name' => 'knpay', 'title' => 'ClickPay - KnPay', 'currencies' => ['KWD']],
-        '10' => ['name' => 'amex', 'title' => 'ClickPay - Amex', 'currencies' => ['AED', 'SAR']],
-        '11' => ['name' => 'valu', 'title' => 'ClickPay - valU', 'currencies' => ['EGP']],
+        '0'  => ['name' => 'all', 'title' => 'ClickPay - All', 'currencies' => null, 'groups' => [ClickpayApi::GROUP_TOKENIZE, ClickpayApi::GROUP_AUTH_CAPTURE]]],
+        '1'  => ['name' => 'stcpay', 'title' => 'ClickPay - StcPay', 'currencies' => ['SAR'], 'groups' => []],
+        '2'  => ['name' => 'stcpayqr', 'title' => 'ClickPay - StcPay(QR)', 'currencies' => ['SAR'], 'groups' => []],
+        '3'  => ['name' => 'applepay', 'title' => 'ClickPay - ApplePay', 'currencies' => ['AED', 'SAR'], 'groups' => [ClickpayApi::GROUP_TOKENIZE, ClickpayApi::GROUP_AUTH_CAPTURE]],
+        '4'  => ['name' => 'omannet', 'title' => 'ClickPay - OmanNet', 'currencies' => ['OMR'], 'groups' => [ClickpayApi::GROUP_TOKENIZE, ClickpayApi::GROUP_CARDS]],
+        '5'  => ['name' => 'mada', 'title' => 'ClickPay - Mada', 'currencies' => ['SAR'], 'groups' => [ClickpayApi::GROUP_TOKENIZE, ClickpayApi::GROUP_CARDS, ClickpayApi::GROUP_AUTH_CAPTURE]],
+        '6'  => ['name' => 'creditcard', 'title' => 'ClickPay - CreditCard', 'currencies' => null, 'groups' => [ClickpayApi::GROUP_TOKENIZE, ClickpayApi::GROUP_CARDS, ClickpayApi::GROUP_CARDS_INTERNATIONAL, ClickpayApi::GROUP_AUTH_CAPTURE]],
+        '7'  => ['name' => 'sadad', 'title' => 'ClickPay - Sadad', 'currencies' => ['SAR'], 'groups' => []],
+        '8'  => ['name' => 'fawry', 'title' => 'ClickPay - @Fawry', 'currencies' => ['EGP'], 'groups' => []],
+        '9'  => ['name' => 'knet', 'title' => 'ClickPay - KnPay', 'currencies' => ['KWD'], 'groups' => [ClickpayApi::GROUP_CARDS]],
+        '10' => ['name' => 'amex', 'title' => 'ClickPay - Amex', 'currencies' => ['AED', 'SAR'], 'groups' => [ClickpayApi::GROUP_CARDS, ClickpayApi::GROUP_CARDS_INTERNATIONAL, ClickpayApi::GROUP_AUTH_CAPTURE]],
+        '11' => ['name' => 'valu', 'title' => 'ClickPay - valU', 'currencies' => ['EGP'], 'groups' => []],
+        '12' => ['name' => 'meeza', 'title' => 'ClickPay - Meeza', 'currencies' => ['EGP'], 'groups' => [ClickpayApi::GROUP_CARDS, ClickpayApi::GROUP_AUTH_CAPTURE]],
+        '13' => ['name' => 'meezaqr', 'title' => 'ClickPay - Meeza (QR)', 'currencies' => ['EGP'], 'groups' => []],
+        '14' => ['name' => 'unionpay', 'title' => 'ClickPay - UnionPay', 'currencies' => ['AED'], 'groups' => [], ClickpayApi::GROUP_AUTH_CAPTURE],
+        '15' => ['name' => 'samsungpay', 'title' => 'ClickPay - SamsungPay', 'currencies' => ['AED', 'SAR'], 'groups' => []],
     ];
     const BASE_URLS = [
         'SAU' => [
@@ -657,7 +762,7 @@ class ClickpayApi
         // $serverIP = getHostByName(getHostName());
         // $values['ip_merchant'] = ClickpayHelper::getNonEmpty($serverIP, $_SERVER['SERVER_ADDR'], 'NA');
 
-        $isTokenize = array_key_exists('token', $values);
+         $isTokenize = $values['tran_class'] == PaytabsEnum::TRAN_CLASS_RECURRING;
 
         $response = $this->sendRequest(self::URL_REQUEST, $values);
 
@@ -728,6 +833,15 @@ class ClickpayApi
             return false;
         }
     }
+
+    function is_valid_ipn($data, $signature, $serverKey = false)
+    {
+        $server_key = $serverKey ?? $this->server_key;
+
+        return $this->is_genuine($data, $signature, $server_key);
+    }
+
+
 
     /** end: API calls */
 

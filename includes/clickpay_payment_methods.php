@@ -1,6 +1,6 @@
 <?php
 
-defined('CLICKPAY_PAYPAGE_VERSION') or die;
+defined('CLIACKPAY_PAYPAGE_VERSION') or die;
 
 class WC_Gateway_Clickpay extends WC_Payment_Gateway
 {
@@ -17,15 +17,18 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
     {
         $this->id = "clickpay_{$this->_code}"; // payment gateway plugin ID
         $this->icon = $this->getIcon(); // URL of the icon that will be displayed on checkout page near the gateway name
-        $this->has_fields = false; // in case you need a custom credit card form
+        $this->has_fields = false;
         $this->method_title = $this->_title;
-        $this->method_description = $this->_description; // will be displayed on the options page
+        $this->method_description = $this->_description;
 
-        // gateways can support subscriptions, refunds, saved payment methods,
-        // Supports simple payments
-        $this->supports = array(
-            'products',
-            'refunds',
+        //
+        $this->_is_card_method = ClickpayHelper::isCardPayment($this->_code);
+        $this->_support_tokenise = ClickpayHelper::supportTokenization($this->_code);
+        $this->_support_auth_capture = ClickpayHelper::supportAuthCapture($this->_code);
+
+
+        $tokenise_features = [
+            'tokenization',
 
             'subscriptions',
             'subscription_cancellation',
@@ -33,16 +36,24 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
             'subscription_reactivation',
             'subscription_amount_changes',
             'subscription_date_changes',
-            'subscription_payment_method_change',
-            'subscription_payment_method_change_customer',
-            'subscription_payment_method_change_admin',
             'multiple_subscriptions',
+            // 'subscription_payment_method_change',
+            // 'subscription_payment_method_change_customer',
+            // 'subscription_payment_method_change_admin',
+        ];
+
+        $this->supports = array(
+            'products',
+            'refunds',
 
             'pre-orders',
-            'tokenization',
             // 'token_editor',
             // 'add_payment_method',
         );
+
+        if ($this->_support_tokenise) {
+            $this->supports = array_merge($this->supports, $tokenise_features);
+        }
 
         // Method with all the options fields
         $this->init_form_fields();
@@ -53,7 +64,7 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
         $this->description = $this->get_option('description');
         $this->enabled = $this->get_option('enabled');
 
-        // CP
+        // PT
         $this->clickpay_endpoint = $this->get_option('endpoint');
         $this->merchant_id = $this->get_option('profile_id');
         $this->merchant_key = $this->get_option('server_key');
@@ -62,17 +73,23 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
 
         $this->order_status_success = $this->get_option('status_success');
         $this->order_status_failed  = $this->get_option('status_failed');
+        $this->trans_type = $this->get_option('trans_type', ClickpayEnum::TRAN_TYPE_SALE);
+        $this->order_status_auth_success = $this->get_option('status_auth_success', 'wc-on-hold');
 
         if ($this->_code == 'valu') {
             $this->valu_product_id = $this->get_option('valu_product_id');
         }
 
+        $this->enable_tokenise = $this->get_option('enable_tokenise') == 'yes';
+        $this->allow_associated_methods = $this->get_option('allow_associated_methods') == 'yes';
+
+
         // This action hook saves the settings
         add_action("woocommerce_update_options_payment_gateways_{$this->id}", array($this, 'process_admin_options'));
 
-        add_action('woocommerce_scheduled_subscription_payment_' . $this->id, array($this, 'scheduled_subscription_payment'), 10, 2);
-
         //
+
+        add_action('woocommerce_scheduled_subscription_payment_' . $this->id, array($this, 'scheduled_subscription_payment'), 10, 2);
 
         $this->tokenise_param = "wc-{$this->id}-new-payment-method";
         $this->token_id_param = "wc-{$this->id}-payment-token";
@@ -81,7 +98,7 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
         // add_action('wp_enqueue_scripts', array($this, 'payment_scripts'));
 
         // Register a webhook
-        // add_action('woocommerce_api_clickpay_callback', array($this, 'callback'));
+        // add_action('woocommerce_api_paytabs_callback', array($this, 'callback'));
 
         $this->checkCallback();
     }
@@ -120,7 +137,48 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
 
         $endpoints = ClickpayApi::getEndpoints();
 
-        $this->form_fields = array(
+        $addional_fields = [];
+
+        if ($this->_is_card_method) {
+            $addional_fields['allow_associated_methods'] = [
+                'title'       => __('Allow associated methods', 'ClickPay'),
+                'type'        => 'checkbox',
+                'description' => 'Accept all associated methods of the current payment method, do not limit to this one only.',
+                'default'     => 'yes'
+            ];
+        }
+
+        if ($this->_support_tokenise) {
+            $addional_fields['enable_tokenise'] = [
+                'title'       => __('Enable Tokenise', 'ClickPay'),
+                'type'        => 'checkbox',
+                'description' => 'Allow your customers to save their payment methods for later use.',
+                'default'     => 'yes'
+            ];
+        }
+        if ($this->_support_auth_capture) {
+            $addional_fields['trans_type'] = [
+                'title'       => __('Transaction Type', 'Clickpay'),
+                'label'       => __('Transaction Type', 'Clickpay'),
+                'type'        => 'select',
+                'description' => 'Set the transaction type to Auth or Sale',
+                'options'     => array(
+                    ClickpayEnum::TRAN_TYPE_SALE => __('Sale', 'ClickPay'),
+                    ClickpayEnum::TRAN_TYPE_AUTH => __('Auth', 'ClickPay'),
+                ),
+                'default'     => ClickpayEnum::TRAN_TYPE_SALE
+            ];
+
+            $addional_fields['status_auth_success'] = [
+                'title'       => __('Auth Order status', 'PayTabs'),
+                'type'        => 'select',
+                'description' => 'Set the Order status if the Auth succeed.',
+                'options'     => $orderStatuses,
+                'default'     => 'wc-on-hold'
+            ];
+        }
+
+        $fields = array(
             'enabled' => array(
                 'title'       => __('Enable/Disable', 'ClickPay'),
                 'label'       => __('Enable Payment Gateway.', 'ClickPay'),
@@ -129,7 +187,7 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
                 'default'     => 'no'
             ),
             'endpoint' => array(
-                'title'       => __('ClickPay endpoint region', 'ClickPay'),
+                'title'       => __('Clickpay endpoint region', 'ClickPay'),
                 'type'        => 'select',
                 'description' => 'Select your domain',
                 'options'     => $endpoints,
@@ -170,7 +228,7 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
                 'default'     => 'no'
             ),
             'status_success' => array(
-                'title'       => __('Success Order status', 'ClickPay'),
+                'title'       => __('Captured Order status', 'ClickPay'),
                 'type'        => 'select',
                 'description' => 'Set the Order status after successful payment. <br><strong>Warning</strong> Be very careful when you change the Default option because when you change it, you change the normal flow of the Order into the WooCommerce system, you may encounter some consequences based on the new value you set',
                 'options'     => $orderStatuses,
@@ -180,22 +238,49 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
                 'type'        => 'select',
                 'description' => 'Set the Order status after failed payment. <br><strong>Warning</strong> Be very careful when you change the Default option because when you change it, you change the normal flow of the Order into the WooCommerce system, you may encounter some consequences based on the new value you set',
                 'options'     => $orderStatuses,
-            ),
+            )
         );
+
+        $this->form_fields = array_merge($fields, $addional_fields);
     }
 
+    public function is_available()
+    {
+        if (is_add_payment_method_page()) {
+            if (!$this->supports('add_payment_method')) {
+                return false;
+            }
+        }
+
+        return parent::is_available();
+    }
 
     /**
-     *  There are no payment fields for ClickPay, but we want to show the description if set.
+     *  There are no payment fields for paytabs, but we want to show the description if set.
      **/
     function payment_fields()
     {
         if ($this->description) echo wpautop(wptexturize($this->description));
 
+        if (!$this->supports('tokenization') || !$this->enable_tokenise) {
+            return;
+        }
+
+         if (!is_checkout()) {
+            return;
+        }
+
         $this->tokenization_script();
         $this->saved_payment_methods();
-        $this->save_payment_method_checkbox();
+        //$this->save_payment_method_checkbox();
         // $this->form();
+
+        $has_subscription = class_exists('WC_Subscriptions_Cart') && WC_Subscriptions_Cart::cart_contains_subscription();
+        if ($has_subscription) {
+            echo wpautop('Will Save to Account');
+        } else {
+            $this->save_payment_method_checkbox();
+        }
     }
 
 
@@ -251,6 +336,7 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
     public function process_payment($order_id)
     {
         $order = wc_get_order($order_id);
+
         $_clickpayApi = ClickpayApi::getInstance($this->clickpay_endpoint, $this->merchant_id, $this->merchant_key);
 
 
@@ -287,24 +373,57 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
             ClickpayHelper::log("create PayPage failed for Order {$order_id}, [{$_logPaypage}], [{$_logParams}]", 3);
 
             $errorMessage = $message;
+
             wc_add_notice($errorMessage, 'error');
             return null;
         }
     }
 
 
+     /**
+     * return the last saved Token for the selected payment method
+     */
+    private function get_user_token($user_id)
+    {
+        /*
+        $token_default = WC_Payment_Tokens::get_customer_default_token($user_id);
+        if ($token_default) {
+            return $token_default;
+        }
+        */
+
+        $tokens = WC_Payment_Tokens::get_customer_tokens($user_id, $this->id);
+        if ($tokens && count($tokens) > 0) {
+            return end($tokens);
+        }
+
+        /*
+        $tokens = WC_Payment_Tokens::get_customer_tokens($user_id);
+        if ($tokens && count($tokens) > 0) {
+            return end($tokens);
+        }
+        */
+
+        // $tokens1 = WC_Payment_Tokens::get_order_tokens();
+
+        return false;
+    }
+
+
     public function scheduled_subscription_payment($amount_to_charge, $renewal_order)
     {
         $user_id = $renewal_order->get_user_id();
-        $tokenObj = WC_Payment_Tokens::get_customer_default_token($user_id);
+        $tokenObj = $this->get_user_token($user_id);
+
         if (!$tokenObj) {
             // ToDo: Try to fetch User's Tokens
-            clickpay_error_log("Subscription renewal error: The User {$user_id} does not have saved Token.");
+            $renewal_order->add_order_note("Renewal failed [No Saved payment token found]");
+            Cickpay_error_log("Subscription renewal error: The User {$user_id} does not have saved Tokens.");
             return false;
         }
         $values = $this->prepareOrder_Tokenised($renewal_order, $tokenObj, $amount_to_charge);
 
-        $_clickpayApi = ClickpayApi::getInstance($this->clickpay_endpoint, $this->merchant_id, $this->merchant_key);
+        $_clickpayApi = ClickpayApi::getInstance($this->Clickpay_endpoint, $this->merchant_id, $this->merchant_key);
         $paypage = $_clickpayApi->create_pay_page($values);
 
         $success = $paypage->success;
@@ -327,6 +446,8 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
 
     public function process_refund($order_id, $amount = null, $reason = '')
     {
+        global $woocommerce;
+
         if (!$amount) {
             return false;
         }
@@ -344,13 +465,14 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
 
         $pt_refundHolder = new ClickpayFollowupHolder();
         $pt_refundHolder
-            ->set02Transaction(ClickpayEnum::TRAN_TYPE_REFUND, ClickpayEnum::TRAN_CLASS_ECOM)
+            ->set02Transaction(PClickpayEnum::TRAN_TYPE_REFUND, ClickpayEnum::TRAN_CLASS_ECOM)
             ->set03Cart($order_id, $currency, $amount, $reason)
-            ->set30TransactionInfo($transaction_id);
+            ->set30TransactionInfo($transaction_id)
+            ->set99PluginInfo('WooCommerce', $woocommerce->version, CLICKPAY_PAYPAGE_VERSION);
 
         $values = $pt_refundHolder->pt_build();
 
-        $_clickpayApi = ClickpayApi::getInstance($this->clickpay_endpoint, $this->merchant_id, $this->merchant_key);
+        $_clickpayApi = ClickpayApi::getInstance($this->Clickpay_endpoint, $this->merchant_id, $this->merchant_key);
         $refundRes = $_clickpayApi->request_followup($values);
 
         $success = $refundRes->success;
@@ -360,9 +482,9 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
         $order->add_order_note('Refund status: ' . $message, true);
 
         if ($success) {
-            $order->update_status('refunded', __('Payment Refunded: ', 'ClickPay'));
+            $order->update_status('refunded', __('Payment Refunded: ', 'Clickpay'));
         } else if ($pending_success) {
-            $order->update_status('on-hold', __('Payment Pending Refund: ', 'ClickPay'));
+            $order->update_status('on-hold', __('Payment Pending Refund: ', 'Clickpay'));
         }
 
         return $success;
@@ -371,7 +493,7 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
 
     private function checkCallback()
     {
-        // CP
+        // PT
         $param_paymentRef = 'tranRef';
 
         if (isset($_POST[$param_paymentRef], $_POST['cartId'])) {
@@ -401,9 +523,9 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
     {
         if (!$payment_reference) return;
 
-        $_clickpayApi = ClickpayApi::getInstance($this->clickpay_endpoint, $this->merchant_id, $this->merchant_key);
+        $_clickpayApi = ClickpayApi::getInstance($this->Clickpay_endpoint, $this->merchant_id, $this->merchant_key);
         $result = $_clickpayApi->verify_payment($payment_reference);
-        // $valid_redirect = $_clickpayApi->is_valid_redirect($_POST);
+        // $valid_redirect = $_paytabsApi->is_valid_redirect($_POST);
 
         $this->validate_payment($result, $order_id, $order);
     }
@@ -415,6 +537,7 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
         $message = $result->message;
         $orderId = @$result->reference_no;
         $transaction_ref = @$result->transaction_id;
+        $transaction_type = $result->tran_type;
         $token = @$result->token;
 
         $_logVerify = json_encode($result);
@@ -434,7 +557,7 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
         }
 
         if ($success) {
-            return $this->orderSuccess($order, $transaction_ref, $token, $message, $is_tokenise);
+            return $this->orderSuccess($order, $transaction_ref, $transaction_type, $token, $message, $is_tokenise);
 
             // exit;
         } else {
@@ -452,14 +575,14 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
     /**
      * Payment successed => Order status change to success
      */
-    private function orderSuccess($order, $transaction_id, $token_str, $message, $is_tokenise)
+    private function orderSuccess($order, $transaction_id, $transaction_type, $token_str, $message, $is_tokenise)
     {
         global $woocommerce;
 
         $order->payment_complete($transaction_id);
         // $order->reduce_order_stock();
 
-        $this->setNewStatus($order, true);
+        $this->setNewStatus($order, true, $transaction_type = null);
 
         $woocommerce->cart->empty_cart();
 
@@ -467,19 +590,7 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
         // wc_add_notice(__('Thank you for shopping with us. Your account has been charged and your transaction is successful. We will be shipping your order to you soon.', 'woocommerce'), 'success');
 
         if ($token_str) {
-            $token = new WC_Payment_Token_ClickPay();
-
-            $token->set_token($token_str);
-            $token->set_tran_ref($transaction_id);
-
-            $token->set_gateway_id($this->id);
-            $user_id = $order->get_user_id();
-            $token->set_user_id($user_id);
-
-            $tokeId = $token->save();
-
-            $order->add_payment_token($token);
-            $order->save();
+          $this->saveToken($order, $token_str, $transaction_id);
         }
 
         $redirect_url = $this->get_return_url($order);
@@ -510,12 +621,16 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
     }
 
 
-    private function setNewStatus($order, $isSuccess)
+    private function setNewStatus($order, $isSuccess, $transaction_type = null)
     {
-        if ($isSuccess) {
-            $configStatus = $this->order_status_success;
-            $defaultStatus = 'wc-processing';
-        } else {
+       if ($isSuccess) {
+            if (ClickpayEnum::TranIsAuth($transaction_type)) {
+                $configStatus = $this->order_status_auth_success;
+                $defaultStatus = 'wc-processing';
+            } elseif (ClickpayEnum::TranIsSale($transaction_type)) {
+                $configStatus = $this->order_status_success;
+                $defaultStatus = 'wc-processing';
+            }else {
             $configStatus = $this->order_status_failed;
             $defaultStatus = 'wc-failed';
         }
@@ -539,8 +654,8 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
      */
     private function prepareOrder($order)
     {
-        // CP
-        // global $woocommerce;
+        // PT
+        global $woocommerce;
 
         // $order->add_order_note();
 
@@ -563,7 +678,7 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
 
         // $siteUrl = get_site_url();
         $return_url = $order->get_checkout_payment_url(true);
-        // $return_url = "$siteUrl?wc-api=Clickpay_callback&order={$order->id}";
+        // $return_url = "$siteUrl?wc-api=paytabs_callback&order={$order->id}";
 
         $products = $order->get_items();
         $items_arr = array_map(function ($p) {
@@ -572,7 +687,7 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
 
         $cart_desc = implode(', ', $items_arr);
 
-        // $cdetails = ClickpayHelper::getCountryDetails($order->get_billing_country());
+        // $cdetails = PaytabsHelper::getCountryDetails($order->get_billing_country());
         // $phoneext = $cdetails['phone'];
 
         $telephone = $order->get_billing_phone();
@@ -604,8 +719,8 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
 
         $holder = new ClickpayRequestHolder();
         $holder
-            ->set01PaymentCode($this->_code)
-            ->set02Transaction(ClickpayEnum::TRAN_TYPE_SALE, ClickpayEnum::TRAN_CLASS_ECOM)
+            ->set01PaymentCode($this->_code, $this->allow_associated_methods, $currency)
+            ->set02Transaction(PaytabsEnum::TRAN_TYPE_SALE, ClickpayEnum::TRAN_CLASS_ECOM)
             ->set03Cart($order->get_id(), $currency, $amount, $cart_desc)
             ->set04CustomerDetails(
                 $nameBilling,
@@ -642,7 +757,8 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
                 null
             )
             ->set08Lang($lang)
-            ->set10Tokenise($tokenise);
+            ->set10Tokenise($tokenise)
+            ->set99PluginInfo('WooCommerce', $woocommerce->version, CLICKPAY_PAYPAGE_VERSION);
 
         if ($this->_code == 'valu') {
             // $holder->set20ValuParams($this->valu_product_id, 0);
@@ -659,8 +775,8 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
      */
     private function prepareOrder2($order)
     {
-        // CP
-        // global $woocommerce;
+        // PT
+        global $woocommerce;
 
         // $order->add_order_note();
 
@@ -680,7 +796,7 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
 
         // $siteUrl = get_site_url();
         $return_url = $order->get_checkout_payment_url(true);
-        // $return_url = "$siteUrl?wc-api=Clickpay_callback&order={$order->id}";
+        // $return_url = "$siteUrl?wc-api=paytabs_callback&order={$order->id}";
 
         $products = $order->get_items();
         $items_arr = array_map(function ($p) {
@@ -689,7 +805,7 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
 
         $cart_desc = implode(', ', $items_arr);
 
-        // $cdetails = ClickpayHelper::getCountryDetails($order->billing_country);
+        // $cdetails = PaytabsHelper::getCountryDetails($order->billing_country);
         // $phoneext = $cdetails['phone'];
 
         $telephone = $order->billing_phone;
@@ -712,7 +828,7 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
         $holder = new ClickpayRequestHolder();
         $holder
             ->set01PaymentCode($this->_code)
-            ->set02Transaction(ClickpayEnum::TRAN_TYPE_SALE, ClickpayEnum::TRAN_CLASS_ECOM)
+            ->set02Transaction($this->trans_type, ClickpayEnum::TRAN_CLASS_ECOM)
             ->set03Cart($order->id, $currency, $amount, $cart_desc)
             ->set04CustomerDetails(
                 $order->get_formatted_billing_full_name(),
@@ -748,7 +864,8 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
                 $return_url,
                 null
             )
-            ->set08Lang($lang);
+            ->set08Lang($lang)
+            ->set99PluginInfo('WooCommerce', $woocommerce->version, CLICKPAY_PAYPAGE_VERSION);
 
         if ($this->_code == 'valu') {
             // $holder->set20ValuParams($this->valu_product_id, 0);
@@ -763,6 +880,8 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
 
     private function prepareOrder_Tokenised($order, $tokenObj, $amount_to_charge = null)
     {
+        global $woocommerce;
+
         $amount = $order->get_total();
         if ($amount_to_charge) {
             $amount = $amount_to_charge;
@@ -787,9 +906,10 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
 
         $holder = new ClickpayTokenHolder();
         $holder
-            ->set02Transaction(ClickpayEnum::TRAN_TYPE_SALE, ClickpayEnum::TRAN_CLASS_RECURRING)
+            ->set02Transaction($this->trans_type, ClickpayEnum::TRAN_CLASS_RECURRING)
             ->set03Cart($order->get_id(), $currency, $amount, $cart_desc)
-            ->set20Token($token, $tran_ref);
+            ->set20Token($tran_ref, $token)
+            ->set99PluginInfo('WooCommerce', $woocommerce->version, CLICKPAY_PAYPAGE_VERSION);
 
         if ($this->_code == 'valu') {
             // $holder->set20ValuParams($this->valu_product_id, 0);
@@ -805,5 +925,20 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
     private function getPaymentMethod($order)
     {
         return WooCommerce2 ? $order->payment_method : $order->get_payment_method();
+    }
+
+    private function saveToken($order, $token_str, $transaction_id)
+    {
+        $user_id = $order->get_user_id();
+
+        $token = new WC_Payment_Token_Paytabs();
+        $token->set_token($token_str);
+        $token->set_tran_ref($transaction_id);
+        $token->set_gateway_id($this->id);
+        $token->set_user_id($user_id);
+        $tokeId = $token->save();
+
+        $order->add_payment_token($token);
+        $order->save();
     }
 }
