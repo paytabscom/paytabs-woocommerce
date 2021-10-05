@@ -2,10 +2,10 @@
 
 /**
  * PayTabs v2 PHP SDK
- * Version: 2.3.3
+ * Version: 2.4.0
  */
 
-define('PAYTABS_SDK_VERSION', '2.3.3');
+define('PAYTABS_SDK_VERSION', '2.4.0');
 
 
 abstract class PaytabsHelper
@@ -234,6 +234,22 @@ abstract class PaytabsEnum
     {
         return strcasecmp($tran_type, PaytabsEnum::TRAN_TYPE_REGISTER) == 0;
     }
+
+    static function TranIsCapture($tran_type)
+    {
+        return strcasecmp($tran_type, PaytabsEnum::TRAN_TYPE_CAPTURE) == 0;
+    }
+
+    static function TranIsVoid($tran_type)
+    {
+        return strcasecmp($tran_type, PaytabsEnum::TRAN_TYPE_VOID) == 0;
+    }
+
+    static function TranIsRefund($tran_type)
+    {
+        return strcasecmp($tran_type, PaytabsEnum::TRAN_TYPE_REFUND) == 0;
+    }
+
 
     //
 
@@ -855,7 +871,11 @@ class PaytabsApi
 
     function is_valid_ipn($data, $signature, $serverKey = false)
     {
-        $server_key = $serverKey ?? $this->server_key;
+        if ($serverKey) {
+            $server_key = $serverKey;
+        } else {
+            $server_key = $this->server_key;
+        }
 
         return $this->is_genuine($data, $signature, $server_key);
     }
@@ -878,6 +898,39 @@ class PaytabsApi
 
 
     /** start: Local calls */
+
+    public function read_response($is_ipn)
+    {
+        if ($is_ipn) {
+            $param_tranRef = 'tran_ref';
+            $param_cartId = 'cart_id';
+
+            $response = file_get_contents('php://input');
+            $data = json_decode($response);
+
+            $headers = getallheaders();
+            $signature = $headers['Signature'];
+            // $client_key = $headers['Client-Key'];
+
+            $is_valid = $this->is_valid_ipn($response, $signature, false);
+        } else {
+            $param_tranRef = 'tranRef';
+            $param_cartId = 'cartId';
+
+            $data = $_POST;
+
+            $is_valid = $this->is_valid_redirect($data);
+        }
+
+        if (!$is_valid) {
+            PaytabsHelper::log("Paytabs Admin: Invalid Signature", 3);
+            return false;
+        }
+
+        $response_data = $is_ipn ? $this->enhanceVerify($data) : $this->enhanceReturn($data);
+
+        return $response_data;
+    }
 
     /**
      *
@@ -920,6 +973,29 @@ class PaytabsApi
 
         $_verify->reference_no = @$verify->cart_id;
         $_verify->transaction_id = @$verify->tran_ref;
+
+        return $_verify;
+    }
+
+    public function enhanceReturn($return_data)
+    {
+        $_verify = $return_data;
+
+        if (!$return_data) {
+            $_verify = new stdClass();
+            $_verify->success = false;
+            $_verify->message = 'Verifying paytabs payment failed (locally)';
+        } else {
+            $_verify = (object)$return_data;
+
+            $response_status = $return_data['respStatus'];
+            $_verify->success = $response_status == "A";
+
+            $_verify->message = $return_data['respMessage'];
+
+            $_verify->transaction_id = $return_data['tranRef'];
+            $_verify->reference_no = $return_data['cartId'];
+        }
 
         return $_verify;
     }

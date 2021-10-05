@@ -13,6 +13,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
     //
 
+    const PT_HANDLED = '_pt_handled';
+
+    //
+
     public function __construct()
     {
         $this->id = "paytabs_{$this->_code}"; // payment gateway plugin ID
@@ -100,8 +104,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         // Register a webhook
         // add_action('woocommerce_api_paytabs_callback', array($this, 'callback'));
+        add_action('woocommerce_api_wc_gateway_' . $this->id, array($this, 'ipn_response'));
+        add_action('woocommerce_api_wc_gateway_r_' . $this->id, array($this, 'return_response'));
 
-        $this->checkCallback();
+        // $this->checkCallback();
     }
 
 
@@ -360,8 +366,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $is_completed = @$paypage->is_completed;
 
         if ($success) {
+            $this->set_handled($order_id, false);
             if ($is_completed) {
-                return $this->validate_payment($paypage, $order_id, $order, true);
+                return $this->validate_payment($paypage, $order, true, false);
             } else {
                 $payment_url = $paypage->payment_url;
 
@@ -373,7 +380,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         } else {
             $_logPaypage = json_encode($paypage);
             $_logParams = json_encode($values);
-            PaytabsHelper::log("create PayPage failed for Order {$order_id}, [{$_logPaypage}], [{$_logParams}]", 3);
+            PaytabsHelper::log("Create PayPage failed, Order {$order_id}, [{$_logPaypage}], [{$_logParams}]", 3);
 
             $errorMessage = $message;
 
@@ -491,91 +498,120 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     }
 
 
-    private function checkCallback()
+    public function return_response()
     {
-        // PT
-        $param_paymentRef = 'tranRef';
+        PaytabsHelper::log("Return fired", 3);
+        $this->handle_response(false);
+    }
 
-        if (isset($_POST[$param_paymentRef], $_POST['cartId'])) {
-            $payment_reference = $_POST[$param_paymentRef];
-            $orderId = $_POST['cartId'];
+    public function ipn_response()
+    {
+        PaytabsHelper::log("IPN fired", 3);
+        $this->handle_response(true);
+    }
 
-            // $orderId = wc_get_order_id_by_order_key($key);
-            $order = wc_get_order($orderId);
-            if ($order) {
+
+    private function handle_response($is_ipn)
+    {
+        $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
+
+        $response_data = $_paytabsApi->read_response($is_ipn);
+        if (!$response_data) {
+            return;
+        }
+
+        $orderId = @$response_data->reference_no;
+
+        $handler = $is_ipn ? 'IPN' : 'Return';
+
+        $order = wc_get_order($orderId);
+        if ($order) {
+            $payment_id = $this->getPaymentMethod($order);
+            if ($payment_id == $this->id) {
+
+                $pt_reach = false;
                 if ($order->needs_payment()) {
-                    $payment_id = $this->getPaymentMethod($order);
-                    if ($payment_id == $this->id) {
-                        $this->callback($payment_reference, $orderId, $order);
+                    if (!$this->pt_handled($order)) {
+                        $pt_reach = true;
+                        $this->validate_payment($response_data, $order, false, $is_ipn);
+                    } else {
+                        PaytabsHelper::log("{$handler} handling skipped for Order {$order->get_id()}", 3);
                     }
+                } else {
+                    PaytabsHelper::log("{$handler} Callback failed, Order {$orderId}, No need for Payment", 3);
+                }
+
+                if (!$is_ipn && !$pt_reach) {
+                    wp_redirect($order->get_checkout_order_received_url());
                 }
             } else {
-                PaytabsHelper::log("callback failed for Order {$orderId}, payemnt_reference [{$payment_reference}]", 3);
+                PaytabsHelper::log("{$handler} Callback failed, Order {$orderId}, Payment method mismatch", 3);
             }
+        } else {
+            $json_response = json_encode($response_data);
+            PaytabsHelper::log("{$handler} Callback failed, Order {$orderId}, payment response [{$json_response}]", 3);
         }
     }
 
 
     /**
-     * In case you need a webhook, like PayPal IPN etc
+     * In case you need a webhook, like IPN etc
      */
-    public function callback($payment_reference, $order_id, $order)
+    public function callback($payment_reference, $order, $is_ipn)
     {
-        if (!$payment_reference) return;
-
         $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
         $result = $_paytabsApi->verify_payment($payment_reference);
         // $valid_redirect = $_paytabsApi->is_valid_redirect($_POST);
 
-        $this->validate_payment($result, $order_id, $order);
+        $this->validate_payment($result, $order, false, $is_ipn);
     }
 
 
-    private function validate_payment($result, $order_id, $order, $is_tokenise = false)
+    private function validate_payment($result, $order, $is_tokenise = false, $is_ipn = false)
     {
+        $order_id = $order->get_id();
+        $handler = $is_ipn ? 'IPN' : 'Return';
+
+        $this->set_handled($order_id);
+        PaytabsHelper::log("{$handler} handling the Order {$order_id}", 3);
+
         $success = $result->success;
         $message = $result->message;
         $orderId = @$result->reference_no;
         $transaction_ref = @$result->transaction_id;
-        $transaction_type = $result->tran_type;
+        $transaction_type = @$result->tran_type;
         $token = @$result->token;
 
-        $_logVerify = json_encode($result);
-
-        if (!$orderId) {
-            PaytabsHelper::log("callback failed for Order {$order_id}, response [{$_logVerify}]", 3);
-            wc_add_notice($message, 'error');
-
-            // return false;
-            // wp_redirect(get_site_url());
-            return;
-        }
-
-        if ($orderId != $order_id) {
-            PaytabsHelper::log("callback failed for Order {$order_id}, Order mismatch [{$_logVerify}]", 3);
-            return;
-        }
+        //
 
         if ($success) {
-            return $this->orderSuccess($order, $transaction_ref, $transaction_type, $token, $message, $is_tokenise);
-
-            // exit;
+            return $this->orderSuccess($order, $transaction_ref, $transaction_type, $token, $message, $is_tokenise, $is_ipn);
         } else {
-            $_data = WooCommerce2 ? $order->data : $order->get_data();
-            $_logOrder = (json_encode($_data));
-            PaytabsHelper::log("callback failed for Order {$order_id}, response [{$_logVerify}], Order [{$_logOrder}]", 3);
+            $_logVerify = json_encode($result);
+            // $_data = WooCommerce2 ? $order->data : $order->get_data();
+            // $_logOrder = (json_encode($_data));
+            PaytabsHelper::log("{$handler} Validating failed, Order {$order_id}, response [{$_logVerify}]", 3);
 
             $this->orderFailed($order, $message);
-
-            // exit;
         }
+    }
+
+    private function pt_handled($order)
+    {
+        $pt_handled = (bool) get_post_meta($order->get_id(), $this::PT_HANDLED, true);
+        return $pt_handled;
+    }
+
+    private function set_handled($order_id, $handled = true)
+    {
+        update_post_meta($order_id, $this::PT_HANDLED, $handled);
     }
 
 
     /**
      * Payment successed => Order status change to success
      */
-    private function orderSuccess($order, $transaction_id, $transaction_type, $token_str, $message, $is_tokenise)
+    private function orderSuccess($order, $transaction_id, $transaction_type, $token_str, $message, $is_tokenise, $is_ipn)
     {
         global $woocommerce;
 
@@ -591,6 +627,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         if ($token_str) {
             $this->saveToken($order, $token_str, $transaction_id);
+        }
+
+        if ($is_ipn) {
+            return;
         }
 
         $redirect_url = $this->get_return_url($order);
@@ -633,19 +673,30 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $this->setNewStatus($order, false);
 
-        // wp_redirect($order->get_cancel_order_url());
+        wp_redirect($order->get_checkout_payment_url());
     }
 
 
     private function setNewStatus($order, $isSuccess, $transaction_type = null)
     {
         if ($isSuccess) {
+            if (!$transaction_type) $transaction_type = $this->trans_type;
+
             if (PaytabsEnum::TranIsAuth($transaction_type)) {
                 $configStatus = $this->order_status_auth_success;
                 $defaultStatus = 'wc-processing';
             } elseif (PaytabsEnum::TranIsSale($transaction_type)) {
                 $configStatus = $this->order_status_success;
                 $defaultStatus = 'wc-processing';
+            } elseif (PaytabsEnum::TranIsCapture($transaction_type)) {
+                $configStatus = $this->order_status_success;
+                $defaultStatus = 'wc-processing';
+            } elseif (PaytabsEnum::TranIsVoid($transaction_type)) {
+                $configStatus = 'wc-cancelled';
+                $defaultStatus = 'wc-cancelled';
+            } elseif (PaytabsEnum::TranIsRefund($transaction_type)) {
+                $configStatus = 'wc-refunded';
+                $defaultStatus = 'wc-refunded';
             }
         } else {
             $configStatus = $this->order_status_failed;
@@ -694,8 +745,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         //
 
         // $siteUrl = get_site_url();
-        $return_url = $order->get_checkout_payment_url(true);
-        // $return_url = "$siteUrl?wc-api=paytabs_callback&order={$order->id}";
+        // $return_url = $order->get_checkout_payment_url(true);
+        $return_url = add_query_arg('wc-api', 'wc_gateway_r_' . $this->id, home_url('/'));
+
+        $callback_url = add_query_arg('wc-api', 'wc_gateway_' . $this->id, home_url('/'));
 
         $products = $order->get_items();
         $items_arr = array_map(function ($p) {
@@ -771,7 +824,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $holder->set06HideShipping($this->hide_shipping)
             ->set07URLs(
                 $return_url,
-                null
+                $callback_url
             )
             ->set08Lang($lang)
             ->set10Tokenise($tokenise)
@@ -781,7 +834,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             // $holder->set20ValuParams($this->valu_product_id, 0);
         }
 
-        $post_arr = $holder->pt_build(true);
+        $post_arr = $holder->pt_build();
 
         return $post_arr;
     }
@@ -888,7 +941,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             // $holder->set20ValuParams($this->valu_product_id, 0);
         }
 
-        $post_arr = $holder->pt_build(true);
+        $post_arr = $holder->pt_build();
 
         return $post_arr;
     }
@@ -932,7 +985,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             // $holder->set20ValuParams($this->valu_product_id, 0);
         }
 
-        $post_arr = $holder->pt_build(true);
+        $post_arr = $holder->pt_build();
 
         return $post_arr;
     }
