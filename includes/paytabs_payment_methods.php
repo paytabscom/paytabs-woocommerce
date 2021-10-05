@@ -865,8 +865,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         //
 
         // $siteUrl = get_site_url();
-        $return_url = $order->get_checkout_payment_url(true);
-        // $return_url = "$siteUrl?wc-api=paytabs_callback&order={$order->id}";
+        $return_url = add_query_arg('wc-api', 'wc_gateway_r_' . $this->id, home_url('/'));
+
+        $callback_url = add_query_arg('wc-api', 'wc_gateway_' . $this->id, home_url('/'));
 
         $products = $order->get_items();
         $items_arr = array_map(function ($p) {
@@ -932,7 +933,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $holder->set06HideShipping($this->hide_shipping)
             ->set07URLs(
                 $return_url,
-                null
+                $callback_url
             )
             ->set08Lang($lang)
             ->set99PluginInfo('WooCommerce', $woocommerce->version, PAYTABS_PAYPAGE_VERSION);
