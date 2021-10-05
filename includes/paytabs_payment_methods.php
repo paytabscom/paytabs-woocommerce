@@ -362,7 +362,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         if ($success) {
             if ($is_completed) {
-                return $this->validate_payment($paypage, $order, true);
+                return $this->validate_payment($paypage, $order, true, false);
             } else {
                 $payment_url = $paypage->payment_url;
 
@@ -528,7 +528,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $result = $_paytabsApi->verify_payment($payment_reference);
         // $valid_redirect = $_paytabsApi->is_valid_redirect($_POST);
 
-        $this->validate_payment($result, $order, $is_ipn);
+        $this->validate_payment($result, $order, false, $is_ipn);
     }
 
 
@@ -570,7 +570,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $message = $result->message;
         $orderId = @$result->reference_no;
         $transaction_ref = @$result->transaction_id;
-        $transaction_type = $result->tran_type;
+        $transaction_type = @$result->tran_type;
         $token = @$result->token;
 
         $_logVerify = json_encode($result);
@@ -677,6 +677,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     private function setNewStatus($order, $isSuccess, $transaction_type = null)
     {
         if ($isSuccess) {
+            if (!$transaction_type) $transaction_type = $this->trans_type;
+
             if (PaytabsEnum::TranIsAuth($transaction_type)) {
                 $configStatus = $this->order_status_auth_success;
                 $defaultStatus = 'wc-processing';
@@ -828,7 +830,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             // $holder->set20ValuParams($this->valu_product_id, 0);
         }
 
-        $post_arr = $holder->pt_build(true);
+        $post_arr = $holder->pt_build();
 
         return $post_arr;
     }
@@ -935,7 +937,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             // $holder->set20ValuParams($this->valu_product_id, 0);
         }
 
-        $post_arr = $holder->pt_build(true);
+        $post_arr = $holder->pt_build();
 
         return $post_arr;
     }
@@ -979,7 +981,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             // $holder->set20ValuParams($this->valu_product_id, 0);
         }
 
-        $post_arr = $holder->pt_build(true);
+        $post_arr = $holder->pt_build();
 
         return $post_arr;
     }
