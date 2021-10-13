@@ -72,6 +72,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $this->merchant_id = $this->get_option('profile_id');
         $this->merchant_key = $this->get_option('server_key');
 
+        $this->always_tokenise = $this->get_option('always_tokenise') == 'yes';
         $this->hide_shipping = $this->get_option('hide_shipping') == 'yes';
 
         $this->order_status_success = $this->get_option('status_success');
@@ -161,6 +162,13 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 'type'        => 'checkbox',
                 'description' => 'Allow your customers to save their payment methods for later use.',
                 'default'     => 'yes'
+            ];
+            $addional_fields['always_tokenise'] = [
+                'title'       => __('Always tokenise', 'PayTabs'),
+                'label'       => __('Always tokenise the payments', 'PayTabs'),
+                'type'        => 'checkbox',
+                'description' => 'Enable if you wish to always tokenise the customers payment.',
+                'default'     => 'no'
             ];
         }
 
@@ -727,8 +735,12 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         // $order->add_order_note();
 
-        $is_subscription = $this->has_subscription($order->get_id());
-        $tokenise = $this->is_tokenise() || $is_subscription;
+        if ($this->always_tokenise) {
+            $tokenise = true;
+        } else {
+            $is_subscription = $this->has_subscription($order->get_id());
+            $tokenise = $this->is_tokenise() || $is_subscription;
+        }
 
         $total = $order->get_total();
         // $discount = $order->get_total_discount();
@@ -850,8 +862,12 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         // $order->add_order_note();
 
-        $is_subscription = $this->has_subscription($order->get_id());
-        $tokenise = $this->is_tokenise() || $is_subscription;
+        if ($this->always_tokenise) {
+            $tokenise = true;
+        } else {
+            $is_subscription = $this->has_subscription($order->get_id());
+            $tokenise = $this->is_tokenise() || $is_subscription;
+        }
 
         $total = $order->get_total();
         // $discount = $order->get_total_discount();

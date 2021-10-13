@@ -5,10 +5,10 @@
  */
 
 /**
- * Plugin Name:   PayTabs - WooCommerce Payment Gateway
+ * Plugin Name:   PayTabs - WooCommerce Payment Gateway (Alwayes Tokenise)
  * Plugin URI:    https://paytabs.com/
- * Description:   PayTabs is a <strong>3rd party payment gateway</strong>. Ideal payment solutions for your internet business.
- * Version:       4.6.3
+ * Description:   (Custom) PayTabs is a <strong>3rd party payment gateway</strong>. Ideal payment solutions for your internet business.
+ * Version:       4.6.3-2
  * Requires PHP:  7.0
  * Author:        PayTabs
  * Author URI:    w.kammoun@paytabs.com
