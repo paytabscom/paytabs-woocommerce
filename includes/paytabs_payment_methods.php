@@ -850,6 +850,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         // $order->add_order_note();
 
+        $is_subscription = $this->has_subscription($order->get_id());
+        $tokenise = $this->is_tokenise() || $is_subscription;
+
         $total = $order->get_total();
         // $discount = $order->get_total_discount();
         // $shipping = $order->get_total_shipping();
@@ -936,6 +939,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 $callback_url
             )
             ->set08Lang($lang)
+            ->set10Tokenise($tokenise)
             ->set99PluginInfo('WooCommerce', $woocommerce->version, PAYTABS_PAYPAGE_VERSION);
 
         if ($this->_code == 'valu') {
