@@ -107,6 +107,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         add_action('woocommerce_api_wc_gateway_' . $this->id, array($this, 'ipn_response'));
         add_action('woocommerce_api_wc_gateway_r_' . $this->id, array($this, 'return_response'));
 
+        add_action('woocommerce_order_status_completed', array($this, 'process_capture'),10,1);
+
         // $this->checkCallback();
     }
 
@@ -116,7 +118,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
      * "icons" folder must contains .png file named like the "code" param of the payment method
      * example: stcpay.png, applepay.png ...
      * @return string
-     */
+ */
     private function getIcon()
     {
         $icon_name = $this->_icon ?? "{$this->_code}.png";
@@ -496,6 +498,61 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         return $success;
     }
+
+    public  function process_capture($order_id)
+    {
+        global $woocommerce;
+
+        $order = wc_get_order($order_id);
+        $amount = $order->get_total();
+        $transaction_id = $order->get_transaction_id();
+
+        if (!$transaction_id) {
+            return false;
+        }
+        
+
+        // PT
+        $currency = $order->get_currency();
+
+        //$order_id = $order->get_id();
+        $reason = 'Admin request';
+
+        $payment_id = $this->getPaymentMethod($order);
+        if ($payment_id == $this->id)
+        {
+            $pt_capHolder = new PaytabsFollowupHolder();
+            $pt_capHolder
+                ->set02Transaction(PaytabsEnum::TRAN_TYPE_CAPTURE, PaytabsEnum::TRAN_CLASS_ECOM)
+                ->set03Cart($order_id, $currency, $amount, $reason)
+                ->set30TransactionInfo($transaction_id)
+                ->set99PluginInfo('WooCommerce', $woocommerce->version, PAYTABS_PAYPAGE_VERSION);
+
+            $values = $pt_capHolder->pt_build();
+
+            $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
+            $capRes = $_paytabsApi->request_followup($values);
+
+            $success = $capRes->success;
+            $message = $capRes->message;
+            $pending_success = $capRes->pending_success;
+
+            $order->add_order_note('Capture status: ' . $message, true);
+
+            if ($success) {
+                //$order->update_status('Completed', __('Payment captured: ', 'PayTabs'));
+            } else if ($pending_success) {
+                $order->update_status('on-hold', __('Payment Pending captured: ', 'PayTabs'));
+            }
+
+            return $success;
+        }
+        else
+        {
+            PaytabsHelper::log("Capture failed, Order {$orderId}, Payment method mismatch", 3);
+        }
+        
+} 
 
 
     public function return_response()
