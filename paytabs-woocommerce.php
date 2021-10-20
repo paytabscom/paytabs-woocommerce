@@ -12,7 +12,7 @@
  * Requires PHP:  7.0
  * Author:        PayTabs
  * Author URI:    w.kammoun@paytabs.com
- * Revision Date: 13/October/2021
+ * Revision Date: 20/October/2021
  */
 
 if (!function_exists('add_action')) {
