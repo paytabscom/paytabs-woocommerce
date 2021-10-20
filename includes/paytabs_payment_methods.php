@@ -15,6 +15,14 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
     const PT_HANDLED = '_pt_handled';
     const PT_TRAN_TYPE = '_pt_transaction_type';
+    const PT_TRAN_REF_MODE = [
+        PaytabsEnum::TRAN_TYPE_SALE => '_pt_tran_ref_sale',
+        PaytabsEnum::TRAN_TYPE_AUTH => '_pt_tran_ref_auth',
+        PaytabsEnum::TRAN_TYPE_VOID => '_pt_tran_ref_void',
+        PaytabsEnum::TRAN_TYPE_CAPTURE  => '_pt_tran_ref_capture',
+        PaytabsEnum::TRAN_TYPE_REFUND   => '_pt_tran_ref_refund',
+        PaytabsEnum::TRAN_TYPE_REGISTER => '_pt_tran_ref_register',
+    ];
 
     //
 
@@ -443,6 +451,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         if ($success) {
             // $this->validate_payment($paypage, $renewal_order->get_id(), $renewal_order, true);
             $renewal_order->payment_complete($transaction_id);
+            $this->pt_set_tran_ref($renewal_order, PaytabsEnum::TRAN_TYPE_SALE, $transaction_id);
             return true;
         } else {
             $renewal_order->add_order_note("Renewal failed [{$message}]");
@@ -485,6 +494,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
         $refundRes = $_paytabsApi->request_followup($values);
 
+        $tran_ref = @$refundRes->tran_ref;
         $success = $refundRes->success;
         $message = $refundRes->message;
         $pending_success = $refundRes->pending_success;
@@ -493,6 +503,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         if ($success) {
             $order->update_status('refunded', __('Payment Refunded: ', 'PayTabs'));
+            $this->pt_set_tran_ref($order, PaytabsEnum::TRAN_TYPE_REFUND, $tran_ref);
         } else if ($pending_success) {
             $order->update_status('on-hold', __('Payment Pending Refund: ', 'PayTabs'));
         }
@@ -547,6 +558,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
         $capRes = $_paytabsApi->request_followup($values);
 
+        $tran_ref = @$capRes->tran_ref;
         $success = $capRes->success;
         $message = $capRes->message;
         // $pending_success = $capRes->pending_success;
@@ -554,7 +566,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $order->add_order_note('Capture status: ' . $message, true);
 
         if ($success) {
-            //$order->update_status('Completed', __('Payment captured: ', 'PayTabs'));
+            $this->pt_set_tran_ref($order, PaytabsEnum::TRAN_TYPE_CAPTURE, $tran_ref);
+            $order->set_transaction_id($tran_ref);
+            $order->save();
         } else {
             PaytabsHelper::log("Capture failed, {$order_id} - {$message}", 3);
             $order->update_status('on-hold', __('Capture failed: ' . $message, 'PayTabs'));
@@ -646,6 +660,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $orderId = @$result->reference_no;
         $transaction_ref = @$result->transaction_id;
         $transaction_type = @$result->tran_type;
+        if ($transaction_type) $transaction_type = strtolower($transaction_type);
         $token = @$result->token;
 
         //
@@ -686,6 +701,21 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         return $transaction_type;
     }
 
+    private function pt_set_tran_ref($order, $transaction_type, $transaction_id)
+    {
+        if (!$transaction_type) $transaction_type = $this->trans_type;
+
+        $this->pt_set_tran_type($order, $transaction_type);
+        update_post_meta($order->get_id(), $this::PT_TRAN_REF_MODE[$transaction_type], $transaction_id);
+    }
+
+    private function pt_get_tran_ref($order_id, $transaction_type)
+    {
+        $transaction_ref = get_post_meta($order_id, $this::PT_TRAN_REF_MODE[$transaction_type]);
+
+        return $transaction_ref;
+    }
+
 
     /**
      * Payment successed => Order status change to success
@@ -697,7 +727,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $order->payment_complete($transaction_id);
         // $order->reduce_order_stock();
 
-        $this->pt_set_tran_type($order, $transaction_type);
+        $this->pt_set_tran_ref($order, $transaction_type, $transaction_id);
 
         $this->setNewStatus($order, true, $transaction_type);
 
