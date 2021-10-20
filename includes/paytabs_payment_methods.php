@@ -14,6 +14,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     //
 
     const PT_HANDLED = '_pt_handled';
+    const PT_TRAN_TYPE = '_pt_transaction_type';
 
     //
 
@@ -106,6 +107,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         // add_action('woocommerce_api_paytabs_callback', array($this, 'callback'));
         add_action('woocommerce_api_wc_gateway_' . $this->id, array($this, 'ipn_response'));
         add_action('woocommerce_api_wc_gateway_r_' . $this->id, array($this, 'return_response'));
+
+        add_action('woocommerce_order_status_completed', array($this, 'process_capture'), 10, 1);
 
         // $this->checkCallback();
     }
@@ -498,6 +501,69 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     }
 
 
+    public function process_capture($order_id)
+    {
+        global $woocommerce;
+
+        $order = wc_get_order($order_id);
+
+        $amount = $order->get_total();
+
+        $transaction_id = $order->get_transaction_id();
+
+        if (!$transaction_id) {
+            return false;
+        }
+
+        // PT
+        $currency = $order->get_currency();
+
+        $payment_id = $this->getPaymentMethod($order);
+        if ($payment_id != $this->id) {
+            return;
+        }
+
+        $transaction_type = $this->pt_get_tran_type($order_id);
+
+        if (!in_array(PaytabsEnum::TRAN_TYPE_AUTH, $transaction_type)) {
+            // $order->add_order_note('Capture status: ' . "can't make capture on non Auth transaction", false);
+            PaytabsHelper::log("Capture not required for non Auth transactions, {$order_id}", 3);
+            return;
+        }
+
+        // Process Capture
+
+        $reason = 'Admin request';
+
+        $pt_capHolder = new PaytabsFollowupHolder();
+        $pt_capHolder
+            ->set02Transaction(PaytabsEnum::TRAN_TYPE_CAPTURE, PaytabsEnum::TRAN_CLASS_ECOM)
+            ->set03Cart($order_id, $currency, $amount, $reason)
+            ->set30TransactionInfo($transaction_id)
+            ->set99PluginInfo('WooCommerce', $woocommerce->version, PAYTABS_PAYPAGE_VERSION);
+
+        $values = $pt_capHolder->pt_build();
+
+        $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
+        $capRes = $_paytabsApi->request_followup($values);
+
+        $success = $capRes->success;
+        $message = $capRes->message;
+        // $pending_success = $capRes->pending_success;
+
+        $order->add_order_note('Capture status: ' . $message, true);
+
+        if ($success) {
+            //$order->update_status('Completed', __('Payment captured: ', 'PayTabs'));
+        } else {
+            PaytabsHelper::log("Capture failed, {$order_id} - {$message}", 3);
+            $order->update_status('on-hold', __('Capture failed: ' . $message, 'PayTabs'));
+        }
+
+        return $success;
+    }
+
+
     public function return_response()
     {
         PaytabsHelper::log("Return fired", 3);
@@ -607,6 +673,19 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         update_post_meta($order_id, $this::PT_HANDLED, $handled);
     }
 
+    private function pt_set_tran_type($order, $transaction_type)
+    {
+        if (!$transaction_type) $transaction_type = $this->trans_type;
+        update_post_meta($order->get_id(), $this::PT_TRAN_TYPE, $transaction_type);
+    }
+
+    private function pt_get_tran_type($order_id)
+    {
+        $transaction_type = get_post_meta($order_id, $this::PT_TRAN_TYPE);
+
+        return $transaction_type;
+    }
+
 
     /**
      * Payment successed => Order status change to success
@@ -617,6 +696,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $order->payment_complete($transaction_id);
         // $order->reduce_order_stock();
+
+        $this->pt_set_tran_type($order, $transaction_type);
 
         $this->setNewStatus($order, true, $transaction_type);
 
