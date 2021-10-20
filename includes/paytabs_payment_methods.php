@@ -504,7 +504,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         global $woocommerce;
 
         $order = wc_get_order($order_id);
+        
         $amount = $order->get_total();
+
         $transaction_id = $order->get_transaction_id();
 
         if (!$transaction_id) {
@@ -521,38 +523,47 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $payment_id = $this->getPaymentMethod($order);
         if ($payment_id == $this->id)
         {
-            $pt_capHolder = new PaytabsFollowupHolder();
-            $pt_capHolder
-                ->set02Transaction(PaytabsEnum::TRAN_TYPE_CAPTURE, PaytabsEnum::TRAN_CLASS_ECOM)
-                ->set03Cart($order_id, $currency, $amount, $reason)
-                ->set30TransactionInfo($transaction_id)
-                ->set99PluginInfo('WooCommerce', $woocommerce->version, PAYTABS_PAYPAGE_VERSION);
+            $transaction_type = get_post_meta($order_id, 'transaction_type');
 
-            $values = $pt_capHolder->pt_build();
+            if (in_array("auth", $transaction_type)) {
+               $pt_capHolder = new PaytabsFollowupHolder();
+                $pt_capHolder
+                    ->set02Transaction(PaytabsEnum::TRAN_TYPE_CAPTURE, PaytabsEnum::TRAN_CLASS_ECOM)
+                    ->set03Cart($order_id, $currency, $amount, $reason)
+                    ->set30TransactionInfo($transaction_id)
+                    ->set99PluginInfo('WooCommerce', $woocommerce->version, PAYTABS_PAYPAGE_VERSION);
 
-            $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
-            $capRes = $_paytabsApi->request_followup($values);
+                $values = $pt_capHolder->pt_build();
 
-            $success = $capRes->success;
-            $message = $capRes->message;
-            $pending_success = $capRes->pending_success;
+                $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
+                $capRes = $_paytabsApi->request_followup($values);
 
-            $order->add_order_note('Capture status: ' . $message, true);
+                $success = $capRes->success;
+                $message = $capRes->message;
+                $pending_success = $capRes->pending_success;
 
-            if ($success) {
-                //$order->update_status('Completed', __('Payment captured: ', 'PayTabs'));
-            } else if ($pending_success) {
-                $order->update_status('on-hold', __('Payment Pending captured: ', 'PayTabs'));
+                $order->add_order_note('Capture status: ' . $message, true);
+
+                if ($success) {
+                    //$order->update_status('Completed', __('Payment captured: ', 'PayTabs'));
+                } else {
+                    $order->update_status('on-hold', __('Payment Pending captured: ', 'PayTabs'));
+                }
+
+                return $success;
             }
-
-            return $success;
+            else{
+                $order->add_order_note('Capture status: ' . "can't make capture on non Auth transaction", true);
+            }
+        
+            
         }
         else
         {
-            PaytabsHelper::log("Capture failed, Order {$orderId}, Payment method mismatch", 3);
+            //PaytabsHelper::log("Capture failed, Order {$orderId}, Payment method mismatch", 3);
         }
-        
-} 
+    }
+     
 
 
     public function return_response()
@@ -675,6 +686,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $order->payment_complete($transaction_id);
         // $order->reduce_order_stock();
 
+        $order_id = $order->get_id();
+        update_post_meta($order_id, 'transaction_type', $this->trans_type);
         $this->setNewStatus($order, true, $transaction_type);
 
         $woocommerce->cart->empty_cart();
