@@ -2,10 +2,10 @@
 
 /**
  * PayTabs v2 PHP SDK
- * Version: 2.4.0
+ * Version: 2.7.1
  */
 
-define('PAYTABS_SDK_VERSION', '2.4.0');
+define('PAYTABS_SDK_VERSION', '2.7.1');
 
 
 abstract class PaytabsHelper
@@ -263,6 +263,10 @@ abstract class PaytabsEnum
 
 /**
  * Holder class: Holds & Generates the parameters array that pass to PayTabs' API
+ * Members:
+ * - Transaction Info (Type & Class)
+ * - Cart Info (id, desc, amount, currency)
+ * - Plugin Info (platform name, platform version, plugin version)
  */
 class PaytabsHolder
 {
@@ -360,8 +364,13 @@ class PaytabsHolder
 /**
  * Holder class, Inherit class PaytabsHolder
  * Holds & Generates the parameters array that pass to PayTabs' API
+ * Members:
+ * - Payment method (payment_code)
+ * - Customer Details
+ * - Shipping Details
+ * - URLs (return & callback)
  */
-class PaytabsRequestHolder extends PaytabsHolder
+abstract class PaytabsBasicHolder extends PaytabsHolder
 {
     /**
      * payment_type
@@ -395,40 +404,15 @@ class PaytabsRequestHolder extends PaytabsHolder
     private $shipping_details;
 
     /**
-     * hide_shipping
-     */
-    private $hide_shipping;
-
-    /**
-     * pan
-     * expiry_month
-     * expiry_year
-     * cvv
-     */
-    private $card_details;
-
-    /**
      * return
      * callback
      */
     private $urls;
 
     /**
-     * paypage_lang
+     * udf[1-9]
      */
-    private $lang;
-
-    /**
-     * framed
-     */
-    private $framed;
-
-    /**
-     * tokenise
-     * show_save_card
-     */
-    private $tokenise;
-
+    private $user_defined;
 
     //
 
@@ -445,10 +429,7 @@ class PaytabsRequestHolder extends PaytabsHolder
             $this->urls,
             $this->customer_details,
             $this->shipping_details,
-            $this->hide_shipping,
-            $this->lang,
-            $this->framed,
-            $this->tokenise
+            $this->user_defined
         );
 
         return $all;
@@ -542,20 +523,95 @@ class PaytabsRequestHolder extends PaytabsHolder
         return $this;
     }
 
-    public function set06HideShipping($on = false)
-    {
-        $this->hide_shipping = [
-            'hide_shipping' => $on,
-        ];
-
-        return $this;
-    }
 
     public function set07URLs($return_url, $callback_url)
     {
         $this->urls = [
             'return'   => $return_url,
             'callback' => $callback_url,
+        ];
+
+        return $this;
+    }
+
+
+    public function set50UserDefined($udf1, $udf2 = null, $udf3 = null, $udf4 = null, $udf5 = null, $udf6 = null, $udf7 = null, $udf8 = null, $udf9 = null)
+    {
+        $user_defined = [];
+
+        for ($i = 1; $i <= 9; $i++) {
+            $param = "udf$i";
+            if ($$param != null) {
+                $user_defined[$param] = $$param;
+            }
+        }
+
+        $this->user_defined = [
+            'user_defined' => $user_defined
+        ];
+
+        return $this;
+    }
+}
+
+
+/**
+ * Holder class, Inherit class PaytabsBasicHolder
+ * Holds & Generates the parameters array that pass to PayTabs' API
+ * Members:
+ * - Hide shipping
+ * - Language
+ * - Framed
+ * - Tokenise
+ */
+class PaytabsRequestHolder extends PaytabsBasicHolder
+{
+    /**
+     * hide_shipping
+     */
+    private $hide_shipping;
+
+    /**
+     * paypage_lang
+     */
+    private $lang;
+
+    /**
+     * framed
+     */
+    private $framed;
+
+    /**
+     * tokenise
+     * show_save_card
+     */
+    private $tokenise;
+
+
+    //
+
+    /**
+     * @return array
+     */
+    public function pt_build()
+    {
+        $all = parent::pt_build();
+
+        $this->pt_merges(
+            $all,
+            $this->hide_shipping,
+            $this->lang,
+            $this->framed,
+            $this->tokenise
+        );
+
+        return $all;
+    }
+
+    public function set06HideShipping($on = false)
+    {
+        $this->hide_shipping = [
+            'hide_shipping' => $on,
         ];
 
         return $this;
@@ -605,6 +661,8 @@ class PaytabsRequestHolder extends PaytabsHolder
 /**
  * Holder class, Inherit class PaytabsHolder
  * Holds & Generates the parameters array for the Tokenised payments
+ * Members:
+ * - Token Info (token & tran_ref)
  */
 class PaytabsTokenHolder extends PaytabsHolder
 {
@@ -640,12 +698,95 @@ class PaytabsTokenHolder extends PaytabsHolder
 
 
 /**
+ * Holder class, Inherit class PaytabsBasicHolder
+ * Holds & Generates the parameters array for the Managed form payments
+ * Members:
+ * - Payment token
+ */
+class PaytabsManagedFormHolder extends PaytabsBasicHolder
+{
+    /**
+     * payment_token
+     */
+    private $payment_token;
+
+
+    public function set30PaymentToken($payment_token)
+    {
+        $this->payment_token = [
+            'payment_token' => $payment_token
+        ];
+
+        return $this;
+    }
+
+    public function pt_build()
+    {
+        $all = parent::pt_build();
+
+        $all = array_merge($all, $this->payment_token);
+
+        return $all;
+    }
+}
+
+
+/**
+ * Holder class, Inherit class PaytabsBasicHolder
+ * Holds & Generates the parameters array for the Managed form payments
+ * Members:
+ * - Card Info (pan, cvv, expiry_year, expiry_month)
+ */
+class PaytabsOwnFormHolder extends PaytabsBasicHolder
+{
+    /**
+     * pan
+     * cvv
+     * expiry_year
+     * expiry_month
+     */
+    private $card_details;
+
+
+    public function set40CardDetails($pan, $expiry_year, $expiry_month, $cvv = null)
+    {
+        $card_info = [
+            'pan' => $pan,
+            'expiry_year'  => (int) $expiry_year,
+            'expiry_month' => (int) $expiry_month,
+        ];
+
+        if ($cvv) {
+            $card_info['cvv'] = $cvv;
+        }
+
+        $this->card_details = [
+            'card_details' => $card_info
+        ];
+
+        return $this;
+    }
+
+    public function pt_build()
+    {
+        $all = parent::pt_build();
+
+        $all = array_merge($all, $this->card_details);
+
+        return $all;
+    }
+}
+
+
+/**
  * Holder class, Inherit class PaytabsHolder
  * Holder & Generates the parameters array for the Followup requests
  * Followup requests:
  * - Capture (follows Auth)
  * - Void    (follows Auth)
  * - Refund  (follows Capture or Sale)
+ * Members:
+ * - Transaction ID
  */
 class PaytabsFollowupHolder extends PaytabsHolder
 {
@@ -803,7 +944,10 @@ class PaytabsApi
         // $serverIP = getHostByName(getHostName());
         // $values['ip_merchant'] = PaytabsHelper::getNonEmpty($serverIP, $_SERVER['SERVER_ADDR'], 'NA');
 
-        $isTokenize = $values['tran_class'] == PaytabsEnum::TRAN_CLASS_RECURRING;
+        $isTokenize =
+            $values['tran_class'] == PaytabsEnum::TRAN_CLASS_RECURRING
+            || array_key_exists('payment_token', $values)
+            || array_key_exists('card_details', $values);
 
         $response = $this->sendRequest(self::URL_REQUEST, $values);
 
@@ -902,8 +1046,8 @@ class PaytabsApi
     public function read_response($is_ipn)
     {
         if ($is_ipn) {
-            $param_tranRef = 'tran_ref';
-            $param_cartId = 'cart_id';
+            // $param_tranRef = 'tran_ref';
+            // $param_cartId = 'cart_id';
 
             $response = file_get_contents('php://input');
             $data = json_decode($response);
@@ -914,8 +1058,8 @@ class PaytabsApi
 
             $is_valid = $this->is_valid_ipn($response, $signature, false);
         } else {
-            $param_tranRef = 'tranRef';
-            $param_cartId = 'cartId';
+            // $param_tranRef = 'tranRef';
+            // $param_cartId = 'cartId';
 
             $data = $_POST;
 
