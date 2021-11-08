@@ -673,7 +673,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             // $_logOrder = (json_encode($_data));
             PaytabsHelper::log("{$handler} Validating failed, Order {$order_id}, response [{$_logVerify}]", 3);
 
-            $this->orderFailed($order, $message);
+            $this->orderFailed($order, $message, $is_ipn);
         }
     }
 
@@ -776,13 +776,17 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     /**
      * Payment failed => Order status change to failed
      */
-    private function orderFailed($order, $message)
+    private function orderFailed($order, $message, $is_ipn)
     {
         wc_add_notice($message, 'error');
 
         $order->update_status('failed', $message);
 
         $this->setNewStatus($order, false);
+
+        if ($is_ipn) {
+            return;
+        }
 
         wp_redirect($order->get_checkout_payment_url());
     }
