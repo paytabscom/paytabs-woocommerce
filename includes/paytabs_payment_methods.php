@@ -117,7 +117,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         add_action('woocommerce_api_wc_gateway_r_' . $this->id, array($this, 'return_response'));
 
         add_action('woocommerce_order_status_completed', array($this, 'process_capture'), 10, 1);
-
+        add_action('woocommerce_order_status_cancelled', array($this, 'process_void'), 10, 1);
         // $this->checkCallback();
     }
 
@@ -577,6 +577,71 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         return $success;
     }
 
+
+    public function process_void($order_id)
+    {
+       global $woocommerce;
+
+        $order = wc_get_order($order_id);
+
+        $amount = $order->get_total();
+
+        $transaction_id = $order->get_transaction_id();
+
+        if (!$transaction_id) {
+            return false;
+        }
+
+        // PT
+        $currency = $order->get_currency();
+
+        $payment_id = $this->getPaymentMethod($order);
+        if ($payment_id != $this->id) {
+            return;
+        }
+
+        $transaction_type = $this->pt_get_tran_type($order_id);
+
+        if (!in_array(PaytabsEnum::TRAN_TYPE_AUTH, $transaction_type)) {
+            // $order->add_order_note('Capture status: ' . "can't make capture on non Auth transaction", false);
+            PaytabsHelper::log("Void not required for non Auth transactions, {$order_id}", 3);
+            return;
+        }
+
+        // Process Capture
+
+        $reason = 'Admin request';
+
+        $pt_voidHolder = new PaytabsFollowupHolder();
+        $pt_voidHolder
+            ->set02Transaction(PaytabsEnum::TRAN_TYPE_VOID, PaytabsEnum::TRAN_CLASS_ECOM)
+            ->set03Cart($order_id, $currency, $amount, $reason)
+            ->set30TransactionInfo($transaction_id)
+            ->set99PluginInfo('WooCommerce', $woocommerce->version, PAYTABS_PAYPAGE_VERSION);
+
+        $values = $pt_voidHolder->pt_build();
+
+        $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
+        $voidRes = $_paytabsApi->request_followup($values);
+
+        $tran_ref = @$voidRes->tran_ref;
+        $success = $voidRes->success;
+        $message = $voidRes->message;
+        // $pending_success = $capRes->pending_success;
+
+        $order->add_order_note('Void status: ' . $message, true);
+
+        if ($success) {
+            $this->pt_set_tran_ref($order, PaytabsEnum::TRAN_TYPE_VOID, $tran_ref);
+            $order->set_transaction_id($tran_ref);
+            $order->save();
+        } else {
+            PaytabsHelper::log("Void failed, {$order_id} - {$message}", 3);
+            $order->update_status('on-hold', __('Void failed: ' . $message, 'PayTabs'));
+        }
+
+        return $success;
+    }
 
     public function return_response()
     {

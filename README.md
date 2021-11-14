@@ -44,11 +44,12 @@ Official WooCommerce plugin for PayTabs
    - **Server Key**: `Merchant’s Dashboard >> Developers >> Key management >> Server Key`
 6. Click `Save changes`
 
-## Use Auth & Capture
+## Use Auth - Capture -Void
 
 1. In the configuration page select transaction type : Auth.
 2. The default order status for the Auth Orders is on-hold unless you change it from the configuration page.
 3. To Capture the Auth order you need to go to the order edit view >> change the order status to Completed then save , the capture will be done.
+4. To Void the Auth order you need to go to the order edit view >> change the order status to Cancelled then save , the Void will be done.
 
 
 - - -
