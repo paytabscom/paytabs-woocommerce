@@ -372,7 +372,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         //
 
         $success = $paypage->success;
-        $message = $paypage->message;
+        $message = @$paypage->message;
         $is_redirect = @$paypage->is_redirect;
         $is_completed = @$paypage->is_completed;
 

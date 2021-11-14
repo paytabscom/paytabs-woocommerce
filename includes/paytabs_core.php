@@ -2,10 +2,10 @@
 
 /**
  * PayTabs v2 PHP SDK
- * Version: 2.7.1
+ * Version: 2.7.2
  */
 
-define('PAYTABS_SDK_VERSION', '2.7.1');
+define('PAYTABS_SDK_VERSION', '2.7.2');
 
 
 abstract class PaytabsHelper
@@ -995,6 +995,10 @@ class PaytabsApi
 
     function is_valid_redirect($post_values)
     {
+        if (empty($post_values) || !array_key_exists('signature', $post_values)) {
+            return false;
+        }
+
         $serverKey = $this->server_key;
 
         // Request body include a signature post Form URL encoded field
