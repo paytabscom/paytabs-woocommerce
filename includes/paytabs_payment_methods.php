@@ -580,7 +580,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
     public function process_void($order_id)
     {
-       global $woocommerce;
+        global $woocommerce;
 
         $order = wc_get_order($order_id);
 
@@ -633,8 +633,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         if ($success) {
             $this->pt_set_tran_ref($order, PaytabsEnum::TRAN_TYPE_VOID, $tran_ref);
-            $order->set_transaction_id($tran_ref);
-            $order->save();
+            // $order->set_transaction_id($tran_ref);
+            // $order->save();
         } else {
             PaytabsHelper::log("Void failed, {$order_id} - {$message}", 3);
             $order->update_status('on-hold', __('Void failed: ' . $message, 'PayTabs'));
