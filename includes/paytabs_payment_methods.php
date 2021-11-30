@@ -113,7 +113,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         // Register a webhook
         // add_action('woocommerce_api_paytabs_callback', array($this, 'callback'));
-        add_action('woocommerce_api_wc_gateway_' . $this->id, array($this, 'ipn_response'));
+        add_action('woocommerce_api_wc_gateway_' . $this->id, array($this, 'callback_response'));
         add_action('woocommerce_api_wc_gateway_r_' . $this->id, array($this, 'return_response'));
 
         add_action('woocommerce_order_status_completed', array($this, 'process_capture'), 10, 1);
@@ -649,9 +649,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $this->handle_response(false);
     }
 
-    public function ipn_response()
+    public function callback_response()
     {
-        PaytabsHelper::log("IPN fired", 3);
+        PaytabsHelper::log("Callback fired", 3);
         $this->handle_response(true);
     }
 
@@ -667,7 +667,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $orderId = @$response_data->reference_no;
 
-        $handler = $is_ipn ? 'IPN' : 'Return';
+        $handler = $is_ipn ? 'Callback' : 'Return';
 
         $order = wc_get_order($orderId);
         if ($order) {
@@ -715,7 +715,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     private function validate_payment($result, $order, $is_tokenise = false, $is_ipn = false)
     {
         $order_id = $order->get_id();
-        $handler = $is_ipn ? 'IPN' : 'Return';
+        $handler = $is_ipn ? 'Callback' : 'Return';
 
         $this->set_handled($order_id);
         PaytabsHelper::log("{$handler} handling the Order {$order_id}", 3);
@@ -862,31 +862,40 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         if ($isSuccess) {
             if (!$transaction_type) $transaction_type = $this->trans_type;
 
-            if (PaytabsEnum::TranIsAuth($transaction_type)) {
-                $configStatus = $this->order_status_auth_success;
-                $defaultStatus = 'wc-processing';
-            } elseif (PaytabsEnum::TranIsSale($transaction_type)) {
-                $configStatus = $this->order_status_success;
-                $defaultStatus = 'wc-processing';
-            } elseif (PaytabsEnum::TranIsCapture($transaction_type)) {
-                $configStatus = $this->order_status_success;
-                $defaultStatus = 'wc-processing';
-            } elseif (PaytabsEnum::TranIsVoid($transaction_type)) {
-                $configStatus = 'wc-cancelled';
-                $defaultStatus = 'wc-cancelled';
-            } elseif (PaytabsEnum::TranIsRefund($transaction_type)) {
-                $configStatus = 'wc-refunded';
-                $defaultStatus = 'wc-refunded';
+            switch (strtolower($transaction_type)) {
+                case PaytabsEnum::TRAN_TYPE_AUTH:
+                    $configStatus = $this->order_status_auth_success;
+                    $defaultStatus = 'wc-processing';
+                    break;
+
+                case PaytabsEnum::TRAN_TYPE_SALE:
+                case PaytabsEnum::TRAN_TYPE_CAPTURE:
+                    $configStatus = $this->order_status_success;
+                    $defaultStatus = 'wc-processing';
+                    break;
+
+                case PaytabsEnum::TRAN_TYPE_VOID:
+                    $configStatus = 'wc-cancelled';
+                    $defaultStatus = 'wc-cancelled';
+                    break;
+
+                case PaytabsEnum::TRAN_TYPE_REFUND:
+                    $configStatus = 'wc-refunded';
+                    $defaultStatus = 'wc-refunded';
+                    break;
             }
         } else {
             $configStatus = $this->order_status_failed;
             $defaultStatus = 'wc-failed';
         }
-        $isDefault = $configStatus == 'default' || $configStatus == $defaultStatus;
+
+        $newStatus = ($configStatus == 'default') ? $defaultStatus : $configStatus;
+
+        $isDefault = $newStatus == $defaultStatus;
 
         if (!$isDefault) {
             $newMsg = "Order status changed as in the admin configuration!";
-            $order->update_status($configStatus, $newMsg, true);
+            $order->update_status($newStatus, $newMsg, true);
         }
     }
 
