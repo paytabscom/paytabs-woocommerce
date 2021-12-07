@@ -15,14 +15,6 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
     const PT_HANDLED = '_pt_handled';
     const PT_TRAN_TYPE = '_pt_transaction_type';
-    const PT_TRAN_REF_MODE = [
-        PaytabsEnum::TRAN_TYPE_SALE => '_pt_tran_ref_sale',
-        PaytabsEnum::TRAN_TYPE_AUTH => '_pt_tran_ref_auth',
-        PaytabsEnum::TRAN_TYPE_VOID => '_pt_tran_ref_void',
-        PaytabsEnum::TRAN_TYPE_CAPTURE  => '_pt_tran_ref_capture',
-        PaytabsEnum::TRAN_TYPE_REFUND   => '_pt_tran_ref_refund',
-        PaytabsEnum::TRAN_TYPE_REGISTER => '_pt_tran_ref_register',
-    ];
 
     //
 
@@ -97,6 +89,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $this->enable_tokenise = $this->get_option('enable_tokenise') == 'yes';
         $this->allow_associated_methods = $this->get_option('allow_associated_methods') == 'yes';
 
+        $this->ipn_enable = $this->get_option('ipn_enable') == 'yes';
 
         // This action hook saves the settings
         add_action("woocommerce_update_options_payment_gateways_{$this->id}", array($this, 'process_admin_options'));
@@ -115,6 +108,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         // add_action('woocommerce_api_paytabs_callback', array($this, 'callback'));
         add_action('woocommerce_api_wc_gateway_' . $this->id, array($this, 'callback_response'));
         add_action('woocommerce_api_wc_gateway_r_' . $this->id, array($this, 'return_response'));
+
+        if (!has_filter('woocommerce_api_wc_gateway_paytabs')) {
+            add_action('woocommerce_api_wc_gateway_paytabs', array($this, 'ipn_response'));
+        }
 
         add_action('woocommerce_order_status_completed', array($this, 'process_capture'), 10, 1);
         add_action('woocommerce_order_status_cancelled', array($this, 'process_void'), 10, 1);
@@ -142,6 +139,14 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     }
 
 
+    private function get_ipn_url()
+    {
+        // $siteUrl = get_site_url();
+        $ipn_url = add_query_arg('wc-api', 'wc_gateway_paytabs', home_url('/'));
+
+        return  $ipn_url;
+    }
+
     /**
      * Plugin options
      */
@@ -154,6 +159,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         );
 
         $endpoints = PaytabsApi::getEndpoints();
+
+        $ipn_url = $this->get_ipn_url();
 
         $addional_fields = [];
 
@@ -249,15 +256,25 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             'status_success' => array(
                 'title'       => __('Captured Order status', 'PayTabs'),
                 'type'        => 'select',
-                'description' => 'Set the Order status after successful payment. <br><strong>Warning</strong> Be very careful when you change the Default option because when you change it, you change the normal flow of the Order into WooCommerce system, you may encounter some consequences based on the new value you set',
+                'description' => 'Set the Order status after successful payment.'
+                    . '<br><strong>Warning</strong> Be very careful when you change the Default option because when you change it, you change the normal flow of the Order into WooCommerce system, you may encounter some consequences based on the new value you set',
                 'options'     => $orderStatuses,
             ),
             'status_failed' => array(
                 'title'       => __('Failed Order status', 'PayTabs'),
                 'type'        => 'select',
-                'description' => 'Set the Order status after failed payment. <br><strong>Warning</strong> Be very careful when you change the Default option because when you change it, you change the normal flow of the Order into WooCommerce system, you may encounter some consequences based on the new value you set',
+                'description' => 'Set the Order status after failed payment.'
+                    . '<br><strong>Warning</strong> Be very careful when you change the Default option because when you change it, you change the normal flow of the Order into WooCommerce system, you may encounter some consequences based on the new value you set',
                 'options'     => $orderStatuses,
-            )
+            ),
+            'ipn_enable' => array(
+                'title'       => __('Allow IPN events', 'PayTabs'),
+                'type'        => 'checkbox',
+                'description' => "<strong>$ipn_url</strong>"
+                    . "<br>Copy the link provided and use it in the merchant's dashboard."
+                    . "<br>Supported events: <strong>Capture (Full)</strong>, <strong>Void (Full)</strong>, <strong>Refund (Full & Partial)</strong>.",
+                'required'    => false,
+            ),
         );
 
         $this->form_fields = array_merge($fields, $addional_fields);
@@ -491,6 +508,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $values = $pt_refundHolder->pt_build();
 
+        PaytabsHelper::log("Refund request, Order {$order_id} - {$amount} {$currency}", 3);
+
         $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
         $refundRes = $_paytabsApi->request_followup($values);
 
@@ -499,14 +518,16 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $message = $refundRes->message;
         $pending_success = $refundRes->pending_success;
 
-        $order->add_order_note('Refund status: ' . $message, true);
+        PaytabsHelper::log("Refund request done, Order {$order_id} - {$success} {$message} {$tran_ref}", 3);
 
         if ($success) {
-            $order->update_status('refunded', __('Payment Refunded: ', 'PayTabs'));
             $this->pt_set_tran_ref($order, PaytabsEnum::TRAN_TYPE_REFUND, $tran_ref);
+            $order->update_status('refunded', __('Payment Refunded: ', 'PayTabs'));
         } else if ($pending_success) {
             $order->update_status('on-hold', __('Payment Pending Refund: ', 'PayTabs'));
         }
+
+        $order->add_order_note('Refund status: ' . $message, true);
 
         return $success;
     }
@@ -555,6 +576,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $values = $pt_capHolder->pt_build();
 
+        PaytabsHelper::log("Capture request, Order {$order_id} - {$amount} {$currency}", 3);
+
         $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
         $capRes = $_paytabsApi->request_followup($values);
 
@@ -563,7 +586,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $message = $capRes->message;
         // $pending_success = $capRes->pending_success;
 
-        $order->add_order_note('Capture status: ' . $message, true);
+        PaytabsHelper::log("Capture request done, Order {$order_id} - {$success} {$message} {$tran_ref}", 3);
 
         if ($success) {
             $this->pt_set_tran_ref($order, PaytabsEnum::TRAN_TYPE_CAPTURE, $tran_ref);
@@ -573,6 +596,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             PaytabsHelper::log("Capture failed, {$order_id} - {$message}", 3);
             $order->update_status('on-hold', __('Capture failed: ' . $message, 'PayTabs'));
         }
+
+        $order->add_order_note('Capture status: ' . $message, true);
 
         return $success;
     }
@@ -621,6 +646,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $values = $pt_voidHolder->pt_build();
 
+        PaytabsHelper::log("Void request, Order {$order_id} - {$amount} {$currency}", 3);
+
         $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
         $voidRes = $_paytabsApi->request_followup($values);
 
@@ -629,7 +656,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $message = $voidRes->message;
         // $pending_success = $capRes->pending_success;
 
-        $order->add_order_note('Void status: ' . $message, true);
+        PaytabsHelper::log("Void request done, Order {$order_id} - {$success} {$message} {$tran_ref}", 3);
 
         if ($success) {
             $this->pt_set_tran_ref($order, PaytabsEnum::TRAN_TYPE_VOID, $tran_ref);
@@ -639,6 +666,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             PaytabsHelper::log("Void failed, {$order_id} - {$message}", 3);
             $order->update_status('on-hold', __('Void failed: ' . $message, 'PayTabs'));
         }
+
+        $order->add_order_note('Void status: ' . $message, true);
 
         return $success;
     }
@@ -653,6 +682,181 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     {
         PaytabsHelper::log("Callback fired", 3);
         $this->handle_response(true);
+    }
+
+    public function ipn_response()
+    {
+        PaytabsHelper::log("IPN fired", 3);
+        $this->handle_ipn();
+    }
+
+    //
+
+    private function handle_ipn()
+    {
+        $response_data = PaytabsHelper::read_ipn_response();
+        if (!$response_data) {
+            return;
+        }
+
+        $orderId = @$response_data->cart_id;
+        if (!$orderId) {
+            return;
+        }
+
+        $order = wc_get_order($orderId);
+        if (!$order || !is_a($order, 'WC_Order')) {
+            return;
+        }
+
+        $payment_id = $this->getPaymentMethod($order);
+        if ($payment_id != $this->id) {
+            // return;
+        }
+        $payment_gateway = wc_get_payment_gateway_by_order($order);
+
+        if (!$payment_gateway->ipn_enable) {
+            PaytabsHelper::log("IPN handling is disabled", 3);
+            return;
+        }
+
+        $_paytabsApi = PaytabsApi::getInstance($payment_gateway->paytabs_endpoint, $payment_gateway->merchant_id, $payment_gateway->merchant_key);
+
+        $response_data = $_paytabsApi->read_response(true);
+        if (!$response_data) {
+            return;
+        }
+
+        //
+
+        $payment_gateway->pt_process_ipn($response_data);
+    }
+
+
+    public function pt_process_ipn($ipn_data)
+    {
+        $pt_success = $ipn_data->success;
+        $pt_message = $ipn_data->message;
+        $pt_token = @$ipn_data->token;
+
+        $pt_tran_ref = $ipn_data->tran_ref;
+
+        $pt_order_id = $ipn_data->cart_id;
+        $pt_tran_total = $ipn_data->tran_total;
+        $pt_tran_currency = $ipn_data->tran_currency;
+
+        $pt_tran_type = strtolower($ipn_data->tran_type);
+
+        //
+
+        PaytabsHelper::log("IPN handling the Order {$pt_order_id} - {$pt_tran_type} : {$pt_tran_ref}", 3);
+
+        //
+
+        $order = wc_get_order($pt_order_id);
+        // $payment_gateway = wc_get_payment_gateway_by_order($order);
+        $ec_total = $order->get_total();
+        $ec_currency = $order->get_currency();
+
+        $same_currency = strcasecmp($ec_currency, $pt_tran_currency) == 0;
+        $same_total = abs($ec_total - $pt_tran_total) < 0.001;
+        $same_payment = $same_currency && $same_total;
+
+        $ec_tran_ref = $order->get_transaction_id();
+        $ec_tran_type = $this->pt_get_tran_type($pt_order_id);
+        $ec_is_paid = $order->is_paid();
+        // $order->maybe_set_date_paid();
+
+        // sleep(3);
+        $prev_trx = $this->pt_get_tran_ref($pt_order_id, $pt_tran_type);
+        if ($prev_trx && $prev_trx[0] == $pt_tran_ref) {
+            PaytabsHelper::log("{$pt_tran_type} already registered, {$pt_order_id} - {$pt_message}", 3);
+            return;
+        }
+
+        switch ($pt_tran_type) {
+            case PaytabsEnum::TRAN_TYPE_SALE:
+            case PaytabsEnum::TRAN_TYPE_AUTH:
+            case PaytabsEnum::TRAN_TYPE_REGISTER:
+                PaytabsHelper::log("IPN does not support creating new Order", 3);
+                break;
+
+            case PaytabsEnum::TRAN_TYPE_CAPTURE:
+                if (!in_array(PaytabsEnum::TRAN_TYPE_AUTH, $ec_tran_type)) {
+                    PaytabsHelper::log("Capture not required for non Auth transactions, {$pt_order_id}", 3);
+                    return;
+                }
+                if ($pt_success) {
+                    if ($same_payment) {
+                        $this->pt_set_tran_ref($order, $pt_tran_type, $pt_tran_ref);
+
+                        $order->set_transaction_id($pt_tran_ref);
+                        $order->save();
+
+                        $this->setNewStatus($order, true, $pt_tran_type, true);
+                        PaytabsHelper::log("{$pt_tran_type} done, {$pt_order_id} - {$pt_tran_ref}", 3);
+                    } else {
+                        PaytabsHelper::log('Capture could not be registered, only Full & Same Capture allowed');
+                    }
+                } else {
+                    PaytabsHelper::log("Capture failed, {$pt_order_id} - {$pt_message}", 3);
+                    // $order->update_status('on-hold', __('Capture failed: ' . $pt_message, 'PayTabs'));
+                    $this->setNewStatus($order, false, $pt_tran_type, true);
+                }
+                break;
+
+            case PaytabsEnum::TRAN_TYPE_VOID:
+            case PaytabsEnum::TRAN_TYPE_RELEASE:
+                if (!in_array(PaytabsEnum::TRAN_TYPE_AUTH, $ec_tran_type)) {
+                    // $order->add_order_note('Capture status: ' . "can't make Void on non Auth transaction", false);
+                    PaytabsHelper::log("Void not allowed on non Auth transactions, {$pt_order_id}", 3);
+                    return;
+                }
+                if ($pt_success) {
+                    if ($same_payment) {
+                        $this->pt_set_tran_ref($order, $pt_tran_type, $pt_tran_ref);
+
+                        $this->setNewStatus($order, true, $pt_tran_type, true);
+                        PaytabsHelper::log("{$pt_tran_type} done, {$pt_order_id} - {$pt_tran_ref}", 3);
+                    } else {
+                        PaytabsHelper::log('Void could not be registered, only Full & Same Void allowed');
+                    }
+                } else {
+                    PaytabsHelper::log("Void failed, {$pt_order_id} - {$pt_message}", 3);
+                    $order->update_status('on-hold', __('Void failed: ' . $pt_message, 'PayTabs'));
+                }
+                break;
+
+            case PaytabsEnum::TRAN_TYPE_REFUND:
+                if (!$pt_success) {
+                    PaytabsHelper::log("Refund failed, {$pt_order_id} - {$pt_message}", 3);
+                    return;
+                }
+
+                $refund = wc_create_refund([
+                    'amount'         => $pt_tran_total,
+                    'reason'         => 'PayTabs dashboard',
+                    'order_id'       => $pt_order_id,
+                    'refund_payment' => false,
+                    // 'refund_id' => 0,
+                    // 'line_items'   => $line_items,
+                    // 'restock_items'  => false
+                ]);
+
+                if (!is_wp_error($refund)) {
+                    PaytabsHelper::log("{$pt_tran_type} done, {$pt_order_id} - {$pt_tran_ref}", 3);
+                    $this->setNewStatus($order, true, $pt_tran_type, true);
+                } else {
+                    PaytabsHelper::log("Refund failed, {$pt_order_id} - {$refund->get_error_message()}", 3);
+                }
+
+                break;
+
+            default:
+                break;
+        }
+
+        return;
     }
 
 
@@ -683,18 +887,18 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                         PaytabsHelper::log("{$handler} handling skipped for Order {$order->get_id()}", 3);
                     }
                 } else {
-                    PaytabsHelper::log("{$handler} Callback failed, Order {$orderId}, No need for Payment", 3);
+                    PaytabsHelper::log("{$handler} failed, Order {$orderId}, No need for Payment", 3);
                 }
 
                 if (!$is_ipn && !$pt_reach) {
                     wp_redirect($order->get_checkout_order_received_url());
                 }
             } else {
-                PaytabsHelper::log("{$handler} Callback failed, Order {$orderId}, Payment method mismatch", 3);
+                PaytabsHelper::log("{$handler} failed, Order {$orderId}, Payment method mismatch", 3);
             }
         } else {
             $json_response = json_encode($response_data);
-            PaytabsHelper::log("{$handler} Callback failed, Order {$orderId}, payment response [{$json_response}]", 3);
+            PaytabsHelper::log("{$handler} failed, Order {$orderId}, payment response [{$json_response}]", 3);
         }
     }
 
@@ -770,13 +974,13 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     {
         if (!$transaction_type) $transaction_type = $this->trans_type;
 
+        update_post_meta($order->get_id(), '_pt_tran_ref_' . $transaction_type, $transaction_id);
         $this->pt_set_tran_type($order, $transaction_type);
-        update_post_meta($order->get_id(), $this::PT_TRAN_REF_MODE[$transaction_type], $transaction_id);
     }
 
     private function pt_get_tran_ref($order_id, $transaction_type)
     {
-        $transaction_ref = get_post_meta($order_id, $this::PT_TRAN_REF_MODE[$transaction_type]);
+        $transaction_ref = get_post_meta($order_id, '_pt_tran_ref_' . $transaction_type);
 
         return $transaction_ref;
     }
@@ -857,7 +1061,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     }
 
 
-    private function setNewStatus($order, $isSuccess, $transaction_type = null)
+    public function setNewStatus($order, $isSuccess, $transaction_type = null, $force_set = false)
     {
         if ($isSuccess) {
             if (!$transaction_type) $transaction_type = $this->trans_type;
@@ -893,7 +1097,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $isDefault = $newStatus == $defaultStatus;
 
-        if (!$isDefault) {
+        if (!$isDefault || $force_set) {
             $newMsg = "Order status changed as in the admin configuration!";
             $order->update_status($newStatus, $newMsg, true);
         }
