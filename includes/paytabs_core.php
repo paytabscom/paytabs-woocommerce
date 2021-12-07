@@ -2,10 +2,10 @@
 
 /**
  * PayTabs v2 PHP SDK
- * Version: 2.7.2
+ * Version: 2.7.4
  */
 
-define('PAYTABS_SDK_VERSION', '2.7.2');
+define('PAYTABS_SDK_VERSION', '2.7.4');
 
 
 abstract class PaytabsHelper
@@ -99,6 +99,15 @@ abstract class PaytabsHelper
         return false;
     }
 
+    //
+
+    static function read_ipn_response()
+    {
+        $response = file_get_contents('php://input');
+        $data = json_decode($response);
+
+        return $data;
+    }
 
     /**
      * @return the first non-empty var from the vars list
@@ -206,6 +215,7 @@ abstract class PaytabsEnum
     const TRAN_TYPE_REGISTER = 'register';
 
     const TRAN_TYPE_VOID    = 'void';
+    const TRAN_TYPE_RELEASE = 'release';
     const TRAN_TYPE_REFUND  = 'refund';
 
     //
@@ -243,6 +253,11 @@ abstract class PaytabsEnum
     static function TranIsVoid($tran_type)
     {
         return strcasecmp($tran_type, PaytabsEnum::TRAN_TYPE_VOID) == 0;
+    }
+
+    static function TranIsRelease($tran_type)
+    {
+        return strcasecmp($tran_type, PaytabsEnum::TRAN_TYPE_RELEASE) == 0;
     }
 
     static function TranIsRefund($tran_type)
@@ -369,6 +384,9 @@ class PaytabsHolder
  * - Customer Details
  * - Shipping Details
  * - URLs (return & callback)
+ * - Language (paypage_lang)
+ * - Tokenise
+ * - User defined
  */
 abstract class PaytabsBasicHolder extends PaytabsHolder
 {
@@ -410,6 +428,17 @@ abstract class PaytabsBasicHolder extends PaytabsHolder
     private $urls;
 
     /**
+     * paypage_lang
+     */
+    private $lang;
+
+    /**
+     * tokenise
+     * show_save_card
+     */
+    private $tokenise;
+
+    /**
      * udf[1-9]
      */
     private $user_defined;
@@ -429,6 +458,8 @@ abstract class PaytabsBasicHolder extends PaytabsHolder
             $this->urls,
             $this->customer_details,
             $this->shipping_details,
+            $this->lang,
+            $this->tokenise,
             $this->user_defined
         );
 
@@ -535,6 +566,33 @@ abstract class PaytabsBasicHolder extends PaytabsHolder
     }
 
 
+    public function set08Lang($lang_code)
+    {
+        $this->lang = [
+            'paypage_lang' => $lang_code
+        ];
+
+        return $this;
+    }
+
+
+    /**
+     * @param int $token_format integer between 2 and 6, Set the Token format
+     * @param bool $optional Display the save card option on the payment page
+     */
+    public function set10Tokenise($on = false, $token_format = 2, $optional = false)
+    {
+        if ($on) {
+            $this->tokenise = [
+                'tokenise' => $token_format,
+                'show_save_card' => $optional
+            ];
+        }
+
+        return $this;
+    }
+
+
     public function set50UserDefined($udf1, $udf2 = null, $udf3 = null, $udf4 = null, $udf5 = null, $udf6 = null, $udf7 = null, $udf8 = null, $udf9 = null)
     {
         $user_defined = [];
@@ -560,9 +618,7 @@ abstract class PaytabsBasicHolder extends PaytabsHolder
  * Holds & Generates the parameters array that pass to PayTabs' API
  * Members:
  * - Hide shipping
- * - Language
  * - Framed
- * - Tokenise
  */
 class PaytabsRequestHolder extends PaytabsBasicHolder
 {
@@ -572,21 +628,9 @@ class PaytabsRequestHolder extends PaytabsBasicHolder
     private $hide_shipping;
 
     /**
-     * paypage_lang
-     */
-    private $lang;
-
-    /**
      * framed
      */
     private $framed;
-
-    /**
-     * tokenise
-     * show_save_card
-     */
-    private $tokenise;
-
 
     //
 
@@ -600,15 +644,13 @@ class PaytabsRequestHolder extends PaytabsBasicHolder
         $this->pt_merges(
             $all,
             $this->hide_shipping,
-            $this->lang,
-            $this->framed,
-            $this->tokenise
+            $this->framed
         );
 
         return $all;
     }
 
-    public function set06HideShipping($on = false)
+    public function set06HideShipping(bool $on = false)
     {
         $this->hide_shipping = [
             'hide_shipping' => $on,
@@ -617,41 +659,16 @@ class PaytabsRequestHolder extends PaytabsBasicHolder
         return $this;
     }
 
-    public function set08Lang($lang_code)
-    {
-        $this->lang = [
-            'paypage_lang' => $lang_code
-        ];
-
-        return $this;
-    }
-
     /**
      * @param string $redirect_target "parent" or "top" or "iframe"
      */
-    public function set09Framed($on = false, $redirect_target = 'iframe')
+    public function set09Framed(bool $on = false, $redirect_target = 'iframe')
     {
         $this->framed = [
             'framed' => $on,
             'framed_return_parent' => $redirect_target == 'parent',
             'framed_return_top' => $redirect_target == 'top'
         ];
-
-        return $this;
-    }
-
-    /**
-     * @param int $token_format integer between 2 and 6, Set the Token format
-     * @param bool $optional Display the save card option on the payment page
-     */
-    public function set10Tokenise($on = false, $token_format = 2, $optional = false)
-    {
-        if ($on) {
-            $this->tokenise = [
-                'tokenise' => $token_format,
-                'show_save_card' => $optional
-            ];
-        }
 
         return $this;
     }
