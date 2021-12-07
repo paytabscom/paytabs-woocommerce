@@ -767,9 +767,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $ec_is_paid = $order->is_paid();
         // $order->maybe_set_date_paid();
 
-        // sleep(3);
-        $prev_trx = $this->pt_get_tran_ref($pt_order_id, $pt_tran_type);
-        if ($prev_trx && $prev_trx[0] == $pt_tran_ref) {
+        $is_registered = $this->pt_has_tran_ref($pt_order_id, $pt_tran_type, $pt_tran_ref);
+        if ($is_registered) {
             PaytabsHelper::log("{$pt_tran_type} already registered, {$pt_order_id} - {$pt_message}", 3);
             return;
         }
@@ -975,7 +974,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     {
         if (!$transaction_type) $transaction_type = $this->trans_type;
 
-        update_post_meta($order->get_id(), '_pt_tran_ref_' . $transaction_type, $transaction_id);
+        add_post_meta($order->get_id(), '_pt_tran_ref_' . $transaction_type, $transaction_id);
         $this->pt_set_tran_type($order, $transaction_type);
     }
 
@@ -984,6 +983,18 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $transaction_ref = get_post_meta($order_id, '_pt_tran_ref_' . $transaction_type);
 
         return $transaction_ref;
+    }
+
+    private function pt_has_tran_ref($order_id, $transaction_type, $tran_ref)
+    {
+        $transaction_refs = $this->pt_get_tran_ref($order_id, $transaction_type);
+
+        foreach ($transaction_refs as $tran_ref_prev) {
+            if ($tran_ref_prev == $tran_ref) {
+                return true;
+            }
+        }
+        return false;
     }
 
 
