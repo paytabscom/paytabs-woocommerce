@@ -2,10 +2,10 @@
 
 /**
  * PayTabs v2 PHP SDK
- * Version: 2.7.3
+ * Version: 2.7.4
  */
 
-define('PAYTABS_SDK_VERSION', '2.7.3');
+define('PAYTABS_SDK_VERSION', '2.7.4');
 
 
 abstract class PaytabsHelper
@@ -215,6 +215,7 @@ abstract class PaytabsEnum
     const TRAN_TYPE_REGISTER = 'register';
 
     const TRAN_TYPE_VOID    = 'void';
+    const TRAN_TYPE_RELEASE = 'release';
     const TRAN_TYPE_REFUND  = 'refund';
 
     //
@@ -252,6 +253,11 @@ abstract class PaytabsEnum
     static function TranIsVoid($tran_type)
     {
         return strcasecmp($tran_type, PaytabsEnum::TRAN_TYPE_VOID) == 0;
+    }
+
+    static function TranIsRelease($tran_type)
+    {
+        return strcasecmp($tran_type, PaytabsEnum::TRAN_TYPE_RELEASE) == 0;
     }
 
     static function TranIsRefund($tran_type)
