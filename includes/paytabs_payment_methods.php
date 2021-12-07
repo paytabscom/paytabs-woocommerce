@@ -522,7 +522,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         if ($success) {
             $this->pt_set_tran_ref($order, PaytabsEnum::TRAN_TYPE_REFUND, $tran_ref);
-            $order->update_status('refunded', __('Payment Refunded: ', 'PayTabs'));
+            // $order->update_status('refunded', __('Payment Refunded: ', 'PayTabs'));
         } else if ($pending_success) {
             $order->update_status('on-hold', __('Payment Pending Refund: ', 'PayTabs'));
         }
@@ -716,7 +716,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $payment_gateway = wc_get_payment_gateway_by_order($order);
 
         if (!$payment_gateway->ipn_enable) {
-            PaytabsHelper::log("IPN handling is disabled", 3);
+            PaytabsHelper::log("IPN handling is disabled, {$orderId}", 3);
             return;
         }
 
@@ -845,7 +845,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
                 if (!is_wp_error($refund)) {
                     PaytabsHelper::log("{$pt_tran_type} done, {$pt_order_id} - {$pt_tran_ref}", 3);
-                    $this->setNewStatus($order, true, $pt_tran_type, true);
+                    $this->pt_set_tran_ref($order, $pt_tran_type, $pt_tran_ref);
+                    // $this->setNewStatus($order, true, $pt_tran_type, true);
                 } else {
                     PaytabsHelper::log("Refund failed, {$pt_order_id} - {$refund->get_error_message()}", 3);
                 }
