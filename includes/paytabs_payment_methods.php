@@ -151,7 +151,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                     'redirect' => __( 'Redirect to hosted form on PayTabs server', 'PayTabs' ),
                     'iframe'   => __( 'iFrame payment form integrated into checkout', 'PayTabs' ),
                 ),
-                'description' => __( "Hosted form on PayTabs server is the secure solution of choice, while iFrame provides better customer experience (https strongly advised)", 'PayTabs' ),
+                'description' => __( "Hosted form on PayTabs server is the secure solution of choice,
+                 while iFrame provides better customer experience (https strongly advised)", 'PayTabs' ),
                 'default'     => 'redirect',
                 'desc_tip'    => false,
             ),
@@ -308,11 +309,14 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 // iFrame should be used IF configured in settings OR doing payment with existing token
 
                 if ($this->payment_form === 'iframe') {
-                    $this->script_manager();
-                    echo $this->generate_iframe_form_html( $payment_url );
+                    //$this->script_manager();
+                    //$iframe =  $this->generate_iframe_form_html( $payment_url );
+                    $pay_url = wc_get_endpoint_url( 'order-pay', $order_id, wc_get_checkout_url() );
+                    $pay_url = add_query_arg( 'key',$payment_url, $pay_url );
+                    echo $pay_url;
                     return array(
                         'result'   => 'success',
-                        'redirect' => $order->get_checkout_payment_url( true ),
+                        'redirect' => $pay_url,
 
                     );
                 }
@@ -357,8 +361,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $html .= '<div class="wc_paytabs_iframe_messager" id="wc_paytabs_iframe_messager">';
         $html .= apply_filters( 'wc_paytabs_iframe_processing', __( 'Processing payment with saved card...', 'paytabs' ) );
         $html .= '</div>' . PHP_EOL;
-        $html .= '<div class="wc_paytabs_iframe_form_detail" id="wc_paytabs_iframe_payment_container" style="display: none;">' . PHP_EOL;
-        $cancel_style = 'style="display: none;"';
+        $html .= '<div class="wc_paytabs_iframe_form_detail" id="wc_paytabs_iframe_payment_container">' . PHP_EOL;
 
         $html .= '<iframe id="wc_paytabs_iframe" name="wc_paytabs_iframe" width="358" height="409" style="border: 0;" src="'.$payment_url.'"></iframe>' . PHP_EOL;
         $html .= '</div>' . PHP_EOL;
