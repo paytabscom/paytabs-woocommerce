@@ -2,7 +2,7 @@
 
 Official WooCommerce plugin for PayTabs
 
-- - -
+---
 
 ## Installation
 
@@ -24,14 +24,14 @@ Official WooCommerce plugin for PayTabs
 5. Click `Install Now`
 6. If a previous version exists, select `Replace current with uploaded`
 
-- - -
+---
 
 ## Activating the Plugin
 
 1. Go to `"Wordpress admin panel" >> Plugins >> Installed Plugins`
 2. Look for `PayTabs - WooCommerce Payment Gateway` and click `Activate`
 
-- - -
+---
 
 ## Configure the Plugin
 
@@ -44,7 +44,14 @@ Official WooCommerce plugin for PayTabs
    - **Server Key**: `Merchant’s Dashboard >> Developers >> Key management >> Server Key`
 6. Click `Save changes`
 
-- - -
+## Use Auth - Capture - Void
+
+1. In the configuration page select transaction type: **Auth**.
+2. The default order-status for **Auth** Orders is **on-hold** unless you change it from the configuration page.
+3. To **Capture** an **Auth** order you need to go to the order edit view >> change the order status to **Completed** then Save, the **Capture** will be done.
+4. To **Void** the **Auth** order, you need to go to the order edit view >> change the order status to **Cancelled** then Save, the **Void** will be done.
+
+---
 
 ## Log Access
 
@@ -52,6 +59,6 @@ Official WooCommerce plugin for PayTabs
 
 1. Access `debug_paytabs.log` file found at: `/wp-content/debug_paytabs.log`
 
-- - -
+---
 
 Done

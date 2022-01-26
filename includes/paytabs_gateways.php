@@ -25,6 +25,8 @@ class WC_Gateway_Paytabs_Mada extends WC_Gateway_Paytabs
     protected $_code = 'mada';
     protected $_title = 'PayTabs - Mada';
     protected $_description = 'PayTabs - Mada payment method';
+
+    protected $_icon = "mada.svg";
 }
 
 class WC_Gateway_Paytabs_Stcpay extends WC_Gateway_Paytabs
@@ -46,6 +48,8 @@ class WC_Gateway_Paytabs_Applepay extends WC_Gateway_Paytabs
     protected $_code = 'applepay';
     protected $_title = 'PayTabs - ApplePay';
     protected $_description = 'PayTabs - ApplePay payment method';
+
+    protected $_icon = "applepay.svg";
 }
 
 class WC_Gateway_Paytabs_Omannet extends WC_Gateway_Paytabs
@@ -62,9 +66,9 @@ class WC_Gateway_Paytabs_Sadad extends WC_Gateway_Paytabs
     protected $_description = 'PayTabs - Sadad payment method';
 }
 
-class WC_Gateway_Paytabs_Atfawry extends WC_Gateway_Paytabs
+class WC_Gateway_Paytabs_Fawry extends WC_Gateway_Paytabs
 {
-    protected $_code = 'atfawry';
+    protected $_code = 'fawry';
     protected $_title = 'PayTabs - @Fawry';
     protected $_description = 'PayTabs - @Fawry payment method';
 }
@@ -74,6 +78,8 @@ class WC_Gateway_Paytabs_Knpay extends WC_Gateway_Paytabs
     protected $_code = 'knet';
     protected $_title = 'PayTabs - KnPay';
     protected $_description = 'PayTabs - KnPay payment method';
+
+    protected $_icon = "knet.svg";
 }
 
 class WC_Gateway_Paytabs_Amex extends WC_Gateway_Paytabs
@@ -102,4 +108,32 @@ class WC_Gateway_Paytabs_Valu extends WC_Gateway_Paytabs
             'required'    => true
         );
     }
+}
+
+class WC_Gateway_Paytabs_Meeza extends WC_Gateway_Paytabs
+{
+    protected $_code = 'meeza';
+    protected $_title = 'PayTabs - Meeza';
+    protected $_description = 'PayTabs - Meeza payment method';
+}
+
+class WC_Gateway_Paytabs_Meezaqr extends WC_Gateway_Paytabs
+{
+    protected $_code = 'meezaqr';
+    protected $_title = 'PayTabs - Meeza QR';
+    protected $_description = 'PayTabs - Meeza QR payment method';
+}
+
+class WC_Gateway_Paytabs_Unionpay extends WC_Gateway_Paytabs
+{
+    protected $_code = 'unionpay';
+    protected $_title = 'PayTabs - UnionPay';
+    protected $_description = 'PayTabs - UnionPay payment method';
+}
+
+class WC_Gateway_Paytabs_Samsungpay extends WC_Gateway_Paytabs
+{
+    protected $_code = 'samsungpay';
+    protected $_title = 'PayTabs - SamsungPay';
+    protected $_description = 'PayTabs - SamsungPay payment method';
 }

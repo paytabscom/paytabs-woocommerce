@@ -8,11 +8,11 @@
  * Plugin Name:   PayTabs - WooCommerce Payment Gateway
  * Plugin URI:    https://paytabs.com/
  * Description:   PayTabs is a <strong>3rd party payment gateway</strong>. Ideal payment solutions for your internet business.
- * Version:       4.3.4
+ * Version:       4.9.0
  * Requires PHP:  7.0
  * Author:        PayTabs
  * Author URI:    w.kammoun@paytabs.com
- * Revision Date: 03/May/2021
+ * Revision Date: 07/December/2021
  */
 
 if (!function_exists('add_action')) {
@@ -20,23 +20,27 @@ if (!function_exists('add_action')) {
 }
 
 
-define('PAYTABS_PAYPAGE_VERSION', '4.3.4');
+define('PAYTABS_PAYPAGE_VERSION', '4.9.0');
 define('PAYTABS_PAYPAGE_DIR', plugin_dir_path(__FILE__));
 define('PAYTABS_PAYPAGE_ICONS_URL', plugins_url("icons/", __FILE__));
 define('PAYTABS_DEBUG_FILE', WP_CONTENT_DIR . "/debug_paytabs.log");
 define('PAYTABS_PAYPAGE_METHODS', [
+  'mada'       => 'WC_Gateway_Paytabs_Mada',
   'all'        => 'WC_Gateway_Paytabs_All',
   'creditcard' => 'WC_Gateway_Paytabs_Creditcard',
-  'mada'       => 'WC_Gateway_Paytabs_Mada',
   'stcpay'     => 'WC_Gateway_Paytabs_Stcpay',
   // 'stcpayqr' => 'WC_Gateway_Paytabs_Stcpayqr',
   'applepay'   => 'WC_Gateway_Paytabs_Applepay',
   'omannet'    => 'WC_Gateway_Paytabs_Omannet',
-  'sadad'      => 'WC_Gateway_Paytabs_Sadad',
-  'atfawry'    => 'WC_Gateway_Paytabs_Atfawry',
+  // 'sadad'      => 'WC_Gateway_Paytabs_Sadad',
+  'fawry'      => 'WC_Gateway_Paytabs_Fawry',
   'knet'       => 'WC_Gateway_Paytabs_Knpay',
   'amex'       => 'WC_Gateway_Paytabs_Amex',
   'valu'       => 'WC_Gateway_Paytabs_Valu',
+  'meeza'      => 'WC_Gateway_Paytabs_Meeza',
+  'meezaqr'    => 'WC_Gateway_Paytabs_Meezaqr',
+  'unionpay'   => 'WC_Gateway_Paytabs_Unionpay',
+  // 'samsungpay' => 'WC_Gateway_Paytabs_Samsungpay',
 ]);
 
 
