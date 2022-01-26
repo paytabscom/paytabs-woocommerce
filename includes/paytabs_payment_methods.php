@@ -435,7 +435,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
                 if ($this->payment_form === 'iframe') {
                     //$this->script_manager();
-                    //$iframe =  $this->generate_iframe_form_html( $payment_url );
+                    $iframe =  $this->generate_iframe_form_html( $payment_url );
+                    echo $iframe;
                     $pay_url = wc_get_endpoint_url( 'order-pay', $order_id, wc_get_checkout_url() );
                     $pay_url = add_query_arg( 'key',$payment_url, $pay_url );
                     echo $pay_url;
@@ -1011,6 +1012,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         PaytabsHelper::log("{$handler} handling the Order {$order_id}", 3);
 
         $success = $result->success;
+        $response_status = $result->response_status;
         $message = $result->message;
         $orderId = @$result->reference_no;
         $transaction_ref = @$result->transaction_id;
@@ -1027,8 +1029,15 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             // $_data = WooCommerce2 ? $order->data : $order->get_data();
             // $_logOrder = (json_encode($_data));
             PaytabsHelper::log("{$handler} Validating failed, Order {$order_id}, response [{$_logVerify}]", 3);
+            if ($response_status === "H")
+            {
+                $this->orderHoldOnReject($order, $message, $is_ipn);
+            }
+            else
+            {
+                $this->orderFailed($order, $message, $is_ipn);
+            }
 
-            $this->orderFailed($order, $message, $is_ipn);
         }
     }
 
@@ -1158,6 +1167,21 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         wp_redirect($order->get_checkout_payment_url());
     }
 
+    private function orderHoldOnReject($order, $message, $is_ipn)
+    {
+        $order->add_order_note('Payment for this order is hold on rejected , you can make manual capture from your dashboard on PayTabs portal');
+        wc_add_notice($message, 'error');
+
+        $order->update_status('failed', $message);
+
+        $this->setNewStatus($order, false);
+
+        if ($is_ipn) {
+            return;
+        }
+
+        wp_redirect($order->get_checkout_payment_url());
+    }
 
     public function setNewStatus($order, $isSuccess, $transaction_type = null, $force_set = false)
     {
