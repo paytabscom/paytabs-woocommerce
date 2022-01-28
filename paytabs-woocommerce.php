@@ -8,11 +8,11 @@
  * Plugin Name:   PayTabs - WooCommerce Payment Gateway
  * Plugin URI:    https://paytabs.com/
  * Description:   PayTabs is a <strong>3rd party payment gateway</strong>. Ideal payment solutions for your internet business.
- * Version:       4.9.0
+ * Version:       4.9.1
  * Requires PHP:  7.0
  * Author:        PayTabs
  * Author URI:    w.kammoun@paytabs.com
- * Revision Date: 07/December/2021
+ * Revision Date: 28/January/2022
  */
 
 if (!function_exists('add_action')) {
@@ -20,7 +20,7 @@ if (!function_exists('add_action')) {
 }
 
 
-define('PAYTABS_PAYPAGE_VERSION', '4.9.0');
+define('PAYTABS_PAYPAGE_VERSION', '4.9.1');
 define('PAYTABS_PAYPAGE_DIR', plugin_dir_path(__FILE__));
 define('PAYTABS_PAYPAGE_ICONS_URL', plugins_url("icons/", __FILE__));
 define('PAYTABS_DEBUG_FILE', WP_CONTENT_DIR . "/debug_paytabs.log");
