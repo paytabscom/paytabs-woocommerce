@@ -2,10 +2,10 @@
 
 /**
  * PayTabs v2 PHP SDK
- * Version: 2.7.4
+ * Version: 2.7.5
  */
 
-define('PAYTABS_SDK_VERSION', '2.7.4');
+define('PAYTABS_SDK_VERSION', '2.7.5');
 
 
 abstract class PaytabsHelper
@@ -1082,7 +1082,7 @@ class PaytabsApi
             // $param_tranRef = 'tranRef';
             // $param_cartId = 'cartId';
 
-            $data = $_POST;
+            $data = filter_input_array(INPUT_POST);
 
             $is_valid = $this->is_valid_redirect($data);
         }
