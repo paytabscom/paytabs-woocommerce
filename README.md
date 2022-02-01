@@ -51,7 +51,13 @@ Official WooCommerce plugin for PayTabs
 3. To **Capture** an **Auth** order you need to go to the order edit view >> change the order status to **Completed** then Save, the **Capture** will be done.
 4. To **Void** the **Auth** order, you need to go to the order edit view >> change the order status to **Cancelled** then Save, the **Void** will be done.
 
+
+## Use Iframe
 ---
+1. In the configuration page select Payment form type: **Iframe**.
+2. Enter The Plugin Folder you will find directory woocomemerce >> templates >> checkout ,
+copy the file named form-checkout.php to the same directory inside the WooCommerce plugin Folder
+3. save the configuration.
 
 ## Log Access
 
