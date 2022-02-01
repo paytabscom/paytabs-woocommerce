@@ -118,24 +118,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         add_action('woocommerce_order_status_completed', array($this, 'process_capture'), 10, 1);
         add_action('woocommerce_order_status_cancelled', array($this, 'process_void'), 10, 1);
         // $this->checkCallback();
-    }
-
-
-    /**
-     * Register scripts for front-end
-     *
-     * @access public
-     * @return void
-     */
-
-    public function script_manager() {
-
-        // wp_register_script template ( $handle, $src, $deps, $ver, $in_footer );
-        wp_register_script( 'wc-paytabs-iframe', plugins_url( '/assets/js/paytabs-iframe-handler.js', dirname( __FILE__ ) ), array( 'jquery' ), false, true );
-        wp_enqueue_script( 'wc-paytabs-iframe' );
 
     }
-
 
     /**
      * Returns the icon URL for this payment method
@@ -428,18 +412,14 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             if ($is_completed) {
                 return $this->validate_payment($paypage, $order, true, false);
             } else {
+
                 $payment_url = $paypage->payment_url;
 
-
                 // iFrame should be used IF configured in settings OR doing payment with existing token
-
                 if ($this->payment_form === 'iframe') {
-                    //$this->script_manager();
-                    $iframe =  $this->generate_iframe_form_html( $payment_url );
-                    echo $iframe;
-                    $pay_url = wc_get_endpoint_url( 'order-pay', $order_id, wc_get_checkout_url() );
-                    $pay_url = add_query_arg( 'key',$payment_url, $pay_url );
-                    echo $pay_url;
+
+                    $pay_url = add_query_arg( 'key',$payment_url, wc_get_checkout_url() );
+
                     return array(
                         'result'   => 'success',
                         'redirect' => $pay_url,
@@ -451,7 +431,6 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                     return array(
                         'result'   => 'success',
                         'redirect' => $payment_url,
-
                     );
                 }
             }
@@ -466,6 +445,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             return null;
         }
     }
+
 
     /**
      * return the last saved Token for the selected payment method
@@ -497,31 +477,6 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     }
 
 
-
-    /**
-     * Build iFrame form for receipt page
-     *
-     * @param array $args
-     *
-     * @return string
-     */
-    protected function generate_iframe_form_html( $payment_url ) {
-
-        global $woocommerce;
-
-        $html         = '';
-        $cancel_style = '';
-
-        $html .= '<div class="wc_paytabs_iframe_messager" id="wc_paytabs_iframe_messager">';
-        $html .= apply_filters( 'wc_paytabs_iframe_processing', __( 'Processing payment with saved card...', 'paytabs' ) );
-        $html .= '</div>' . PHP_EOL;
-        $html .= '<div class="wc_paytabs_iframe_form_detail" id="wc_paytabs_iframe_payment_container">' . PHP_EOL;
-
-        $html .= '<iframe id="wc_paytabs_iframe" name="wc_paytabs_iframe" width="358" height="409" style="border: 0;" src="'.$payment_url.'"></iframe>' . PHP_EOL;
-        $html .= '</div>' . PHP_EOL;
-
-        return $html;
-    }
 
     /**
      * Build redirect form & autosubmit for receipt page
@@ -1244,6 +1199,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $is_subscription = $this->has_subscription($order->get_id());
         $tokenise = $this->is_tokenise() || $is_subscription;
+        $frammed =  $this->payment_form;
 
         $total = $order->get_total();
         // $discount = $order->get_total_discount();
@@ -1341,8 +1297,14 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 $return_url,
                 $callback_url
             )
-            ->set08Lang($lang)
-            ->set10Tokenise($tokenise)
+            ->set08Lang($lang);
+
+            if ($frammed === "iframe")
+            {
+                $holder->set09Framed(true);
+            }
+
+            $holder->set10Tokenise($tokenise)
             ->set99PluginInfo('WooCommerce', $woocommerce->version, PAYTABS_PAYPAGE_VERSION);
 
         if ($this->_code == 'valu') {
@@ -1367,6 +1329,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $is_subscription = $this->has_subscription($order->get_id());
         $tokenise = $this->is_tokenise() || $is_subscription;
+        $frammed =  $this->payment_form;
 
         $total = $order->get_total();
         // $discount = $order->get_total_discount();
@@ -1453,8 +1416,13 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 $return_url,
                 $callback_url
             )
-            ->set08Lang($lang)
-            ->set10Tokenise($tokenise)
+            ->set08Lang($lang);
+
+            if ($frammed === "iframe")
+            {
+                $holder->set09Framed(true);
+            }
+            $holder->set10Tokenise($tokenise)
             ->set99PluginInfo('WooCommerce', $woocommerce->version, PAYTABS_PAYPAGE_VERSION);
 
         if ($this->_code == 'valu') {
