@@ -68,7 +68,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $this->title = $this->get_option('title');
         $this->description = $this->get_option('description');
         $this->enabled = $this->get_option('enabled');
-        $this->payment_form     = $this->get_option( 'payment_form' );
+        $this->payment_form = $this->get_option('payment_form');
+        $this->is_frammed_page = ($this->payment_form === 'iframe');
 
         // PT
         $this->paytabs_endpoint = $this->get_option('endpoint');
@@ -119,6 +120,41 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         add_action('woocommerce_order_status_cancelled', array($this, 'process_void'), 10, 1);
         // $this->checkCallback();
 
+        add_action('woocommerce_receipt_' . $this->id, array($this, 'receipt_page'));
+    }
+
+
+    function receipt_page($order_id)
+    {
+        $order = wc_get_order($order_id);
+
+        $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
+
+        $values = WooCommerce2 ? $this->prepareOrder2($order) : $this->prepareOrder($order);
+
+        $paypage = $_paytabsApi->create_pay_page($values);
+
+        //
+
+        $success = $paypage->success;
+        $message = @$paypage->message;
+
+        if ($success) {
+            $this->set_handled($order_id, false);
+
+            $payment_url = $paypage->payment_url;
+            if ($this->is_frammed_page) {
+                echo "<iframe src='{$payment_url}' width='auto' height='auto' style='min-width: 400px; min-height: 500px; border: 0' />";
+            }
+        } else {
+            $_logPaypage = json_encode($paypage);
+            $_logParams = json_encode($values);
+            PaytabsHelper::log("Create PayPage failed, Order {$order_id}, [{$_logPaypage}], [{$_logParams}]", 3);
+
+            $errorMessage = $message;
+
+            echo "<h2>$errorMessage</h2>";
+        }
     }
 
     /**
@@ -214,15 +250,15 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 'description' => '',
                 'default'     => 'no'
             ),
-            'payment_form'         => array(
-                'title'       => __( 'Payment form type', 'PayTabs' ),
+            'payment_form' => array(
+                'title'       => __('Payment form type', 'PayTabs'),
                 'type'        => 'select',
                 'options'     => array(
-                    'redirect' => __( 'Redirect to hosted form on PayTabs server', 'PayTabs' ),
-                    'iframe'   => __( 'iFrame payment form integrated into checkout', 'PayTabs' ),
+                    'redirect' => __('Redirect to hosted form on PayTabs server', 'PayTabs'),
+                    'iframe'   => __('iFrame payment form integrated into checkout', 'PayTabs'),
                 ),
-                'description' => __( "Hosted form on PayTabs server is the secure solution of choice,
-                 while iFrame provides better customer experience (https strongly advised)", 'PayTabs' ),
+                'description' => __("Hosted form on PayTabs server is the secure solution of choice,
+                 while iFrame provides better customer experience (https strongly advised)", 'PayTabs'),
                 'default'     => 'redirect',
                 'desc_tip'    => false,
             ),
@@ -390,11 +426,17 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
 
-
         $saved_token = $this->get_token();
         if ($saved_token) {
             $values = $this->prepareOrder_Tokenised($order, $saved_token);
         } else {
+            if ($this->is_frammed_page) {
+                return array(
+                    'result'   => 'success',
+                    'redirect' => $order->get_checkout_payment_url(true)
+                );
+            }
+
             $values = WooCommerce2 ? $this->prepareOrder2($order) : $this->prepareOrder($order);
         }
 
@@ -414,25 +456,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             } else {
 
                 $payment_url = $paypage->payment_url;
-
-                // iFrame should be used IF configured in settings OR doing payment with existing token
-                if ($this->payment_form === 'iframe') {
-
-                    $pay_url = add_query_arg( 'key',$payment_url, wc_get_checkout_url() );
-
-                    return array(
-                        'result'   => 'success',
-                        'redirect' => $pay_url,
-
-                    );
-                }
-                else
-                {
-                    return array(
-                        'result'   => 'success',
-                        'redirect' => $payment_url,
-                    );
-                }
+                return array(
+                    'result'   => 'success',
+                    'redirect' => $payment_url,
+                );
             }
         } else {
             $_logPaypage = json_encode($paypage);
@@ -984,15 +1011,11 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             // $_data = WooCommerce2 ? $order->data : $order->get_data();
             // $_logOrder = (json_encode($_data));
             PaytabsHelper::log("{$handler} Validating failed, Order {$order_id}, response [{$_logVerify}]", 3);
-            if ($response_status === "H")
-            {
+            if ($response_status === "H") {
                 $this->orderHoldOnReject($order, $message, $is_ipn);
-            }
-            else
-            {
+            } else {
                 $this->orderFailed($order, $message, $is_ipn);
             }
-
         }
     }
 
@@ -1299,12 +1322,11 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             )
             ->set08Lang($lang);
 
-            if ($frammed === "iframe")
-            {
-                $holder->set09Framed(true);
-            }
+        if ($frammed === "iframe") {
+            $holder->set09Framed(true, 'top');
+        }
 
-            $holder->set10Tokenise($tokenise)
+        $holder->set10Tokenise($tokenise)
             ->set99PluginInfo('WooCommerce', $woocommerce->version, PAYTABS_PAYPAGE_VERSION);
 
         if ($this->_code == 'valu') {
@@ -1329,7 +1351,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $is_subscription = $this->has_subscription($order->get_id());
         $tokenise = $this->is_tokenise() || $is_subscription;
-        $frammed =  $this->payment_form;
+        $frammed = $this->payment_form;
 
         $total = $order->get_total();
         // $discount = $order->get_total_discount();
@@ -1418,11 +1440,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             )
             ->set08Lang($lang);
 
-            if ($frammed === "iframe")
-            {
-                $holder->set09Framed(true);
-            }
-            $holder->set10Tokenise($tokenise)
+        if ($frammed === "iframe") {
+            $holder->set09Framed(true);
+        }
+        $holder->set10Tokenise($tokenise)
             ->set99PluginInfo('WooCommerce', $woocommerce->version, PAYTABS_PAYPAGE_VERSION);
 
         if ($this->_code == 'valu') {
