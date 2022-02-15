@@ -31,6 +31,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $this->_is_card_method = PaytabsHelper::isCardPayment($this->_code);
         $this->_support_tokenise = PaytabsHelper::supportTokenization($this->_code);
         $this->_support_auth_capture = PaytabsHelper::supportAuthCapture($this->_code);
+        $this->_support_iframe = PaytabsHelper::supportIframe($this->_code);
 
         $tokenise_features = [
             'tokenization',
@@ -144,7 +145,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
             $payment_url = $paypage->payment_url;
             if ($this->is_frammed_page) {
-                echo "<iframe src='{$payment_url}' width='auto' height='auto' style='min-width: 400px; min-height: 500px; border: 0' />";
+                echo "<iframe src='{$payment_url}' width='100%' height='auto' style='min-width: 400px; min-height: 700px; border: 0' />";
             }
         } else {
             $_logPaypage = json_encode($paypage);
@@ -241,16 +242,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 'default'     => 'wc-on-hold'
             ];
         }
-
-        $fields = array(
-            'enabled' => array(
-                'title'       => __('Enable/Disable', 'PayTabs'),
-                'label'       => __('Enable Payment Gateway.', 'PayTabs'),
-                'type'        => 'checkbox',
-                'description' => '',
-                'default'     => 'no'
-            ),
-            'payment_form' => array(
+        if ($this->_support_iframe) {
+            $addional_fields['payment_form'] = [
                 'title'       => __('Payment form type', 'PayTabs'),
                 'type'        => 'select',
                 'options'     => array(
@@ -261,6 +254,16 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                  while iFrame provides better customer experience (https strongly advised)", 'PayTabs'),
                 'default'     => 'redirect',
                 'desc_tip'    => false,
+            ];
+        }
+        
+        $fields = array(
+            'enabled' => array(
+                'title'       => __('Enable/Disable', 'PayTabs'),
+                'label'       => __('Enable Payment Gateway.', 'PayTabs'),
+                'type'        => 'checkbox',
+                'description' => '',
+                'default'     => 'no'
             ),
             'endpoint' => array(
                 'title'       => __('PayTabs endpoint region', 'PayTabs'),
@@ -381,7 +384,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
     private function is_tokenise()
     {
-        return (bool) $_POST[$this->tokenise_param];
+        if (isset($_POST[$this->tokenise_param]))
+        {
+            return (bool) $_POST[$this->tokenise_param];
+        }
     }
 
     private function get_token()
@@ -429,14 +435,15 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $saved_token = $this->get_token();
         if ($saved_token) {
             $values = $this->prepareOrder_Tokenised($order, $saved_token);
-        } else {
-            if ($this->is_frammed_page) {
-                return array(
-                    'result'   => 'success',
-                    'redirect' => $order->get_checkout_payment_url(true)
-                );
-            }
-
+        } 
+        elseif ($this->is_frammed_page){
+           
+          return array(
+            'result'   => 'success',
+           'redirect' => $order->get_checkout_payment_url(true)
+           );
+        }
+        else{
             $values = WooCommerce2 ? $this->prepareOrder2($order) : $this->prepareOrder($order);
         }
 
@@ -1259,7 +1266,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $countryBilling = $order->get_billing_country();
         $addressBilling = trim($order->get_billing_address_1() . ' ' . $order->get_billing_address_2());
 
-        $is_diff_shipping_address = (bool) $_POST["ship_to_different_address"];
+        $is_diff_shipping_address = (isset($_POST["ship_to_different_address"])) ? (bool) $_POST["ship_to_different_address"] : false ;
         if ($is_diff_shipping_address) {
             $countryShipping = $order->get_shipping_country();
             $addressShipping = trim($order->get_shipping_address_1() . ' ' . $order->get_shipping_address_2());
@@ -1387,7 +1394,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $countryBilling = $order->billing_country;
         $addressBilling = trim($order->billing_address_1 . ' ' . $order->billing_address_2);
 
-        $is_diff_shipping_address = (bool) $_POST["ship_to_different_address"];
+        $is_diff_shipping_address = (isset($_POST["ship_to_different_address"])) ? (bool) $_POST["ship_to_different_address"] : false ;
         if ($is_diff_shipping_address) {
             $addressShipping = trim($order->shipping_address_1 . ' ' . $order->shipping_address_2);
             $countryShipping = $order->shipping_country;
