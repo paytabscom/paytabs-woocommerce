@@ -8,7 +8,6 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     protected $_title = '';
     protected $_description = '';
     protected $_icon = null;
-    protected $payment_form;
     //
     protected $_paytabsApi;
 
@@ -242,6 +241,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 'default'     => 'wc-on-hold'
             ];
         }
+
         if ($this->_support_iframe) {
             $addional_fields['payment_form'] = [
                 'title'       => __('Payment form type', 'PayTabs'),
@@ -256,7 +256,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 'desc_tip'    => false,
             ];
         }
-        
+
         $fields = array(
             'enabled' => array(
                 'title'       => __('Enable/Disable', 'PayTabs'),
@@ -384,10 +384,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
     private function is_tokenise()
     {
-        if (isset($_POST[$this->tokenise_param]))
-        {
-            return (bool) $_POST[$this->tokenise_param];
-        }
+        return (bool) filter_input(INPUT_POST, $this->tokenise_param, FILTER_VALIDATE_BOOLEAN);
     }
 
     private function get_token()
@@ -435,15 +432,13 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $saved_token = $this->get_token();
         if ($saved_token) {
             $values = $this->prepareOrder_Tokenised($order, $saved_token);
-        } 
-        elseif ($this->is_frammed_page){
-           
-          return array(
-            'result'   => 'success',
-           'redirect' => $order->get_checkout_payment_url(true)
-           );
-        }
-        else{
+        } elseif ($this->is_frammed_page) {
+
+            return array(
+                'result'   => 'success',
+                'redirect' => $order->get_checkout_payment_url(true)
+            );
+        } else {
             $values = WooCommerce2 ? $this->prepareOrder2($order) : $this->prepareOrder($order);
         }
 
@@ -463,6 +458,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             } else {
 
                 $payment_url = $paypage->payment_url;
+
                 return array(
                     'result'   => 'success',
                     'redirect' => $payment_url,
@@ -509,17 +505,6 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         return false;
     }
-
-
-
-    /**
-     * Build redirect form & autosubmit for receipt page
-     *
-     * @param array $args
-     * @param WC_Order $order
-     *
-     * @return string
-     */
 
 
     public function scheduled_subscription_payment($amount_to_charge, $renewal_order)
@@ -1229,7 +1214,6 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $is_subscription = $this->has_subscription($order->get_id());
         $tokenise = $this->is_tokenise() || $is_subscription;
-        $frammed =  $this->payment_form;
 
         $total = $order->get_total();
         // $discount = $order->get_total_discount();
@@ -1266,7 +1250,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $countryBilling = $order->get_billing_country();
         $addressBilling = trim($order->get_billing_address_1() . ' ' . $order->get_billing_address_2());
 
-        $is_diff_shipping_address = (isset($_POST["ship_to_different_address"])) ? (bool) $_POST["ship_to_different_address"] : false ;
+        $is_diff_shipping_address = (bool) filter_input(INPUT_POST, 'ship_to_different_address', FILTER_VALIDATE_BOOLEAN);
         if ($is_diff_shipping_address) {
             $countryShipping = $order->get_shipping_country();
             $addressShipping = trim($order->get_shipping_address_1() . ' ' . $order->get_shipping_address_2());
@@ -1327,13 +1311,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 $return_url,
                 $callback_url
             )
-            ->set08Lang($lang);
-
-        if ($frammed === "iframe") {
-            $holder->set09Framed(true, 'top');
-        }
-
-        $holder->set10Tokenise($tokenise)
+            ->set08Lang($lang)
+            ->set09Framed($this->is_frammed_page, 'top')
+            ->set10Tokenise($tokenise)
             ->set99PluginInfo('WooCommerce', $woocommerce->version, PAYTABS_PAYPAGE_VERSION);
 
         if ($this->_code == 'valu') {
@@ -1358,7 +1338,6 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $is_subscription = $this->has_subscription($order->get_id());
         $tokenise = $this->is_tokenise() || $is_subscription;
-        $frammed = $this->payment_form;
 
         $total = $order->get_total();
         // $discount = $order->get_total_discount();
@@ -1394,7 +1373,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $countryBilling = $order->billing_country;
         $addressBilling = trim($order->billing_address_1 . ' ' . $order->billing_address_2);
 
-        $is_diff_shipping_address = (isset($_POST["ship_to_different_address"])) ? (bool) $_POST["ship_to_different_address"] : false ;
+        $is_diff_shipping_address = (bool) filter_input(INPUT_POST, 'ship_to_different_address', FILTER_VALIDATE_BOOLEAN);
         if ($is_diff_shipping_address) {
             $addressShipping = trim($order->shipping_address_1 . ' ' . $order->shipping_address_2);
             $countryShipping = $order->shipping_country;
@@ -1445,12 +1424,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 $return_url,
                 $callback_url
             )
-            ->set08Lang($lang);
-
-        if ($frammed === "iframe") {
-            $holder->set09Framed(true);
-        }
-        $holder->set10Tokenise($tokenise)
+            ->set08Lang($lang)
+            ->set09Framed($this->is_frammed_page, 'top')
+            ->set10Tokenise($tokenise)
             ->set99PluginInfo('WooCommerce', $woocommerce->version, PAYTABS_PAYPAGE_VERSION);
 
         if ($this->_code == 'valu') {
