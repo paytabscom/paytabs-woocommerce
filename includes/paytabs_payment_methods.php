@@ -402,7 +402,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
             return array(
                 'result'   => 'success',
-                'redirect' => $order->get_checkout_payment_url(true)
+                'redirect' => $order->get_checkout_payment_url(true) . "&t={$this->is_tokenise()}"
             );
         } else {
             $values = WooCommerce2 ? $this->prepareOrder2($order) : $this->prepareOrder($order);
@@ -487,7 +487,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     {
         $order = wc_get_order($order_id);
 
-        $values = WooCommerce2 ? $this->prepareOrder2($order) : $this->prepareOrder($order);
+        $is_tokenize = (bool) filter_input(INPUT_GET, 't');
+        $values = WooCommerce2 ? $this->prepareOrder2($order, $is_tokenize) : $this->prepareOrder($order, $is_tokenize);
 
         $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
         $paypage = $_paytabsApi->create_pay_page($values);
@@ -1217,7 +1218,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
      * -Products
      * @return Array of values to pass to create_paypage API
      */
-    private function prepareOrder($order)
+    private function prepareOrder($order, $isTokenize = false)
     {
         // PT
         global $woocommerce;
@@ -1225,7 +1226,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         // $order->add_order_note();
 
         $is_subscription = $this->has_subscription($order->get_id());
-        $tokenise = $this->is_tokenise() || $is_subscription;
+        $tokenise = $isTokenize || $this->is_tokenise() || $is_subscription;
 
         $total = $order->get_total();
         // $discount = $order->get_total_discount();
@@ -1341,7 +1342,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     /**
      * $this->prepareOrder which support WooCommerce version 2.x
      */
-    private function prepareOrder2($order)
+    private function prepareOrder2($order, $isTokenize = false)
     {
         // PT
         global $woocommerce;
@@ -1349,7 +1350,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         // $order->add_order_note();
 
         $is_subscription = $this->has_subscription($order->get_id());
-        $tokenise = $this->is_tokenise() || $is_subscription;
+        $tokenise = $isTokenize || $this->is_tokenise() || $is_subscription;
 
         $total = $order->get_total();
         // $discount = $order->get_total_discount();
