@@ -1150,14 +1150,15 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         wp_redirect($order->get_checkout_payment_url());
     }
 
+
     private function orderHoldOnReject($order, $message, $is_ipn)
     {
-        $order->add_order_note('Payment for this order is hold on rejected , you can make manual capture from your dashboard on PayTabs portal');
         wc_add_notice($message, 'error');
 
-        $order->update_status('failed', $message);
+        // $order->update_status('failed', $message);
+        $order->update_status('wc-on-hold', 'Payment for this order is On-Hold, you can Capture/Decline manualy from your dashboard on PayTabs portal', true);
 
-        $this->setNewStatus($order, false);
+        // $this->setNewStatus($order, false);
 
         if ($is_ipn) {
             return;
@@ -1165,6 +1166,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         wp_redirect($order->get_checkout_payment_url());
     }
+
 
     public function setNewStatus($order, $isSuccess, $transaction_type = null, $force_set = false)
     {
