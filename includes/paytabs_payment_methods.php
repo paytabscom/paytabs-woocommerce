@@ -1016,7 +1016,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             // $_data = WooCommerce2 ? $order->data : $order->get_data();
             // $_logOrder = (json_encode($_data));
             PaytabsHelper::log("{$handler} Validating failed, Order {$order_id}, response [{$_logVerify}]", 3);
-            if ($response_status === "H") {
+            if ($result->is_on_hold) {
                 $this->orderHoldOnReject($order, $message, $is_ipn);
             } else {
                 $this->orderFailed($order, $message, $is_ipn);

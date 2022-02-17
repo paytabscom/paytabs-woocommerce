@@ -1137,18 +1137,21 @@ class PaytabsApi
         if (!$verify) {
             $_verify = new stdClass();
             $_verify->success = false;
-            $_verify->response_status = '';
             $_verify->message = 'Verifying paytabs payment failed';
         } else if (isset($verify->code, $verify->message)) {
             $_verify->success = false;
         } else {
             if (isset($verify->payment_result)) {
                 $_verify->success = $verify->payment_result->response_status == "A";
-                $_verify->response_status = $verify->payment_result->response_status;
+                $_verify->is_on_hold = $_verify->payment_result->response_status === 'H';
             } else {
                 $_verify->success = false;
             }
             $_verify->message = $verify->payment_result->response_message;
+        }
+
+        if (!isset($_verify->is_on_hold)) {
+            $_verify->is_on_hold = false;
         }
 
         $_verify->reference_no = @$verify->cart_id;
@@ -1164,7 +1167,7 @@ class PaytabsApi
         if (!$return_data) {
             $_verify = new stdClass();
             $_verify->success = false;
-            $_verify->response_status = '';
+            $_verify->is_on_hold = false;
             $_verify->message = 'Verifying paytabs payment failed (locally)';
         } else {
             $_verify = (object)$return_data;
@@ -1172,7 +1175,7 @@ class PaytabsApi
             $response_status = $return_data['respStatus'];
             $_verify->success = $response_status == "A";
 
-            $_verify->response_status = $response_status;
+            $_verify->is_on_hold = $response_status === 'H';
             $_verify->message = $return_data['respMessage'];
 
             $_verify->transaction_id = $return_data['tranRef'];
