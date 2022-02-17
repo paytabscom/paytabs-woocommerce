@@ -30,6 +30,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $this->_is_card_method = PaytabsHelper::isCardPayment($this->_code);
         $this->_support_tokenise = PaytabsHelper::supportTokenization($this->_code);
         $this->_support_auth_capture = PaytabsHelper::supportAuthCapture($this->_code);
+        $this->_support_iframe = PaytabsHelper::supportIframe($this->_code);
 
         $tokenise_features = [
             'tokenization',
@@ -67,6 +68,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $this->title = $this->get_option('title');
         $this->description = $this->get_option('description');
         $this->enabled = $this->get_option('enabled');
+        $this->payment_form = $this->get_option('payment_form');
+        $this->is_frammed_page = ($this->payment_form === 'iframe');
 
         // PT
         $this->paytabs_endpoint = $this->get_option('endpoint');
@@ -116,6 +119,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         add_action('woocommerce_order_status_completed', array($this, 'process_capture'), 10, 1);
         add_action('woocommerce_order_status_cancelled', array($this, 'process_void'), 10, 1);
         // $this->checkCallback();
+
+        add_action('woocommerce_receipt_' . $this->id, array($this, 'receipt_page'));
     }
 
 
@@ -201,6 +206,20 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 'description' => 'Set the Order status if the Auth succeed.',
                 'options'     => $orderStatuses,
                 'default'     => 'wc-on-hold'
+            ];
+        }
+
+        if ($this->_support_iframe) {
+            $addional_fields['payment_form'] = [
+                'title'       => __('Payment form type', 'PayTabs'),
+                'type'        => 'select',
+                'options'     => array(
+                    'redirect' => __('Redirect to hosted form on PayTabs server', 'PayTabs'),
+                    'iframe'   => __('iFrame payment form integrated into checkout', 'PayTabs'),
+                ),
+                'description' => __("Hosted form on PayTabs server is the secure solution of choice, While iFrame provides better customer experience (https strongly advised)", 'PayTabs'),
+                'default'     => 'redirect',
+                'desc_tip'    => false,
             ];
         }
 
@@ -331,7 +350,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
     private function is_tokenise()
     {
-        return (bool) $_POST[$this->tokenise_param];
+        return (bool) filter_input(INPUT_POST, $this->tokenise_param, FILTER_VALIDATE_BOOLEAN);
     }
 
     private function get_token()
@@ -376,10 +395,15 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
 
-
         $saved_token = $this->get_token();
         if ($saved_token) {
             $values = $this->prepareOrder_Tokenised($order, $saved_token);
+        } elseif ($this->is_frammed_page) {
+
+            return array(
+                'result'   => 'success',
+                'redirect' => $order->get_checkout_payment_url(true) . "&t={$this->is_tokenise()}"
+            );
         } else {
             $values = WooCommerce2 ? $this->prepareOrder2($order) : $this->prepareOrder($order);
         }
@@ -398,6 +422,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             if ($is_completed) {
                 return $this->validate_payment($paypage, $order, true, false);
             } else {
+
                 $payment_url = $paypage->payment_url;
 
                 return array(
@@ -416,6 +441,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             return null;
         }
     }
+
 
     /**
      * return the last saved Token for the selected payment method
@@ -445,6 +471,54 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         return false;
     }
+
+
+    private function pt_echo_animation($show = true)
+    {
+        if ($show) {
+            $loaderPath = PAYTABS_PAYPAGE_IMAGES_URL . "logo-animation.gif";
+            echo "<div id='pt_loader'><img src='{$loaderPath}' style='width: 150px; margin: auto' /></div>";
+        } else {
+            echo "<script>document.getElementById(\"pt_loader\").style.display=\"none\";</script>";
+        }
+    }
+
+    function receipt_page($order_id)
+    {
+        $order = wc_get_order($order_id);
+
+        $is_tokenize = (bool) filter_input(INPUT_GET, 't');
+        $values = WooCommerce2 ? $this->prepareOrder2($order, $is_tokenize) : $this->prepareOrder($order, $is_tokenize);
+
+        $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
+        $paypage = $_paytabsApi->create_pay_page($values);
+
+        //
+
+        $success = $paypage->success;
+        $message = @$paypage->message;
+
+        if ($success) {
+            $this->set_handled($order_id, false);
+
+            $payment_url = $paypage->payment_url;
+
+            if ($this->is_frammed_page) {
+                $this->pt_echo_animation(true);
+
+                echo "<iframe src='{$payment_url}' width='100%' height='auto' style='min-width: 400px; min-height: 700px; border: 0' onload='document.getElementById(\"pt_loader\").style.display=\"none\";' />";
+            }
+        } else {
+            $_logPaypage = json_encode($paypage);
+            $_logParams = json_encode($values);
+            PaytabsHelper::log("Create PayPage failed, Order {$order_id}, [{$_logPaypage}], [{$_logParams}]", 3);
+
+            $errorMessage = $message;
+
+            echo "<h2>$errorMessage</h2>";
+        }
+    }
+
 
     public function scheduled_subscription_payment($amount_to_charge, $renewal_order)
     {
@@ -925,8 +999,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         PaytabsHelper::log("{$handler} handling the Order {$order_id}", 3);
 
         $success = $result->success;
+        $response_status = $result->response_status;
         $message = $result->message;
-        $orderId = @$result->reference_no;
+        // $orderId = @$result->reference_no;
         $transaction_ref = @$result->transaction_id;
         $transaction_type = @$result->tran_type;
         if ($transaction_type) $transaction_type = strtolower($transaction_type);
@@ -941,8 +1016,11 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             // $_data = WooCommerce2 ? $order->data : $order->get_data();
             // $_logOrder = (json_encode($_data));
             PaytabsHelper::log("{$handler} Validating failed, Order {$order_id}, response [{$_logVerify}]", 3);
-
-            $this->orderFailed($order, $message, $is_ipn);
+            if ($result->is_on_hold) {
+                $this->orderHoldOnReject($order, $message, $is_ipn);
+            } else {
+                $this->orderFailed($order, $message, $is_ipn);
+            }
         }
     }
 
@@ -1073,6 +1151,23 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     }
 
 
+    private function orderHoldOnReject($order, $message, $is_ipn)
+    {
+        wc_add_notice($message, 'error');
+
+        // $order->update_status('failed', $message);
+        $order->update_status('wc-on-hold', 'Payment for this order is On-Hold, you can Capture/Decline manualy from your dashboard on PayTabs portal', true);
+
+        // $this->setNewStatus($order, false);
+
+        if ($is_ipn) {
+            return;
+        }
+
+        wp_redirect($order->get_checkout_payment_url());
+    }
+
+
     public function setNewStatus($order, $isSuccess, $transaction_type = null, $force_set = false)
     {
         if ($isSuccess) {
@@ -1125,7 +1220,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
      * -Products
      * @return Array of values to pass to create_paypage API
      */
-    private function prepareOrder($order)
+    private function prepareOrder($order, $isTokenize = false)
     {
         // PT
         global $woocommerce;
@@ -1133,7 +1228,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         // $order->add_order_note();
 
         $is_subscription = $this->has_subscription($order->get_id());
-        $tokenise = $this->is_tokenise() || $is_subscription;
+        $tokenise = $isTokenize || $this->is_tokenise() || $is_subscription;
 
         $total = $order->get_total();
         // $discount = $order->get_total_discount();
@@ -1170,7 +1265,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $countryBilling = $order->get_billing_country();
         $addressBilling = trim($order->get_billing_address_1() . ' ' . $order->get_billing_address_2());
 
-        $is_diff_shipping_address = (bool) $_POST["ship_to_different_address"];
+        $is_diff_shipping_address = (bool) filter_input(INPUT_POST, 'ship_to_different_address', FILTER_VALIDATE_BOOLEAN);
         if ($is_diff_shipping_address) {
             $countryShipping = $order->get_shipping_country();
             $addressShipping = trim($order->get_shipping_address_1() . ' ' . $order->get_shipping_address_2());
@@ -1232,6 +1327,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 $callback_url
             )
             ->set08Lang($lang)
+            ->set09Framed($this->is_frammed_page, 'top')
             ->set10Tokenise($tokenise)
             ->set99PluginInfo('WooCommerce', $woocommerce->version, PAYTABS_PAYPAGE_VERSION);
 
@@ -1248,7 +1344,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     /**
      * $this->prepareOrder which support WooCommerce version 2.x
      */
-    private function prepareOrder2($order)
+    private function prepareOrder2($order, $isTokenize = false)
     {
         // PT
         global $woocommerce;
@@ -1256,7 +1352,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         // $order->add_order_note();
 
         $is_subscription = $this->has_subscription($order->get_id());
-        $tokenise = $this->is_tokenise() || $is_subscription;
+        $tokenise = $isTokenize || $this->is_tokenise() || $is_subscription;
 
         $total = $order->get_total();
         // $discount = $order->get_total_discount();
@@ -1292,7 +1388,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $countryBilling = $order->billing_country;
         $addressBilling = trim($order->billing_address_1 . ' ' . $order->billing_address_2);
 
-        $is_diff_shipping_address = (bool) $_POST["ship_to_different_address"];
+        $is_diff_shipping_address = (bool) filter_input(INPUT_POST, 'ship_to_different_address', FILTER_VALIDATE_BOOLEAN);
         if ($is_diff_shipping_address) {
             $addressShipping = trim($order->shipping_address_1 . ' ' . $order->shipping_address_2);
             $countryShipping = $order->shipping_country;
@@ -1344,6 +1440,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 $callback_url
             )
             ->set08Lang($lang)
+            ->set09Framed($this->is_frammed_page, 'top')
             ->set10Tokenise($tokenise)
             ->set99PluginInfo('WooCommerce', $woocommerce->version, PAYTABS_PAYPAGE_VERSION);
 
