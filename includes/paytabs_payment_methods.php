@@ -124,39 +124,6 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     }
 
 
-    function receipt_page($order_id)
-    {
-        $order = wc_get_order($order_id);
-
-        $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
-
-        $values = WooCommerce2 ? $this->prepareOrder2($order) : $this->prepareOrder($order);
-
-        $paypage = $_paytabsApi->create_pay_page($values);
-
-        //
-
-        $success = $paypage->success;
-        $message = @$paypage->message;
-
-        if ($success) {
-            $this->set_handled($order_id, false);
-
-            $payment_url = $paypage->payment_url;
-            if ($this->is_frammed_page) {
-                echo "<iframe src='{$payment_url}' width='100%' height='auto' style='min-width: 400px; min-height: 700px; border: 0' />";
-            }
-        } else {
-            $_logPaypage = json_encode($paypage);
-            $_logParams = json_encode($values);
-            PaytabsHelper::log("Create PayPage failed, Order {$order_id}, [{$_logPaypage}], [{$_logParams}]", 3);
-
-            $errorMessage = $message;
-
-            echo "<h2>$errorMessage</h2>";
-        }
-    }
-
     /**
      * Returns the icon URL for this payment method
      * "icons" folder must contains .png file named like the "code" param of the payment method
@@ -250,8 +217,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                     'redirect' => __('Redirect to hosted form on PayTabs server', 'PayTabs'),
                     'iframe'   => __('iFrame payment form integrated into checkout', 'PayTabs'),
                 ),
-                'description' => __("Hosted form on PayTabs server is the secure solution of choice,
-                 while iFrame provides better customer experience (https strongly advised)", 'PayTabs'),
+                'description' => __("Hosted form on PayTabs server is the secure solution of choice, While iFrame provides better customer experience (https strongly advised)", 'PayTabs'),
                 'default'     => 'redirect',
                 'desc_tip'    => false,
             ];
@@ -504,6 +470,40 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         // $tokens1 = WC_Payment_Tokens::get_order_tokens();
 
         return false;
+    }
+
+
+    function receipt_page($order_id)
+    {
+        $order = wc_get_order($order_id);
+
+        $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
+
+        $values = WooCommerce2 ? $this->prepareOrder2($order) : $this->prepareOrder($order);
+
+        $paypage = $_paytabsApi->create_pay_page($values);
+
+        //
+
+        $success = $paypage->success;
+        $message = @$paypage->message;
+
+        if ($success) {
+            $this->set_handled($order_id, false);
+
+            $payment_url = $paypage->payment_url;
+            if ($this->is_frammed_page) {
+                echo "<iframe src='{$payment_url}' width='100%' height='auto' style='min-width: 400px; min-height: 700px; border: 0' />";
+            }
+        } else {
+            $_logPaypage = json_encode($paypage);
+            $_logParams = json_encode($values);
+            PaytabsHelper::log("Create PayPage failed, Order {$order_id}, [{$_logPaypage}], [{$_logParams}]", 3);
+
+            $errorMessage = $message;
+
+            echo "<h2>$errorMessage</h2>";
+        }
     }
 
 

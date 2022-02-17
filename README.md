@@ -51,11 +51,12 @@ Official WooCommerce plugin for PayTabs
 3. To **Capture** an **Auth** order you need to go to the order edit view >> change the order status to **Completed** then Save, the **Capture** will be done.
 4. To **Void** the **Auth** order, you need to go to the order edit view >> change the order status to **Cancelled** then Save, the **Void** will be done.
 
+## Use iFrame
 
-## Use Iframe
 ---
-1. In the configuration page select Payment form type: **Iframe**.
-3. save the configuration.
+
+1. In the configuration page select Payment form type: **iFrame**.
+2. Save the configuration.
 
 ## Log Access
 
