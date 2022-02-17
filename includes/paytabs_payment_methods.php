@@ -473,14 +473,23 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     }
 
 
+    private function pt_echo_animation($show = true)
+    {
+        if ($show) {
+            $loaderPath = PAYTABS_PAYPAGE_IMAGES_URL . "logo-animation.gif";
+            echo "<div id='pt_loader'><img src='{$loaderPath}' style='width: 150px; margin: auto' /></div>";
+        } else {
+            echo "<script>document.getElementById(\"pt_loader\").style.display=\"none\";</script>";
+        }
+    }
+
     function receipt_page($order_id)
     {
         $order = wc_get_order($order_id);
 
-        $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
-
         $values = WooCommerce2 ? $this->prepareOrder2($order) : $this->prepareOrder($order);
 
+        $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
         $paypage = $_paytabsApi->create_pay_page($values);
 
         //
@@ -492,8 +501,11 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             $this->set_handled($order_id, false);
 
             $payment_url = $paypage->payment_url;
+
             if ($this->is_frammed_page) {
-                echo "<iframe src='{$payment_url}' width='100%' height='auto' style='min-width: 400px; min-height: 700px; border: 0' />";
+                $this->pt_echo_animation(true);
+
+                echo "<iframe src='{$payment_url}' width='100%' height='auto' style='min-width: 400px; min-height: 700px; border: 0' onload='document.getElementById(\"pt_loader\").style.display=\"none\";' />";
             }
         } else {
             $_logPaypage = json_encode($paypage);
@@ -988,7 +1000,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $success = $result->success;
         $response_status = $result->response_status;
         $message = $result->message;
-        $orderId = @$result->reference_no;
+        // $orderId = @$result->reference_no;
         $transaction_ref = @$result->transaction_id;
         $transaction_type = @$result->tran_type;
         if ($transaction_type) $transaction_type = strtolower($transaction_type);
