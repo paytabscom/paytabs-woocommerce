@@ -12,7 +12,7 @@ $_js_url = $this->get_endpoint_url() . $_js_path;
     <span id="paymentErrors"></span>
     <div class="row">
         <label>Card Number</label>
-        <input type="text" data-paylib="number" size="20" value="4111111111111111">
+        <input type="text" data-paylib="number" size="20">
     </div>
     <div class="row">
         <label>Expiry Date (MM/YYYY)</label>
@@ -22,7 +22,7 @@ $_js_url = $this->get_endpoint_url() . $_js_path;
     <div class="row">
         <label>Security Code</label>
         <input type="text" data-paylib="cvv" size="4">
-        <input type="text" name="token" id="pt_token" value="token1">
+        <input type="hidden" name="token" id="pt_token">
     </div>
 
 </div>
