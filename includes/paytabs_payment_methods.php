@@ -77,6 +77,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $this->paytabs_endpoint = $this->get_option('endpoint');
         $this->merchant_id = $this->get_option('profile_id');
         $this->merchant_key = $this->get_option('server_key');
+        $this->client_key = $this->get_option('client_key');
 
         $this->hide_shipping = $this->get_option('hide_shipping') == 'yes';
 
@@ -270,6 +271,13 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 'title'       => __('Server Key', 'PayTabs'),
                 'type'        => 'text',
                 'description' => __('Please enter your PayTabs "Server Key". You can find it on your Merchant’s Portal', 'PayTabs'),
+                'default'     => '',
+                'required'    => true
+            ),
+            'client_key' => array(
+                'title'       => __('Client Key', 'PayTabs'),
+                'type'        => 'text',
+                'description' => __('Please enter your PayTabs "Client Key". You can find it on your Merchant’s Portal', 'PayTabs'),
                 'default'     => '',
                 'required'    => true
             ),

@@ -1,3 +1,7 @@
+<?php
+$_client_key = $this->client_key;
+?>
+
 <script src="https://secure.paytabs.com/payment/js/paylib.js"></script>
 
 <div>
@@ -28,7 +32,7 @@
     var mf_confirmed = false;
 
     paylib.inlineForm({
-        'key': 'CPKMDV-RDP6HV-RTNG6D-GTDTP6',
+        'key': '<?= $_client_key ?>',
         'form': myform,
         'autoSubmit': false,
         'callback': function(response) {
