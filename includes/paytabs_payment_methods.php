@@ -341,28 +341,25 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     {
         if ($this->description) echo wpautop(wptexturize($this->description));
 
-        if ($this->is_managed_form) {
-            include_once('_managed_form.php');
-        }
-
-        if (!$this->supports('tokenization') || !$this->enable_tokenise) {
-            return;
-        }
-
         if (!is_checkout()) {
             return;
         }
 
-        $this->tokenization_script();
-        $this->saved_payment_methods();
+        if ($this->supports('tokenization') && $this->enable_tokenise) {
+            $this->tokenization_script();
+            $this->saved_payment_methods();
 
-        $has_subscription = class_exists('WC_Subscriptions_Cart') && WC_Subscriptions_Cart::cart_contains_subscription();
-        if ($has_subscription) {
-            echo wpautop('Will Save to Account');
-        } else {
-            $this->save_payment_method_checkbox();
+            $has_subscription = class_exists('WC_Subscriptions_Cart') && WC_Subscriptions_Cart::cart_contains_subscription();
+            if ($has_subscription) {
+                echo wpautop('Will Save to Account');
+            } else {
+                $this->save_payment_method_checkbox();
+            }
         }
-        // $this->form();
+
+        if ($this->is_managed_form) {
+            include_once('_managed_form.php');
+        }
     }
 
 
