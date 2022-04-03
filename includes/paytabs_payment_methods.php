@@ -319,6 +319,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     {
         if ($this->description) echo wpautop(wptexturize($this->description));
 
+        include_once('_managed_form.php');
+
         if (!$this->supports('tokenization') || !$this->enable_tokenise) {
             return;
         }
