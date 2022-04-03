@@ -416,6 +416,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 'result'   => 'success',
                 'redirect' => $order->get_checkout_payment_url(true) . "&t={$this->is_tokenise()}"
             );
+        } elseif ($this->is_managed_form) {
+            $values = $this->prepareOrder_ManagedForm($order);
         } else {
             $values = WooCommerce2 ? $this->prepareOrder2($order) : $this->prepareOrder($order);
         }
@@ -1507,6 +1509,21 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $post_arr = $holder->pt_build();
 
         return $post_arr;
+    }
+
+    //
+
+    private function prepareOrder_ManagedForm($order)
+    {
+        // ToDo:
+        // Use ManagedForm holder class
+
+        $values = WooCommerce2 ? $this->prepareOrder2($order) : $this->prepareOrder($order);
+
+        $payment_token = filter_input(INPUT_POST, 'token');
+        $values['payment_token'] = $payment_token;
+
+        return $values;
     }
 
     //
