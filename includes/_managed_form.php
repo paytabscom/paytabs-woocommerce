@@ -1,8 +1,12 @@
 <?php
+
 $_client_key = $this->client_key;
+
+$_js_path = 'payment/js/paylib.js';
+$_js_url = $this->get_endpoint_url() . $_js_path;
 ?>
 
-<script src="https://secure.paytabs.com/payment/js/paylib.js"></script>
+<script src="<?= $_js_url ?>"></script>
 
 <div>
     <span id="paymentErrors"></span>

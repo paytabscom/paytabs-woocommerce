@@ -155,6 +155,12 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         return  $ipn_url;
     }
 
+
+    private function get_endpoint_url()
+    {
+        return PaytabsApi::getEndpoint($this->paytabs_endpoint);
+    }
+
     /**
      * Plugin options
      */

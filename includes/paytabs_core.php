@@ -3,10 +3,10 @@
 /**
  * PayTabs v2 PHP SDK
 
- * Version: 2.7.6
+ * Version: 2.7.7
  */
 
-define('PAYTABS_SDK_VERSION', '2.7.6');
+define('PAYTABS_SDK_VERSION', '2.7.7');
 
 
 
@@ -943,6 +943,12 @@ class PaytabsApi
             $endpoints[$key] = $value['title'];
         }
         return $endpoints;
+    }
+
+    public static function getEndpoint($region)
+    {
+        $endpoint = self::BASE_URLS[$region]['endpoint'];
+        return $endpoint;
     }
 
     public static function getInstance($region, $merchant_id, $key)
