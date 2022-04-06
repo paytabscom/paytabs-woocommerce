@@ -68,13 +68,16 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $this->title = $this->get_option('title');
         $this->description = $this->get_option('description');
         $this->enabled = $this->get_option('enabled');
+
         $this->payment_form = $this->get_option('payment_form');
         $this->is_frammed_page = ($this->payment_form === 'iframe');
+        $this->is_managed_form = ($this->payment_form === "managed_form");
 
         // PT
         $this->paytabs_endpoint = $this->get_option('endpoint');
         $this->merchant_id = $this->get_option('profile_id');
         $this->merchant_key = $this->get_option('server_key');
+        $this->client_key = $this->get_option('client_key');
 
         $this->hide_shipping = $this->get_option('hide_shipping') == 'yes';
 
@@ -152,6 +155,12 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         return  $ipn_url;
     }
 
+
+    private function get_endpoint_url()
+    {
+        return PaytabsApi::getEndpoint($this->paytabs_endpoint);
+    }
+
     /**
      * Plugin options
      */
@@ -168,6 +177,15 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $ipn_url = $this->get_ipn_url();
 
         $addional_fields = [];
+
+        $redirect_modes = [
+            'redirect' => __('Redirect to hosted form on PayTabs server', 'PayTabs'),
+            'iframe'   => __('iFrame payment form integrated into checkout', 'PayTabs')
+        ];
+        if ($this->_code == 'creditcard') {
+            $redirect_modes['managed_form'] = __('Managed form');
+        }
+
 
         if ($this->_is_card_method) {
             $addional_fields['allow_associated_methods'] = [
@@ -213,10 +231,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             $addional_fields['payment_form'] = [
                 'title'       => __('Payment form type', 'PayTabs'),
                 'type'        => 'select',
-                'options'     => array(
-                    'redirect' => __('Redirect to hosted form on PayTabs server', 'PayTabs'),
-                    'iframe'   => __('iFrame payment form integrated into checkout', 'PayTabs'),
-                ),
+                'options'     => $redirect_modes,
                 'description' => __("Hosted form on PayTabs server is the secure solution of choice, While iFrame provides better customer experience (https strongly advised)", 'PayTabs'),
                 'default'     => 'redirect',
                 'desc_tip'    => false,
@@ -262,6 +277,13 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 'title'       => __('Server Key', 'PayTabs'),
                 'type'        => 'text',
                 'description' => __('Please enter your PayTabs "Server Key". You can find it on your Merchant’s Portal', 'PayTabs'),
+                'default'     => '',
+                'required'    => true
+            ),
+            'client_key' => array(
+                'title'       => __('Client Key', 'PayTabs'),
+                'type'        => 'text',
+                'description' => __('Please enter your PayTabs "Client Key". You can find it on your Merchant’s Portal', 'PayTabs'),
                 'default'     => '',
                 'required'    => true
             ),
@@ -319,24 +341,27 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     {
         if ($this->description) echo wpautop(wptexturize($this->description));
 
-        if (!$this->supports('tokenization') || !$this->enable_tokenise) {
-            return;
-        }
-
         if (!is_checkout()) {
             return;
         }
 
-        $this->tokenization_script();
-        $this->saved_payment_methods();
+        if (is_user_logged_in()) {
+            if ($this->supports('tokenization') && $this->enable_tokenise) {
+                $this->tokenization_script();
+                $this->saved_payment_methods();
 
-        $has_subscription = class_exists('WC_Subscriptions_Cart') && WC_Subscriptions_Cart::cart_contains_subscription();
-        if ($has_subscription) {
-            echo wpautop('Will Save to Account');
-        } else {
-            $this->save_payment_method_checkbox();
+                $has_subscription = class_exists('WC_Subscriptions_Cart') && WC_Subscriptions_Cart::cart_contains_subscription();
+                if ($has_subscription) {
+                    echo wpautop('Will Save to Account');
+                } else {
+                    $this->save_payment_method_checkbox();
+                }
+            }
         }
-        // $this->form();
+
+        if ($this->is_managed_form) {
+            include_once('_managed_form.php');
+        }
     }
 
 
@@ -404,6 +429,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 'result'   => 'success',
                 'redirect' => $order->get_checkout_payment_url(true) . "&t={$this->is_tokenise()}"
             );
+        } elseif ($this->is_managed_form) {
+            $values = $this->prepareOrder_ManagedForm($order);
         } else {
             $values = WooCommerce2 ? $this->prepareOrder2($order) : $this->prepareOrder($order);
         }
@@ -1495,6 +1522,21 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $post_arr = $holder->pt_build();
 
         return $post_arr;
+    }
+
+    //
+
+    private function prepareOrder_ManagedForm($order)
+    {
+        // ToDo:
+        // Use ManagedForm holder class
+
+        $values = WooCommerce2 ? $this->prepareOrder2($order) : $this->prepareOrder($order);
+
+        $payment_token = filter_input(INPUT_POST, 'token');
+        $values['payment_token'] = $payment_token;
+
+        return $values;
     }
 
     //
