@@ -345,15 +345,17 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             return;
         }
 
-        if ($this->supports('tokenization') && $this->enable_tokenise) {
-            $this->tokenization_script();
-            $this->saved_payment_methods();
+        if (is_user_logged_in()) {
+            if ($this->supports('tokenization') && $this->enable_tokenise) {
+                $this->tokenization_script();
+                $this->saved_payment_methods();
 
-            $has_subscription = class_exists('WC_Subscriptions_Cart') && WC_Subscriptions_Cart::cart_contains_subscription();
-            if ($has_subscription) {
-                echo wpautop('Will Save to Account');
-            } else {
-                $this->save_payment_method_checkbox();
+                $has_subscription = class_exists('WC_Subscriptions_Cart') && WC_Subscriptions_Cart::cart_contains_subscription();
+                if ($has_subscription) {
+                    echo wpautop('Will Save to Account');
+                } else {
+                    $this->save_payment_method_checkbox();
+                }
             }
         }
 
