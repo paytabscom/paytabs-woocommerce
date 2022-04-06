@@ -341,9 +341,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     {
         if ($this->description) echo wpautop(wptexturize($this->description));
 
-        if (!is_checkout()) {
-            return;
-        }
+       // if (!is_checkout()) {
+        //    return;
+        //}
 
         if ($this->supports('tokenization') && $this->enable_tokenise) {
             $this->tokenization_script();
