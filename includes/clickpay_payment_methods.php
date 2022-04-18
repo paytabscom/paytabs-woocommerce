@@ -1,6 +1,6 @@
 <?php
 
-defined('CLIACKPAY_PAYPAGE_VERSION') or die;
+defined('CLICKPAY_PAYPAGE_VERSION') or die;
 
 class WC_Gateway_Clickpay extends WC_Payment_Gateway
 {
@@ -10,6 +10,11 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
     protected $_icon = null;
     //
     protected $_clickpayApi;
+
+    //
+
+    const PT_HANDLED = '_pt_handled';
+    const PT_TRAN_TYPE = '_pt_transaction_type';
 
     //
 
@@ -25,7 +30,7 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
         $this->_is_card_method = ClickpayHelper::isCardPayment($this->_code);
         $this->_support_tokenise = ClickpayHelper::supportTokenization($this->_code);
         $this->_support_auth_capture = ClickpayHelper::supportAuthCapture($this->_code);
-
+        $this->_support_iframe = ClickpayHelper::supportIframe($this->_code);
 
         $tokenise_features = [
             'tokenization',
@@ -64,17 +69,24 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
         $this->description = $this->get_option('description');
         $this->enabled = $this->get_option('enabled');
 
+        $this->payment_form = $this->get_option('payment_form');
+        $this->is_frammed_page = ($this->payment_form === 'iframe');
+        $this->is_managed_form = ($this->payment_form === "managed_form");
+
         // PT
         $this->clickpay_endpoint = $this->get_option('endpoint');
         $this->merchant_id = $this->get_option('profile_id');
         $this->merchant_key = $this->get_option('server_key');
+        $this->client_key = $this->get_option('client_key');
 
         $this->hide_shipping = $this->get_option('hide_shipping') == 'yes';
 
         $this->order_status_success = $this->get_option('status_success');
         $this->order_status_failed  = $this->get_option('status_failed');
+
         $this->trans_type = $this->get_option('trans_type', ClickpayEnum::TRAN_TYPE_SALE);
         $this->order_status_auth_success = $this->get_option('status_auth_success', 'wc-on-hold');
+
 
         if ($this->_code == 'valu') {
             $this->valu_product_id = $this->get_option('valu_product_id');
@@ -83,6 +95,7 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
         $this->enable_tokenise = $this->get_option('enable_tokenise') == 'yes';
         $this->allow_associated_methods = $this->get_option('allow_associated_methods') == 'yes';
 
+        $this->ipn_enable = $this->get_option('ipn_enable') == 'yes';
 
         // This action hook saves the settings
         add_action("woocommerce_update_options_payment_gateways_{$this->id}", array($this, 'process_admin_options'));
@@ -98,9 +111,19 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
         // add_action('wp_enqueue_scripts', array($this, 'payment_scripts'));
 
         // Register a webhook
-        // add_action('woocommerce_api_paytabs_callback', array($this, 'callback'));
+        // add_action('woocommerce_api_clickpay_callback', array($this, 'callback'));
+        add_action('woocommerce_api_wc_gateway_' . $this->id, array($this, 'callback_response'));
+        add_action('woocommerce_api_wc_gateway_r_' . $this->id, array($this, 'return_response'));
 
-        $this->checkCallback();
+        if (!has_filter('woocommerce_api_wc_gateway_clickpay')) {
+            add_action('woocommerce_api_wc_gateway_clickpay', array($this, 'ipn_response'));
+        }
+
+        add_action('woocommerce_order_status_completed', array($this, 'process_capture'), 10, 1);
+        add_action('woocommerce_order_status_cancelled', array($this, 'process_void'), 10, 1);
+        // $this->checkCallback();
+
+        add_action('woocommerce_receipt_' . $this->id, array($this, 'receipt_page'));
     }
 
 
@@ -124,6 +147,20 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
     }
 
 
+    private function get_ipn_url()
+    {
+        // $siteUrl = get_site_url();
+        $ipn_url = add_query_arg('wc-api', 'wc_gateway_clickpay', home_url('/'));
+
+        return  $ipn_url;
+    }
+
+
+    private function get_endpoint_url()
+    {
+        return ClickpayApi::getEndpoint($this->clickpay_endpoint);
+    }
+
     /**
      * Plugin options
      */
@@ -137,7 +174,18 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
 
         $endpoints = ClickpayApi::getEndpoints();
 
+        $ipn_url = $this->get_ipn_url();
+
         $addional_fields = [];
+
+        $redirect_modes = [
+            'redirect' => __('Redirect to hosted form on Clickpay server', 'ClickPay'),
+            'iframe'   => __('iFrame payment form integrated into checkout', 'ClickPay')
+        ];
+        if ($this->_code == 'creditcard') {
+            $redirect_modes['managed_form'] = __('Managed form');
+        }
+
 
         if ($this->_is_card_method) {
             $addional_fields['allow_associated_methods'] = [
@@ -156,10 +204,11 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
                 'default'     => 'yes'
             ];
         }
+
         if ($this->_support_auth_capture) {
             $addional_fields['trans_type'] = [
-                'title'       => __('Transaction Type', 'Clickpay'),
-                'label'       => __('Transaction Type', 'Clickpay'),
+                'title'       => __('Transaction Type', 'ClickPay'),
+                'label'       => __('Transaction Type', 'ClickPay'),
                 'type'        => 'select',
                 'description' => 'Set the transaction type to Auth or Sale',
                 'options'     => array(
@@ -170,11 +219,22 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
             ];
 
             $addional_fields['status_auth_success'] = [
-                'title'       => __('Auth Order status', 'PayTabs'),
+                'title'       => __('Auth Order status', 'ClickPay'),
                 'type'        => 'select',
                 'description' => 'Set the Order status if the Auth succeed.',
                 'options'     => $orderStatuses,
                 'default'     => 'wc-on-hold'
+            ];
+        }
+
+        if ($this->_support_iframe) {
+            $addional_fields['payment_form'] = [
+                'title'       => __('Payment form type', 'ClickPay'),
+                'type'        => 'select',
+                'options'     => $redirect_modes,
+                'description' => __("Hosted form on ClickPay server is the secure solution of choice, While iFrame provides better customer experience (https strongly advised)", 'Clickpay'),
+                'default'     => 'redirect',
+                'desc_tip'    => false,
             ];
         }
 
@@ -187,7 +247,7 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
                 'default'     => 'no'
             ),
             'endpoint' => array(
-                'title'       => __('Clickpay endpoint region', 'ClickPay'),
+                'title'       => __('ClickPay endpoint region', 'ClickPay'),
                 'type'        => 'select',
                 'description' => 'Select your domain',
                 'options'     => $endpoints,
@@ -220,6 +280,13 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
                 'default'     => '',
                 'required'    => true
             ),
+            'client_key' => array(
+                'title'       => __('Client Key', 'ClickPay'),
+                'type'        => 'text',
+                'description' => __('Please enter your ClickPay "Client Key". You can find it on your Merchant’s Portal', 'ClickPay'),
+                'default'     => '',
+                'required'    => true
+            ),
             'hide_shipping' => array(
                 'title'       => __('Hide shipping info', 'ClickPay'),
                 'label'       => __('Hide shipping info', 'ClickPay'),
@@ -230,19 +297,30 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
             'status_success' => array(
                 'title'       => __('Captured Order status', 'ClickPay'),
                 'type'        => 'select',
-                'description' => 'Set the Order status after successful payment. <br><strong>Warning</strong> Be very careful when you change the Default option because when you change it, you change the normal flow of the Order into the WooCommerce system, you may encounter some consequences based on the new value you set',
+                'description' => 'Set the Order status after successful payment.'
+                    . '<br><strong>Warning</strong> Be very careful when you change the Default option because when you change it, you change the normal flow of the Order into WooCommerce system, you may encounter some consequences based on the new value you set',
                 'options'     => $orderStatuses,
             ),
             'status_failed' => array(
                 'title'       => __('Failed Order status', 'ClickPay'),
                 'type'        => 'select',
-                'description' => 'Set the Order status after failed payment. <br><strong>Warning</strong> Be very careful when you change the Default option because when you change it, you change the normal flow of the Order into the WooCommerce system, you may encounter some consequences based on the new value you set',
+                'description' => 'Set the Order status after failed payment.'
+                    . '<br><strong>Warning</strong> Be very careful when you change the Default option because when you change it, you change the normal flow of the Order into WooCommerce system, you may encounter some consequences based on the new value you set',
                 'options'     => $orderStatuses,
-            )
+            ),
+            'ipn_enable' => array(
+                'title'       => __('Allow IPN events', 'ClickPay'),
+                'type'        => 'checkbox',
+                'description' => "<strong>$ipn_url</strong>"
+                    . "<br>Copy the link provided and use it in the merchant's dashboard."
+                    . "<br>Supported events: <strong>Capture (Full)</strong>, <strong>Void (Full)</strong>, <strong>Refund (Full & Partial)</strong>.",
+                'required'    => false,
+            ),
         );
 
         $this->form_fields = array_merge($fields, $addional_fields);
     }
+
 
     public function is_available()
     {
@@ -255,31 +333,34 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
         return parent::is_available();
     }
 
+
     /**
-     *  There are no payment fields for paytabs, but we want to show the description if set.
+     *  There are no payment fields for clickpay, but we want to show the description if set.
      **/
     function payment_fields()
     {
         if ($this->description) echo wpautop(wptexturize($this->description));
 
-        if (!$this->supports('tokenization') || !$this->enable_tokenise) {
+        if (!is_checkout()) {
             return;
         }
 
-         if (!is_checkout()) {
-            return;
+        if (is_user_logged_in()) {
+            if ($this->supports('tokenization') && $this->enable_tokenise) {
+                $this->tokenization_script();
+                $this->saved_payment_methods();
+
+                $has_subscription = class_exists('WC_Subscriptions_Cart') && WC_Subscriptions_Cart::cart_contains_subscription();
+                if ($has_subscription) {
+                    echo wpautop('Will Save to Account');
+                } else {
+                    $this->save_payment_method_checkbox();
+                }
+            }
         }
 
-        $this->tokenization_script();
-        $this->saved_payment_methods();
-        //$this->save_payment_method_checkbox();
-        // $this->form();
-
-        $has_subscription = class_exists('WC_Subscriptions_Cart') && WC_Subscriptions_Cart::cart_contains_subscription();
-        if ($has_subscription) {
-            echo wpautop('Will Save to Account');
-        } else {
-            $this->save_payment_method_checkbox();
+        if ($this->is_managed_form) {
+            include_once('_managed_form.php');
         }
     }
 
@@ -294,7 +375,7 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
 
     private function is_tokenise()
     {
-        return (bool) $_POST[$this->tokenise_param];
+        return (bool) filter_input(INPUT_POST, $this->tokenise_param, FILTER_VALIDATE_BOOLEAN);
     }
 
     private function get_token()
@@ -339,10 +420,17 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
 
         $_clickpayApi = ClickpayApi::getInstance($this->clickpay_endpoint, $this->merchant_id, $this->merchant_key);
 
-
         $saved_token = $this->get_token();
         if ($saved_token) {
             $values = $this->prepareOrder_Tokenised($order, $saved_token);
+        } elseif ($this->is_frammed_page) {
+
+            return array(
+                'result'   => 'success',
+                'redirect' => $order->get_checkout_payment_url(true) . "&t={$this->is_tokenise()}"
+            );
+        } elseif ($this->is_managed_form) {
+            $values = $this->prepareOrder_ManagedForm($order);
         } else {
             $values = WooCommerce2 ? $this->prepareOrder2($order) : $this->prepareOrder($order);
         }
@@ -352,14 +440,16 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
         //
 
         $success = $paypage->success;
-        $message = $paypage->message;
+        $message = @$paypage->message;
         $is_redirect = @$paypage->is_redirect;
         $is_completed = @$paypage->is_completed;
 
         if ($success) {
+            $this->set_handled($order_id, false);
             if ($is_completed) {
-                return $this->validate_payment($paypage, $order_id, $order, true);
+                return $this->validate_payment($paypage, $order, true, false);
             } else {
+
                 $payment_url = $paypage->payment_url;
 
                 return array(
@@ -370,7 +460,7 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
         } else {
             $_logPaypage = json_encode($paypage);
             $_logParams = json_encode($values);
-            ClickpayHelper::log("create PayPage failed for Order {$order_id}, [{$_logPaypage}], [{$_logParams}]", 3);
+            ClickpayHelper::log("Create PayPage failed, Order {$order_id}, [{$_logPaypage}], [{$_logParams}]", 3);
 
             $errorMessage = $message;
 
@@ -380,7 +470,7 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
     }
 
 
-     /**
+    /**
      * return the last saved Token for the selected payment method
      */
     private function get_user_token($user_id)
@@ -410,20 +500,66 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
     }
 
 
+    private function pt_echo_animation($show = true)
+    {
+        if ($show) {
+            $loaderPath = CLICKPAY_PAYPAGE_IMAGES_URL . "logo-animation.gif";
+            echo "<div id='pt_loader'><img src='{$loaderPath}' style='width: 150px; margin: auto' /></div>";
+        } else {
+            echo "<script>document.getElementById(\"pt_loader\").style.display=\"none\";</script>";
+        }
+    }
+
+    function receipt_page($order_id)
+    {
+        $order = wc_get_order($order_id);
+
+        $is_tokenize = (bool) filter_input(INPUT_GET, 't');
+        $values = WooCommerce2 ? $this->prepareOrder2($order, $is_tokenize) : $this->prepareOrder($order, $is_tokenize);
+
+        $_clickpayApi = ClickpayApi::getInstance($this->clickpay_endpoint, $this->merchant_id, $this->merchant_key);
+        $paypage = $_clickpayApi->create_pay_page($values);
+
+        //
+
+        $success = $paypage->success;
+        $message = @$paypage->message;
+
+        if ($success) {
+            $this->set_handled($order_id, false);
+
+            $payment_url = $paypage->payment_url;
+
+            if ($this->is_frammed_page) {
+                $this->pt_echo_animation(true);
+
+                echo "<iframe src='{$payment_url}' width='100%' height='auto' style='min-width: 400px; min-height: 700px; border: 0' onload='document.getElementById(\"pt_loader\").style.display=\"none\";' />";
+            }
+        } else {
+            $_logPaypage = json_encode($paypage);
+            $_logParams = json_encode($values);
+            ClickpayHelper::log("Create PayPage failed, Order {$order_id}, [{$_logPaypage}], [{$_logParams}]", 3);
+
+            $errorMessage = $message;
+
+            echo "<h2>$errorMessage</h2>";
+        }
+    }
+
+
     public function scheduled_subscription_payment($amount_to_charge, $renewal_order)
     {
         $user_id = $renewal_order->get_user_id();
         $tokenObj = $this->get_user_token($user_id);
 
         if (!$tokenObj) {
-            // ToDo: Try to fetch User's Tokens
             $renewal_order->add_order_note("Renewal failed [No Saved payment token found]");
-            Cickpay_error_log("Subscription renewal error: The User {$user_id} does not have saved Tokens.");
+            clickpay_error_log("Subscription renewal error: The User {$user_id} does not have saved Tokens.");
             return false;
         }
         $values = $this->prepareOrder_Tokenised($renewal_order, $tokenObj, $amount_to_charge);
 
-        $_clickpayApi = ClickpayApi::getInstance($this->Clickpay_endpoint, $this->merchant_id, $this->merchant_key);
+        $_clickpayApi = ClickpayApi::getInstance($this->clickpay_endpoint, $this->merchant_id, $this->merchant_key);
         $paypage = $_clickpayApi->create_pay_page($values);
 
         $success = $paypage->success;
@@ -433,6 +569,7 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
         if ($success) {
             // $this->validate_payment($paypage, $renewal_order->get_id(), $renewal_order, true);
             $renewal_order->payment_complete($transaction_id);
+            $this->pt_set_tran_ref($renewal_order, ClickpayEnum::TRAN_TYPE_SALE, $transaction_id);
             return true;
         } else {
             $renewal_order->add_order_note("Renewal failed [{$message}]");
@@ -465,124 +602,520 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
 
         $pt_refundHolder = new ClickpayFollowupHolder();
         $pt_refundHolder
-            ->set02Transaction(PClickpayEnum::TRAN_TYPE_REFUND, ClickpayEnum::TRAN_CLASS_ECOM)
+            ->set02Transaction(ClickpayEnum::TRAN_TYPE_REFUND, ClickpayEnum::TRAN_CLASS_ECOM)
             ->set03Cart($order_id, $currency, $amount, $reason)
             ->set30TransactionInfo($transaction_id)
             ->set99PluginInfo('WooCommerce', $woocommerce->version, CLICKPAY_PAYPAGE_VERSION);
 
         $values = $pt_refundHolder->pt_build();
 
-        $_clickpayApi = ClickpayApi::getInstance($this->Clickpay_endpoint, $this->merchant_id, $this->merchant_key);
+        ClickpayHelper::log("Refund request, Order {$order_id} - {$amount} {$currency}", 3);
+
+        $_clickpayApi = ClickpayApi::getInstance($this->clickpay_endpoint, $this->merchant_id, $this->merchant_key);
         $refundRes = $_clickpayApi->request_followup($values);
 
+        $tran_ref = @$refundRes->tran_ref;
         $success = $refundRes->success;
         $message = $refundRes->message;
         $pending_success = $refundRes->pending_success;
 
-        $order->add_order_note('Refund status: ' . $message, true);
+        ClickpayHelper::log("Refund request done, Order {$order_id} - {$success} {$message} {$tran_ref}", 3);
 
         if ($success) {
-            $order->update_status('refunded', __('Payment Refunded: ', 'Clickpay'));
+            $this->pt_set_tran_ref($order, ClickpayEnum::TRAN_TYPE_REFUND, $tran_ref);
+            // $order->update_status('refunded', __('Payment Refunded: ', 'ClickPay'));
         } else if ($pending_success) {
             $order->update_status('on-hold', __('Payment Pending Refund: ', 'Clickpay'));
         }
+
+        $order->add_order_note('Refund status: ' . $message, true);
 
         return $success;
     }
 
 
-    private function checkCallback()
+    public function process_capture($order_id)
     {
+        global $woocommerce;
+
+        $order = wc_get_order($order_id);
+
+        $amount = $order->get_total();
+
+        $transaction_id = $order->get_transaction_id();
+
+        if (!$transaction_id) {
+            return false;
+        }
+
         // PT
-        $param_paymentRef = 'tranRef';
+        $currency = $order->get_currency();
 
-        if (isset($_POST[$param_paymentRef], $_POST['cartId'])) {
-            $payment_reference = $_POST[$param_paymentRef];
-            $orderId = $_POST['cartId'];
+        $payment_id = $this->getPaymentMethod($order);
+        if ($payment_id != $this->id) {
+            return;
+        }
 
-            // $orderId = wc_get_order_id_by_order_key($key);
-            $order = wc_get_order($orderId);
-            if ($order) {
-                if ($order->needs_payment()) {
-                    $payment_id = $this->getPaymentMethod($order);
-                    if ($payment_id == $this->id) {
-                        $this->callback($payment_reference, $orderId, $order);
+        $transaction_type = $this->pt_get_tran_type($order_id);
+
+        if (!in_array(ClickpayEnum::TRAN_TYPE_AUTH, $transaction_type)) {
+            // $order->add_order_note('Capture status: ' . "can't make capture on non Auth transaction", false);
+            ClickpayHelper::log("Capture not required for non Auth transactions, {$order_id}", 3);
+            return;
+        }
+
+        // Process Capture
+
+        $reason = 'Admin request';
+
+        $pt_capHolder = new ClickpayFollowupHolder();
+        $pt_capHolder
+            ->set02Transaction(ClickpayEnum::TRAN_TYPE_CAPTURE, ClickpayEnum::TRAN_CLASS_ECOM)
+            ->set03Cart($order_id, $currency, $amount, $reason)
+            ->set30TransactionInfo($transaction_id)
+            ->set99PluginInfo('WooCommerce', $woocommerce->version, CLICKPAY_PAYPAGE_VERSION);
+
+        $values = $pt_capHolder->pt_build();
+
+        ClickpayHelper::log("Capture request, Order {$order_id} - {$amount} {$currency}", 3);
+
+        $_clickpayApi = ClickpayApi::getInstance($this->clickpay_endpoint, $this->merchant_id, $this->merchant_key);
+        $capRes = $_clickpayApi->request_followup($values);
+
+        $tran_ref = @$capRes->tran_ref;
+        $success = $capRes->success;
+        $message = $capRes->message;
+        // $pending_success = $capRes->pending_success;
+
+        ClickpayHelper::log("Capture request done, Order {$order_id} - {$success} {$message} {$tran_ref}", 3);
+
+        if ($success) {
+            $this->pt_set_tran_ref($order, ClickpayEnum::TRAN_TYPE_CAPTURE, $tran_ref);
+            $order->set_transaction_id($tran_ref);
+            $order->save();
+        } else {
+            ClickpayHelper::log("Capture failed, {$order_id} - {$message}", 3);
+            $order->update_status('on-hold', __('Capture failed: ' . $message, 'ClickPay'));
+        }
+
+        $order->add_order_note('Capture status: ' . $message, true);
+
+        return $success;
+    }
+
+
+    public function process_void($order_id)
+    {
+        global $woocommerce;
+
+        $order = wc_get_order($order_id);
+
+        $amount = $order->get_total();
+
+        $transaction_id = $order->get_transaction_id();
+
+        if (!$transaction_id) {
+            return false;
+        }
+
+        // PT
+        $currency = $order->get_currency();
+
+        $payment_id = $this->getPaymentMethod($order);
+        if ($payment_id != $this->id) {
+            return;
+        }
+
+        $transaction_type = $this->pt_get_tran_type($order_id);
+
+        if (!in_array(ClickpayEnum::TRAN_TYPE_AUTH, $transaction_type)) {
+            // $order->add_order_note('Capture status: ' . "can't make capture on non Auth transaction", false);
+            ClickpayHelper::log("Void not required for non Auth transactions, {$order_id}", 3);
+            return;
+        }
+
+        // Process Capture
+
+        $reason = 'Admin request';
+
+        $pt_voidHolder = new ClickpayFollowupHolder();
+        $pt_voidHolder
+            ->set02Transaction(ClickpayEnum::TRAN_TYPE_VOID, ClickpayEnum::TRAN_CLASS_ECOM)
+            ->set03Cart($order_id, $currency, $amount, $reason)
+            ->set30TransactionInfo($transaction_id)
+            ->set99PluginInfo('WooCommerce', $woocommerce->version, CLICKPAY_PAYPAGE_VERSION);
+
+        $values = $pt_voidHolder->pt_build();
+
+        ClickpayHelper::log("Void request, Order {$order_id} - {$amount} {$currency}", 3);
+
+        $_clickpayApi = ClickpayApi::getInstance($this->clickpay_endpoint, $this->merchant_id, $this->merchant_key);
+        $voidRes = $_clickpayApi->request_followup($values);
+
+        $tran_ref = @$voidRes->tran_ref;
+        $success = $voidRes->success;
+        $message = $voidRes->message;
+        // $pending_success = $capRes->pending_success;
+
+        ClickpayHelper::log("Void request done, Order {$order_id} - {$success} {$message} {$tran_ref}", 3);
+
+        if ($success) {
+            $this->pt_set_tran_ref($order, ClickpayEnum::TRAN_TYPE_VOID, $tran_ref);
+            // $order->set_transaction_id($tran_ref);
+            // $order->save();
+        } else {
+            ClickpayHelper::log("Void failed, {$order_id} - {$message}", 3);
+            $order->update_status('on-hold', __('Void failed: ' . $message, 'ClickPay'));
+        }
+
+        $order->add_order_note('Void status: ' . $message, true);
+
+        return $success;
+    }
+
+    public function return_response()
+    {
+        ClickpayHelper::log("Return fired", 3);
+        $this->handle_response(false);
+    }
+
+    public function callback_response()
+    {
+        ClickpayHelper::log("Callback fired", 3);
+        $this->handle_response(true);
+    }
+
+    public function ipn_response()
+    {
+        ClickpayHelper::log("IPN fired", 3);
+        $this->handle_ipn();
+    }
+
+    //
+
+    private function handle_ipn()
+    {
+        $response_data = ClickpayHelper::read_ipn_response();
+        if (!$response_data) {
+            return;
+        }
+
+        $orderId = @$response_data->cart_id;
+        if (!$orderId) {
+            return;
+        }
+
+        $order = wc_get_order($orderId);
+        if (!$order || !is_a($order, 'WC_Order')) {
+            return;
+        }
+
+        $payment_id = $this->getPaymentMethod($order);
+        if ($payment_id != $this->id) {
+            // return;
+        }
+        $payment_gateway = wc_get_payment_gateway_by_order($order);
+
+        if (!$payment_gateway->ipn_enable) {
+            ClickpayHelper::log("IPN handling is disabled, {$orderId}", 3);
+            return;
+        }
+
+        $_clickpayApi = ClickpayApi::getInstance($payment_gateway->clickpay_endpoint, $payment_gateway->merchant_id, $payment_gateway->merchant_key);
+
+        $response_data = $_clickpayApi->read_response(true);
+        if (!$response_data) {
+            return;
+        }
+
+        //
+
+        $payment_gateway->pt_process_ipn($response_data);
+    }
+
+
+    public function pt_process_ipn($ipn_data)
+    {
+        $pt_success = $ipn_data->success;
+        $pt_message = $ipn_data->message;
+        $pt_token = @$ipn_data->token;
+
+        $pt_tran_ref = $ipn_data->tran_ref;
+
+        $pt_order_id = $ipn_data->cart_id;
+        $pt_tran_total = $ipn_data->tran_total;
+        $pt_tran_currency = $ipn_data->tran_currency;
+
+        $pt_tran_type = strtolower($ipn_data->tran_type);
+
+        //
+
+        ClickpayHelper::log("IPN handling the Order {$pt_order_id} - {$pt_tran_type} : {$pt_tran_ref}", 3);
+
+        //
+
+        $order = wc_get_order($pt_order_id);
+        // $payment_gateway = wc_get_payment_gateway_by_order($order);
+        $ec_total = $order->get_total();
+        $ec_currency = $order->get_currency();
+
+        $same_currency = strcasecmp($ec_currency, $pt_tran_currency) == 0;
+        $same_total = abs($ec_total - $pt_tran_total) < 0.001;
+        $same_payment = $same_currency && $same_total;
+
+        $ec_tran_ref = $order->get_transaction_id();
+        $ec_tran_type = $this->pt_get_tran_type($pt_order_id);
+        $ec_is_paid = $order->is_paid();
+        // $order->maybe_set_date_paid();
+
+        $is_registered = $this->pt_has_tran_ref($pt_order_id, $pt_tran_type, $pt_tran_ref);
+        if ($is_registered) {
+            ClickpayHelper::log("{$pt_tran_type} already registered, {$pt_order_id} - {$pt_message}", 3);
+            return;
+        }
+
+        switch ($pt_tran_type) {
+            case ClickpayEnum::TRAN_TYPE_SALE:
+            case ClickpayEnum::TRAN_TYPE_AUTH:
+            case ClickpayEnum::TRAN_TYPE_REGISTER:
+                ClickpayHelper::log("IPN does not support creating new Order", 3);
+                break;
+
+            case ClickpayEnum::TRAN_TYPE_CAPTURE:
+                if (!in_array(ClickpayEnum::TRAN_TYPE_AUTH, $ec_tran_type)) {
+                    ClickpayHelper::log("Capture not required for non Auth transactions, {$pt_order_id}", 3);
+                    return;
+                }
+                if ($pt_success) {
+                    if ($same_payment) {
+                        $this->pt_set_tran_ref($order, $pt_tran_type, $pt_tran_ref);
+
+                        $order->set_transaction_id($pt_tran_ref);
+                        $order->save();
+
+                        $this->setNewStatus($order, true, $pt_tran_type, true);
+                        ClickpayHelper::log("{$pt_tran_type} done, {$pt_order_id} - {$pt_tran_ref}", 3);
+                    } else {
+                        ClickpayHelper::log('Capture could not be registered, only Full & Same Capture allowed');
                     }
+                } else {
+                    ClickpayHelper::log("Capture failed, {$pt_order_id} - {$pt_message}", 3);
+                    // $order->update_status('on-hold', __('Capture failed: ' . $pt_message, 'ClickPay'));
+                    $this->setNewStatus($order, false, $pt_tran_type, true);
+                }
+                break;
+
+            case ClickpayEnum::TRAN_TYPE_VOID:
+            case ClickpayEnum::TRAN_TYPE_RELEASE:
+                if (!in_array(ClickpayEnum::TRAN_TYPE_AUTH, $ec_tran_type)) {
+                    // $order->add_order_note('Capture status: ' . "can't make Void on non Auth transaction", false);
+                    ClickpayHelper::log("Void not allowed on non Auth transactions, {$pt_order_id}", 3);
+                    return;
+                }
+                if ($pt_success) {
+                    if ($same_payment) {
+                        $this->pt_set_tran_ref($order, $pt_tran_type, $pt_tran_ref);
+
+                        $this->setNewStatus($order, true, $pt_tran_type, true);
+                        ClickpayHelper::log("{$pt_tran_type} done, {$pt_order_id} - {$pt_tran_ref}", 3);
+                    } else {
+                        ClickpayHelper::log('Void could not be registered, only Full & Same Void allowed');
+                    }
+                } else {
+                    ClickpayHelper::log("Void failed, {$pt_order_id} - {$pt_message}", 3);
+                    $order->update_status('on-hold', __('Void failed: ' . $pt_message, 'ClickPay'));
+                }
+                break;
+
+            case ClickpayEnum::TRAN_TYPE_REFUND:
+                if (!$pt_success) {
+                    ClickpayHelper::log("Refund failed, {$pt_order_id} - {$pt_message}", 3);
+                    return;
+                }
+
+                $refund = wc_create_refund([
+                    'amount'         => $pt_tran_total,
+                    'reason'         => 'Clickpay dashboard',
+                    'order_id'       => $pt_order_id,
+                    'refund_payment' => false,
+                    // 'refund_id' => 0,
+                    // 'line_items'   => $line_items,
+                    // 'restock_items'  => false
+                ]);
+
+                if (!is_wp_error($refund)) {
+                    ClickpayHelper::log("{$pt_tran_type} done, {$pt_order_id} - {$pt_tran_ref}", 3);
+                    $this->pt_set_tran_ref($order, $pt_tran_type, $pt_tran_ref);
+                    // $this->setNewStatus($order, true, $pt_tran_type, true);
+                } else {
+                    ClickpayHelper::log("Refund failed, {$pt_order_id} - {$refund->get_error_message()}", 3);
+                }
+
+                break;
+
+            default:
+                break;
+        }
+
+        return;
+    }
+
+
+    private function handle_response($is_ipn)
+    {
+        $_clickpayApi = ClickpayApi::getInstance($this->clickpay_endpoint, $this->merchant_id, $this->merchant_key);
+
+        $response_data = $_clickpayApi->read_response($is_ipn);
+        if (!$response_data) {
+            return;
+        }
+
+        $orderId = @$response_data->reference_no;
+
+        $handler = $is_ipn ? 'Callback' : 'Return';
+
+        $order = wc_get_order($orderId);
+        if ($order) {
+            $payment_id = $this->getPaymentMethod($order);
+            if ($payment_id == $this->id) {
+
+                $pt_reach = false;
+                if ($order->needs_payment()) {
+                    if (!$this->pt_handled($order)) {
+                        $pt_reach = true;
+                        $this->validate_payment($response_data, $order, false, $is_ipn);
+                    } else {
+                        ClickpayHelper::log("{$handler} handling skipped for Order {$order->get_id()}", 3);
+                    }
+                } else {
+                    ClickpayHelper::log("{$handler} failed, Order {$orderId}, No need for Payment", 3);
+                }
+
+                if (!$is_ipn && !$pt_reach) {
+                    wp_redirect($order->get_checkout_order_received_url());
                 }
             } else {
-                ClickpayHelper::log("callback failed for Order {$orderId}, payemnt_reference [{$payment_reference}]", 3);
+                ClickpayHelper::log("{$handler} failed, Order {$orderId}, Payment method mismatch", 3);
             }
+        } else {
+            $json_response = json_encode($response_data);
+            ClickpayHelper::log("{$handler} failed, Order {$orderId}, payment response [{$json_response}]", 3);
         }
     }
 
 
     /**
-     * In case you need a webhook, like PayPal IPN etc
+     * In case you need a webhook, like IPN etc
      */
-    public function callback($payment_reference, $order_id, $order)
+    public function callback($payment_reference, $order, $is_ipn)
     {
-        if (!$payment_reference) return;
-
-        $_clickpayApi = ClickpayApi::getInstance($this->Clickpay_endpoint, $this->merchant_id, $this->merchant_key);
+        $_clickpayApi = ClickpayApi::getInstance($this->clickpay_endpoint, $this->merchant_id, $this->merchant_key);
         $result = $_clickpayApi->verify_payment($payment_reference);
-        // $valid_redirect = $_paytabsApi->is_valid_redirect($_POST);
+        // $valid_redirect = $_clickpayApi->is_valid_redirect($_POST);
 
-        $this->validate_payment($result, $order_id, $order);
+        $this->validate_payment($result, $order, false, $is_ipn);
     }
 
 
-    private function validate_payment($result, $order_id, $order, $is_tokenise = false)
+    private function validate_payment($result, $order, $is_tokenise = false, $is_ipn = false)
     {
+        $order_id = $order->get_id();
+        $handler = $is_ipn ? 'Callback' : 'Return';
+
+        $this->set_handled($order_id);
+        ClickpayHelper::log("{$handler} handling the Order {$order_id}", 3);
+
         $success = $result->success;
+        $response_status = $result->response_status;
         $message = $result->message;
-        $orderId = @$result->reference_no;
+        // $orderId = @$result->reference_no;
         $transaction_ref = @$result->transaction_id;
-        $transaction_type = $result->tran_type;
+        $transaction_type = @$result->tran_type;
+        if ($transaction_type) $transaction_type = strtolower($transaction_type);
         $token = @$result->token;
 
-        $_logVerify = json_encode($result);
-
-        if (!$orderId) {
-            ClickpayHelper::log("callback failed for Order {$order_id}, response [{$_logVerify}]", 3);
-            wc_add_notice($message, 'error');
-
-            // return false;
-            // wp_redirect(get_site_url());
-            return;
-        }
-
-        if ($orderId != $order_id) {
-            ClickpayHelper::log("callback failed for Order {$order_id}, Order mismatch [{$_logVerify}]", 3);
-            return;
-        }
+        //
 
         if ($success) {
-            return $this->orderSuccess($order, $transaction_ref, $transaction_type, $token, $message, $is_tokenise);
-
-            // exit;
+            return $this->orderSuccess($order, $transaction_ref, $transaction_type, $token, $message, $is_tokenise, $is_ipn);
         } else {
-            $_data = WooCommerce2 ? $order->data : $order->get_data();
-            $_logOrder = (json_encode($_data));
-            ClickpayHelper::log("callback failed for Order {$order_id}, response [{$_logVerify}], Order [{$_logOrder}]", 3);
-
-            $this->orderFailed($order, $message);
-
-            // exit;
+            $_logVerify = json_encode($result);
+            // $_data = WooCommerce2 ? $order->data : $order->get_data();
+            // $_logOrder = (json_encode($_data));
+            ClickpayHelper::log("{$handler} Validating failed, Order {$order_id}, response [{$_logVerify}]", 3);
+            if ($result->is_on_hold) {
+                $this->orderHoldOnReject($order, $message, $is_ipn);
+            } else {
+                $this->orderFailed($order, $message, $is_ipn);
+            }
         }
+    }
+
+    private function pt_handled($order)
+    {
+        $pt_handled = (bool) get_post_meta($order->get_id(), $this::PT_HANDLED, true);
+        return $pt_handled;
+    }
+
+    private function set_handled($order_id, $handled = true)
+    {
+        update_post_meta($order_id, $this::PT_HANDLED, $handled);
+    }
+
+    private function pt_set_tran_type($order, $transaction_type)
+    {
+        if (!$transaction_type) $transaction_type = $this->trans_type;
+        update_post_meta($order->get_id(), $this::PT_TRAN_TYPE, $transaction_type);
+    }
+
+    private function pt_get_tran_type($order_id)
+    {
+        $transaction_type = get_post_meta($order_id, $this::PT_TRAN_TYPE);
+
+        return $transaction_type;
+    }
+
+    private function pt_set_tran_ref($order, $transaction_type, $transaction_id)
+    {
+        if (!$transaction_type) $transaction_type = $this->trans_type;
+
+        add_post_meta($order->get_id(), '_pt_tran_ref_' . $transaction_type, $transaction_id);
+        $this->pt_set_tran_type($order, $transaction_type);
+    }
+
+    private function pt_get_tran_ref($order_id, $transaction_type)
+    {
+        $transaction_ref = get_post_meta($order_id, '_pt_tran_ref_' . $transaction_type);
+
+        return $transaction_ref;
+    }
+
+    private function pt_has_tran_ref($order_id, $transaction_type, $tran_ref)
+    {
+        $transaction_refs = $this->pt_get_tran_ref($order_id, $transaction_type);
+
+        foreach ($transaction_refs as $tran_ref_prev) {
+            if ($tran_ref_prev == $tran_ref) {
+                return true;
+            }
+        }
+        return false;
     }
 
 
     /**
      * Payment successed => Order status change to success
      */
-    private function orderSuccess($order, $transaction_id, $transaction_type, $token_str, $message, $is_tokenise)
+    private function orderSuccess($order, $transaction_id, $transaction_type, $token_str, $message, $is_tokenise, $is_ipn)
     {
         global $woocommerce;
 
         $order->payment_complete($transaction_id);
         // $order->reduce_order_stock();
 
-        $this->setNewStatus($order, true, $transaction_type = null);
+        $this->pt_set_tran_ref($order, $transaction_type, $transaction_id);
+
+        $this->setNewStatus($order, true, $transaction_type);
 
         $woocommerce->cart->empty_cart();
 
@@ -590,7 +1123,11 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
         // wc_add_notice(__('Thank you for shopping with us. Your account has been charged and your transaction is successful. We will be shipping your order to you soon.', 'woocommerce'), 'success');
 
         if ($token_str) {
-          $this->saveToken($order, $token_str, $transaction_id);
+            $this->saveToken($order, $token_str, $transaction_id);
+        }
+
+        if ($is_ipn) {
+            return;
         }
 
         $redirect_url = $this->get_return_url($order);
@@ -606,10 +1143,26 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
     }
 
 
+    private function saveToken($order, $token_str, $transaction_id)
+    {
+        $user_id = $order->get_user_id();
+
+        $token = new WC_Payment_Token_ClickPay();
+        $token->set_token($token_str);
+        $token->set_tran_ref($transaction_id);
+        $token->set_gateway_id($this->id);
+        $token->set_user_id($user_id);
+        $tokeId = $token->save();
+
+        $order->add_payment_token($token);
+        $order->save();
+    }
+
+
     /**
      * Payment failed => Order status change to failed
      */
-    private function orderFailed($order, $message)
+    private function orderFailed($order, $message, $is_ipn)
     {
         wc_add_notice($message, 'error');
 
@@ -617,28 +1170,70 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
 
         $this->setNewStatus($order, false);
 
-        // wp_redirect($order->get_cancel_order_url());
+        if ($is_ipn) {
+            return;
+        }
+
+        wp_redirect($order->get_checkout_payment_url());
     }
 
 
-    private function setNewStatus($order, $isSuccess, $transaction_type = null)
+    private function orderHoldOnReject($order, $message, $is_ipn)
     {
-       if ($isSuccess) {
-            if (ClickpayEnum::TranIsAuth($transaction_type)) {
-                $configStatus = $this->order_status_auth_success;
-                $defaultStatus = 'wc-processing';
-            } elseif (ClickpayEnum::TranIsSale($transaction_type)) {
-                $configStatus = $this->order_status_success;
-                $defaultStatus = 'wc-processing';
-            }else {
+        wc_add_notice($message, 'error');
+
+        // $order->update_status('failed', $message);
+        $order->update_status('wc-on-hold', 'Payment for this order is On-Hold, you can Capture/Decline manualy from your dashboard on Clickpay portal', true);
+
+        // $this->setNewStatus($order, false);
+
+        if ($is_ipn) {
+            return;
+        }
+
+        wp_redirect($order->get_checkout_payment_url());
+    }
+
+
+    public function setNewStatus($order, $isSuccess, $transaction_type = null, $force_set = false)
+    {
+        if ($isSuccess) {
+            if (!$transaction_type) $transaction_type = $this->trans_type;
+
+            switch (strtolower($transaction_type)) {
+                case ClickpayEnum::TRAN_TYPE_AUTH:
+                    $configStatus = $this->order_status_auth_success;
+                    $defaultStatus = 'wc-processing';
+                    break;
+
+                case ClickpayEnum::TRAN_TYPE_SALE:
+                case ClickpayEnum::TRAN_TYPE_CAPTURE:
+                    $configStatus = $this->order_status_success;
+                    $defaultStatus = 'wc-processing';
+                    break;
+
+                case ClickpayEnum::TRAN_TYPE_VOID:
+                    $configStatus = 'wc-cancelled';
+                    $defaultStatus = 'wc-cancelled';
+                    break;
+
+                case ClickpayEnum::TRAN_TYPE_REFUND:
+                    $configStatus = 'wc-refunded';
+                    $defaultStatus = 'wc-refunded';
+                    break;
+            }
+        } else {
             $configStatus = $this->order_status_failed;
             $defaultStatus = 'wc-failed';
         }
-        $isDefault = $configStatus == 'default' || $configStatus == $defaultStatus;
 
-        if (!$isDefault) {
+        $newStatus = ($configStatus == 'default') ? $defaultStatus : $configStatus;
+
+        $isDefault = $newStatus == $defaultStatus;
+
+        if (!$isDefault || $force_set) {
             $newMsg = "Order status changed as in the admin configuration!";
-            $order->update_status($configStatus, $newMsg, true);
+            $order->update_status($newStatus, $newMsg, true);
         }
     }
 
@@ -652,7 +1247,7 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
      * -Products
      * @return Array of values to pass to create_paypage API
      */
-    private function prepareOrder($order)
+    private function prepareOrder($order, $isTokenize = false)
     {
         // PT
         global $woocommerce;
@@ -660,7 +1255,7 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
         // $order->add_order_note();
 
         $is_subscription = $this->has_subscription($order->get_id());
-        $tokenise = $this->is_tokenise() || $is_subscription;
+        $tokenise = $isTokenize || $this->is_tokenise() || $is_subscription;
 
         $total = $order->get_total();
         // $discount = $order->get_total_discount();
@@ -677,8 +1272,10 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
         //
 
         // $siteUrl = get_site_url();
-        $return_url = $order->get_checkout_payment_url(true);
-        // $return_url = "$siteUrl?wc-api=paytabs_callback&order={$order->id}";
+        // $return_url = $order->get_checkout_payment_url(true);
+        $return_url = add_query_arg('wc-api', 'wc_gateway_r_' . $this->id, home_url('/'));
+
+        $callback_url = add_query_arg('wc-api', 'wc_gateway_' . $this->id, home_url('/'));
 
         $products = $order->get_items();
         $items_arr = array_map(function ($p) {
@@ -687,7 +1284,7 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
 
         $cart_desc = implode(', ', $items_arr);
 
-        // $cdetails = PaytabsHelper::getCountryDetails($order->get_billing_country());
+        // $cdetails = ClickpayHelper::getCountryDetails($order->get_billing_country());
         // $phoneext = $cdetails['phone'];
 
         $telephone = $order->get_billing_phone();
@@ -695,7 +1292,7 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
         $countryBilling = $order->get_billing_country();
         $addressBilling = trim($order->get_billing_address_1() . ' ' . $order->get_billing_address_2());
 
-        $is_diff_shipping_address = (bool) $_POST["ship_to_different_address"];
+        $is_diff_shipping_address = (bool) filter_input(INPUT_POST, 'ship_to_different_address', FILTER_VALIDATE_BOOLEAN);
         if ($is_diff_shipping_address) {
             $countryShipping = $order->get_shipping_country();
             $addressShipping = trim($order->get_shipping_address_1() . ' ' . $order->get_shipping_address_2());
@@ -720,7 +1317,7 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
         $holder = new ClickpayRequestHolder();
         $holder
             ->set01PaymentCode($this->_code, $this->allow_associated_methods, $currency)
-            ->set02Transaction(PaytabsEnum::TRAN_TYPE_SALE, ClickpayEnum::TRAN_CLASS_ECOM)
+            ->set02Transaction($this->trans_type, ClickpayEnum::TRAN_CLASS_ECOM)
             ->set03Cart($order->get_id(), $currency, $amount, $cart_desc)
             ->set04CustomerDetails(
                 $nameBilling,
@@ -754,9 +1351,10 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
         $holder->set06HideShipping($this->hide_shipping)
             ->set07URLs(
                 $return_url,
-                null
+                $callback_url
             )
             ->set08Lang($lang)
+            ->set09Framed($this->is_frammed_page, 'top')
             ->set10Tokenise($tokenise)
             ->set99PluginInfo('WooCommerce', $woocommerce->version, CLICKPAY_PAYPAGE_VERSION);
 
@@ -764,7 +1362,7 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
             // $holder->set20ValuParams($this->valu_product_id, 0);
         }
 
-        $post_arr = $holder->pt_build(true);
+        $post_arr = $holder->pt_build();
 
         return $post_arr;
     }
@@ -773,12 +1371,15 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
     /**
      * $this->prepareOrder which support WooCommerce version 2.x
      */
-    private function prepareOrder2($order)
+    private function prepareOrder2($order, $isTokenize = false)
     {
         // PT
         global $woocommerce;
 
         // $order->add_order_note();
+
+        $is_subscription = $this->has_subscription($order->get_id());
+        $tokenise = $isTokenize || $this->is_tokenise() || $is_subscription;
 
         $total = $order->get_total();
         // $discount = $order->get_total_discount();
@@ -795,8 +1396,9 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
         //
 
         // $siteUrl = get_site_url();
-        $return_url = $order->get_checkout_payment_url(true);
-        // $return_url = "$siteUrl?wc-api=paytabs_callback&order={$order->id}";
+        $return_url = add_query_arg('wc-api', 'wc_gateway_r_' . $this->id, home_url('/'));
+
+        $callback_url = add_query_arg('wc-api', 'wc_gateway_' . $this->id, home_url('/'));
 
         $products = $order->get_items();
         $items_arr = array_map(function ($p) {
@@ -805,7 +1407,7 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
 
         $cart_desc = implode(', ', $items_arr);
 
-        // $cdetails = PaytabsHelper::getCountryDetails($order->billing_country);
+        // $cdetails = ClickpayHelper::getCountryDetails($order->billing_country);
         // $phoneext = $cdetails['phone'];
 
         $telephone = $order->billing_phone;
@@ -813,7 +1415,7 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
         $countryBilling = $order->billing_country;
         $addressBilling = trim($order->billing_address_1 . ' ' . $order->billing_address_2);
 
-        $is_diff_shipping_address = (bool) $_POST["ship_to_different_address"];
+        $is_diff_shipping_address = (bool) filter_input(INPUT_POST, 'ship_to_different_address', FILTER_VALIDATE_BOOLEAN);
         if ($is_diff_shipping_address) {
             $addressShipping = trim($order->shipping_address_1 . ' ' . $order->shipping_address_2);
             $countryShipping = $order->shipping_country;
@@ -862,16 +1464,18 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
         $holder->set06HideShipping($this->hide_shipping)
             ->set07URLs(
                 $return_url,
-                null
+                $callback_url
             )
             ->set08Lang($lang)
+            ->set09Framed($this->is_frammed_page, 'top')
+            ->set10Tokenise($tokenise)
             ->set99PluginInfo('WooCommerce', $woocommerce->version, CLICKPAY_PAYPAGE_VERSION);
 
         if ($this->_code == 'valu') {
             // $holder->set20ValuParams($this->valu_product_id, 0);
         }
 
-        $post_arr = $holder->pt_build(true);
+        $post_arr = $holder->pt_build();
 
         return $post_arr;
     }
@@ -906,7 +1510,7 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
 
         $holder = new ClickpayTokenHolder();
         $holder
-            ->set02Transaction($this->trans_type, ClickpayEnum::TRAN_CLASS_RECURRING)
+            ->set02Transaction(ClickpayEnum::TRAN_TYPE_SALE, ClickpayEnum::TRAN_CLASS_RECURRING)
             ->set03Cart($order->get_id(), $currency, $amount, $cart_desc)
             ->set20Token($tran_ref, $token)
             ->set99PluginInfo('WooCommerce', $woocommerce->version, CLICKPAY_PAYPAGE_VERSION);
@@ -915,9 +1519,24 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
             // $holder->set20ValuParams($this->valu_product_id, 0);
         }
 
-        $post_arr = $holder->pt_build(true);
+        $post_arr = $holder->pt_build();
 
         return $post_arr;
+    }
+
+    //
+
+    private function prepareOrder_ManagedForm($order)
+    {
+        // ToDo:
+        // Use ManagedForm holder class
+
+        $values = WooCommerce2 ? $this->prepareOrder2($order) : $this->prepareOrder($order);
+
+        $payment_token = filter_input(INPUT_POST, 'token');
+        $values['payment_token'] = $payment_token;
+
+        return $values;
     }
 
     //
@@ -925,20 +1544,5 @@ class WC_Gateway_Clickpay extends WC_Payment_Gateway
     private function getPaymentMethod($order)
     {
         return WooCommerce2 ? $order->payment_method : $order->get_payment_method();
-    }
-
-    private function saveToken($order, $token_str, $transaction_id)
-    {
-        $user_id = $order->get_user_id();
-
-        $token = new WC_Payment_Token_Paytabs();
-        $token->set_token($token_str);
-        $token->set_tran_ref($transaction_id);
-        $token->set_gateway_id($this->id);
-        $token->set_user_id($user_id);
-        $tokeId = $token->save();
-
-        $order->add_payment_token($token);
-        $order->save();
     }
 }

@@ -29,7 +29,8 @@ class WC_Payment_Token_ClickPay extends WC_Payment_Token
 
     public function get_display_name($deprecated = '')
     {
-        return parent::get_display_name($deprecated);
+        $str = substr($this->get_tran_ref(), -3);
+        return "Pay using existing card (...$str)";
     }
 
 
