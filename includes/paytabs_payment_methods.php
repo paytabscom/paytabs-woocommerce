@@ -982,6 +982,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
                 $pt_reach = false;
                 if ($order->needs_payment()) {
+                    // Return no more changes the Order status
+                    // Remove $is_ipn condition to enable Return handling (used for Test purposes)
                     if ($is_ipn && !$this->pt_handled($order)) {
                         $pt_reach = true;
                         $this->validate_payment($response_data, $order, false, $is_ipn);
