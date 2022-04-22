@@ -440,11 +440,12 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         //
 
         $success = $paypage->success;
+        $is_on_hold = @$paypage->is_on_hold;
         $message = @$paypage->message;
-        $is_redirect = @$paypage->is_redirect;
+        // $is_redirect = @$paypage->is_redirect;
         $is_completed = @$paypage->is_completed;
 
-        if ($success) {
+        if ($success || $is_on_hold) {
             $this->set_handled($order_id, false);
             if ($is_completed) {
                 return $this->validate_payment($paypage, $order, true, false);
@@ -660,7 +661,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         if (!in_array(PaytabsEnum::TRAN_TYPE_AUTH, $transaction_type)) {
             // $order->add_order_note('Capture status: ' . "can't make capture on non Auth transaction", false);
-            PaytabsHelper::log("Capture not required for non Auth transactions, {$order_id}", 3);
+            PaytabsHelper::log("Capture not allowed on non Auth transactions, {$order_id}", 3);
             return;
         }
 
@@ -981,7 +982,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
                 $pt_reach = false;
                 if ($order->needs_payment()) {
-                    if (!$this->pt_handled($order)) {
+                    if ($is_ipn && !$this->pt_handled($order)) {
                         $pt_reach = true;
                         $this->validate_payment($response_data, $order, false, $is_ipn);
                     } else {
@@ -1026,7 +1027,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         PaytabsHelper::log("{$handler} handling the Order {$order_id}", 3);
 
         $success = $result->success;
-        $response_status = $result->response_status;
+        $is_on_hold = @$result->is_on_hold;
+        // $response_status = $result->response_status;
         $message = $result->message;
         // $orderId = @$result->reference_no;
         $transaction_ref = @$result->transaction_id;
@@ -1036,18 +1038,15 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         //
 
-        if ($success) {
-            return $this->orderSuccess($order, $transaction_ref, $transaction_type, $token, $message, $is_tokenise, $is_ipn);
+        if ($success || $is_on_hold) {
+            return $this->orderSuccess($order, $transaction_ref, $transaction_type, $token, $message, $is_tokenise, $is_ipn, $is_on_hold);
         } else {
             $_logVerify = json_encode($result);
             // $_data = WooCommerce2 ? $order->data : $order->get_data();
             // $_logOrder = (json_encode($_data));
             PaytabsHelper::log("{$handler} Validating failed, Order {$order_id}, response [{$_logVerify}]", 3);
-            if ($result->is_on_hold) {
-                $this->orderHoldOnReject($order, $message, $is_ipn);
-            } else {
-                $this->orderFailed($order, $message, $is_ipn);
-            }
+
+            $this->orderFailed($order, $message, $is_ipn);
         }
     }
 
@@ -1106,7 +1105,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     /**
      * Payment successed => Order status change to success
      */
-    private function orderSuccess($order, $transaction_id, $transaction_type, $token_str, $message, $is_tokenise, $is_ipn)
+    private function orderSuccess($order, $transaction_id, $transaction_type, $token_str, $message, $is_tokenise, $is_ipn, $is_on_hold)
     {
         global $woocommerce;
 
@@ -1115,12 +1114,16 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $this->pt_set_tran_ref($order, $transaction_type, $transaction_id);
 
-        $this->setNewStatus($order, true, $transaction_type);
-
         $woocommerce->cart->empty_cart();
 
         $order->add_order_note($message, true);
         // wc_add_notice(__('Thank you for shopping with us. Your account has been charged and your transaction is successful. We will be shipping your order to you soon.', 'woocommerce'), 'success');
+
+        if ($is_on_hold) {
+            $order->update_status('wc-on-hold', 'Payment for this order is On-Hold, you can Capture/Decline manualy from your dashboard on PayTabs portal', true);
+        } else {
+            $this->setNewStatus($order, true, $transaction_type);
+        }
 
         if ($token_str) {
             $this->saveToken($order, $token_str, $transaction_id);
