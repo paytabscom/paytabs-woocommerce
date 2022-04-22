@@ -2,10 +2,10 @@
 
 /**
  * PayTabs v2 PHP SDK
- * Version: 2.7.8
+ * Version: 2.7.9
  */
 
-define('PAYTABS_SDK_VERSION', '2.7.8');
+define('PAYTABS_SDK_VERSION', '2.7.9');
 
 
 
@@ -197,6 +197,7 @@ abstract class PaytabsHelper
      * <b>paytabs_error_log<b> should be defined,
      * Main functionality: use the platform logger to log the error messages
      * If not found: create a new log file and log the messages
+     * @param $severity: [1: info, 2: warning, 3: error]
      */
     public static function log($msg, $severity = 1)
     {
@@ -204,7 +205,7 @@ abstract class PaytabsHelper
             paytabs_error_log($msg, $severity);
         } catch (\Throwable $th) {
             try {
-                $_prefix = date('c') . ' PayTabs: ';
+                $_prefix = date('c') . " PayTabs-[{$severity}]: ";
                 $_msg = ($_prefix . $msg . PHP_EOL);
                 file_put_contents('debug_paytabs.log', $_msg, FILE_APPEND);
             } catch (\Throwable $th) {
