@@ -17,8 +17,10 @@ function woocommerce_paytabs_version_check($version = '3.0')
     return false;
 }
 
-function paytabs_error_log($message)
+function paytabs_error_log($message, $severity)
 {
-    $_prefix = date('c') . ' PayTabs: ';
+    $severity_str = $severity == 1 ? 'Info' : ($severity == 2 ? 'Warning' : 'Error');
+
+    $_prefix = date('c') . " PayTabs.{$severity_str}: ";
     error_log($_prefix . $message . PHP_EOL, 3, PAYTABS_DEBUG_FILE);
 }
