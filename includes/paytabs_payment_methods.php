@@ -441,11 +441,12 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $success = $paypage->success;
         $is_on_hold = @$paypage->is_on_hold;
+        $is_pending = @$paypage->is_pending;
         $message = @$paypage->message;
         // $is_redirect = @$paypage->is_redirect;
         $is_completed = @$paypage->is_completed;
 
-        if ($success || $is_on_hold) {
+        if ($success || $is_on_hold || $is_pending) {
             $this->set_handled($order_id, false);
             if ($is_completed) {
                 return $this->validate_payment($paypage, $order, true, false);
@@ -662,7 +663,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         if (!in_array(PaytabsEnum::TRAN_TYPE_AUTH, $transaction_type)) {
             // $order->add_order_note('Capture status: ' . "can't make capture on non Auth transaction", false);
             PaytabsHelper::log("Capture not allowed on non Auth transactions, {$order_id}", 2);
-            return;
+            return true;
         }
 
         // Process Capture
@@ -1030,7 +1031,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $success = $result->success;
         $is_on_hold = @$result->is_on_hold;
-        // $response_status = $result->response_status;
+        $is_pending = @$result->is_pending;
+        $response_code = @$result->response_code;
         $message = $result->message;
         // $orderId = @$result->reference_no;
         $transaction_ref = @$result->transaction_id;
@@ -1040,8 +1042,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         //
 
-        if ($success || $is_on_hold) {
-            return $this->orderSuccess($order, $transaction_ref, $transaction_type, $token, $message, $is_tokenise, $is_ipn, $is_on_hold);
+        if ($success || $is_on_hold || $is_pending) {
+            return $this->orderSuccess($order, $transaction_ref, $transaction_type, $token, $message, $is_tokenise, $is_ipn, $is_on_hold, $is_pending, $response_code);
         } else {
             $_logVerify = json_encode($result);
             // $_data = WooCommerce2 ? $order->data : $order->get_data();
@@ -1107,11 +1109,15 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     /**
      * Payment successed => Order status change to success
      */
-    private function orderSuccess($order, $transaction_id, $transaction_type, $token_str, $message, $is_tokenise, $is_ipn, $is_on_hold)
+    private function orderSuccess($order, $transaction_id, $transaction_type, $token_str, $message, $is_tokenise, $is_ipn, $is_on_hold, $is_pending, $response_code)
     {
         global $woocommerce;
 
-        $order->payment_complete($transaction_id);
+        if ($is_on_hold || $is_pending) {
+            $order->set_transaction_id($transaction_id);
+        } else {
+            $order->payment_complete($transaction_id);
+        }
         // $order->reduce_order_stock();
 
         $this->pt_set_tran_ref($order, $transaction_type, $transaction_id);
@@ -1123,6 +1129,15 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         if ($is_on_hold) {
             $order->update_status('wc-on-hold', 'Payment for this order is On-Hold, you can Capture/Decline manualy from your dashboard on PayTabs portal', true);
+        } elseif ($is_pending) {
+            $_msg = 'Payment for this order is Pening';
+            if ($response_code) {
+                $_msg .= " (Reference number: {$response_code}) ";
+            }
+            if (!$this->ipn_enable) {
+                $_msg .= ', You must enable the IPN to allow the Order update requests from PayTabs ';
+            }
+            $order->update_status('wc-on-hold', $_msg, true);
         } else {
             $this->setNewStatus($order, true, $transaction_type);
         }
