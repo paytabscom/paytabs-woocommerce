@@ -2,10 +2,10 @@
 
 /**
  * PayTabs v2 PHP SDK
- * Version: 2.7.9
+ * Version: 2.7.10
  */
 
-define('PAYTABS_SDK_VERSION', '2.7.9');
+define('PAYTABS_SDK_VERSION', '2.7.10');
 
 
 
@@ -1153,6 +1153,8 @@ class PaytabsApi
             if (isset($verify->payment_result)) {
                 $_verify->success = $verify->payment_result->response_status == "A";
                 $_verify->is_on_hold = $_verify->payment_result->response_status === 'H';
+                $_verify->is_pending = $_verify->payment_result->response_status === 'P';
+                $_verify->response_code = $verify->payment_result->response_code;
             } else {
                 $_verify->success = false;
             }
@@ -1161,6 +1163,10 @@ class PaytabsApi
 
         if (!isset($_verify->is_on_hold)) {
             $_verify->is_on_hold = false;
+        }
+
+        if (!isset($_verify->is_pending)) {
+            $_verify->is_pending = false;
         }
 
         $_verify->reference_no = @$verify->cart_id;
@@ -1177,6 +1183,7 @@ class PaytabsApi
             $_verify = new stdClass();
             $_verify->success = false;
             $_verify->is_on_hold = false;
+            $_verify->is_pending = false;
             $_verify->message = 'Verifying paytabs payment failed (locally)';
         } else {
             $_verify = (object)$return_data;
@@ -1185,6 +1192,7 @@ class PaytabsApi
             $_verify->success = $response_status == "A";
 
             $_verify->is_on_hold = $response_status === 'H';
+            $_verify->is_pending = $response_status === 'P';
             $_verify->message = $return_data['respMessage'];
 
             $_verify->transaction_id = $return_data['tranRef'];
