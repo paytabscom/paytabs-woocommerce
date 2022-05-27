@@ -137,3 +137,22 @@ class WC_Gateway_Paytabs_Samsungpay extends WC_Gateway_Paytabs
     protected $_title = 'PayTabs - SamsungPay';
     protected $_description = 'PayTabs - SamsungPay payment method';
 }
+
+class WC_Gateway_Paytabs_Aman extends WC_Gateway_Paytabs
+{
+    protected $_code = 'aman';
+    protected $_title = 'PayTabs - Aman';
+    protected $_description = 'PayTabs - Aman payment method';
+
+    protected $_icon = "aman.svg";
+}
+
+
+class WC_Gateway_Paytabs_Urpay extends WC_Gateway_Paytabs
+{
+    protected $_code = 'urpay';
+    protected $_title = 'PayTabs - UrPay';
+    protected $_description = 'PayTabs - UrPay payment method';
+
+    protected $_icon = "urpay.svg";
+}
