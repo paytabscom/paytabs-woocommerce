@@ -2,10 +2,10 @@
 
 /**
  * PayTabs v2 PHP SDK
- * Version: 2.7.10
+ * Version: 2.8.0
  */
 
-define('PAYTABS_SDK_VERSION', '2.7.10');
+define('PAYTABS_SDK_VERSION', '2.8.0');
 
 
 
@@ -226,6 +226,8 @@ abstract class PaytabsEnum
     const TRAN_TYPE_SALE     = 'sale';
     const TRAN_TYPE_REGISTER = 'register';
 
+    const TRAN_TYPE_PAYMENT_REQUEST = 'payment request';
+
     const TRAN_TYPE_VOID    = 'void';
     const TRAN_TYPE_RELEASE = 'release';
     const TRAN_TYPE_REFUND  = 'refund';
@@ -257,6 +259,11 @@ abstract class PaytabsEnum
         return strcasecmp($tran_type, PaytabsEnum::TRAN_TYPE_REGISTER) == 0;
     }
 
+    static function TranIsPaymentRequest($tran_type)
+    {
+        return strcasecmp($tran_type, PaytabsEnum::TRAN_TYPE_PAYMENT_REQUEST) == 0;
+    }
+
     static function TranIsCapture($tran_type)
     {
         return strcasecmp($tran_type, PaytabsEnum::TRAN_TYPE_CAPTURE) == 0;
@@ -277,6 +284,27 @@ abstract class PaytabsEnum
         return strcasecmp($tran_type, PaytabsEnum::TRAN_TYPE_REFUND) == 0;
     }
 
+
+    static function TranIsPaymentComplete($ipn_data)
+    {
+        if ($ipn_data) {
+            $original_trx = @$ipn_data->previous_tran_ref;
+            $tran_type = $ipn_data->tran_type;
+
+            // Sale && previous_tran_ref
+            if (PaytabsEnum::TranIsSale($tran_type) && isset($original_trx)) {
+                return true;
+            }
+
+            // Or Expired
+            $tran_status = @$ipn_data->payment_result->response_status;
+            if ($tran_status  === 'X') {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     //
 
@@ -881,6 +909,8 @@ class PaytabsApi
         '15' => ['name' => 'samsungpay', 'title' => 'PayTabs - SamsungPay', 'currencies' => ['AED', 'SAR'], 'groups' => []],
         '16' => ['name' => 'knetdebit', 'title' => 'PayTabs - KnPay (Debit)', 'currencies' => ['KWD'], 'groups' => []],
         '17' => ['name' => 'knetcredit', 'title' => 'PayTabs - KnPay (Credit)', 'currencies' => ['KWD'], 'groups' => []],
+        '18' => ['name' => 'aman', 'title' => 'PayTabs - Aman', 'currencies' => ['EGP'], 'groups' => [PaytabsApi::GROUP_IFRAME]],
+        '19' => ['name' => 'urpay', 'title' => 'PayTabs - UrPay', 'currencies' => ['SAR'], 'groups' => [PaytabsApi::GROUP_IFRAME]],
     ];
 
     const BASE_URLS = [
@@ -1154,6 +1184,7 @@ class PaytabsApi
                 $_verify->success = $verify->payment_result->response_status == "A";
                 $_verify->is_on_hold = $_verify->payment_result->response_status === 'H';
                 $_verify->is_pending = $_verify->payment_result->response_status === 'P';
+                $_verify->is_expired = $_verify->payment_result->response_status === 'X';
                 $_verify->response_code = $verify->payment_result->response_code;
             } else {
                 $_verify->success = false;
@@ -1167,6 +1198,10 @@ class PaytabsApi
 
         if (!isset($_verify->is_pending)) {
             $_verify->is_pending = false;
+        }
+
+        if (!isset($_verify->is_expired)) {
+            $_verify->is_expired = false;
         }
 
         $_verify->reference_no = @$verify->cart_id;

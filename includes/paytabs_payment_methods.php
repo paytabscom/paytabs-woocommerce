@@ -784,7 +784,16 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     public function callback_response()
     {
         PaytabsHelper::log("Callback triggered", 1);
-        $this->handle_response(true);
+        // $this->handle_response(true);
+
+        $ipn_data = PaytabsHelper::read_ipn_response();
+
+        if (PaytabsEnum::TranIsPaymentComplete($ipn_data)) {
+            PaytabsHelper::log("Payment complete request, change to IPN handler", 1);
+            $this->ipn_response();
+        } else {
+            $this->handle_response(true);
+        }
     }
 
     public function ipn_response()
@@ -873,14 +882,62 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $is_registered = $this->pt_has_tran_ref($pt_order_id, $pt_tran_type, $pt_tran_ref);
         if ($is_registered) {
             PaytabsHelper::log("{$pt_tran_type} already registered, {$pt_order_id} - {$pt_message}", 2);
-            return;
+
+            if (!$ipn_data->is_expired) {
+                PaytabsHelper::log("{$pt_tran_ref} is not Expired, {$pt_order_id}", 2);
+                return;
+            }
         }
 
         switch ($pt_tran_type) {
-            case PaytabsEnum::TRAN_TYPE_SALE:
             case PaytabsEnum::TRAN_TYPE_AUTH:
             case PaytabsEnum::TRAN_TYPE_REGISTER:
                 PaytabsHelper::log("IPN does not support creating new Order", 2);
+                break;
+
+            case PaytabsEnum::TRAN_TYPE_SALE:
+                $original_trx = $ipn_data->previous_tran_ref;
+                if ($original_trx) {
+                    $pending_trxs = $this->pt_get_tran_ref($pt_order_id, 'payment request');
+                    if (is_array($pending_trxs) && count($pending_trxs) > 0) {
+                        $pending_trx = end($pending_trxs);
+
+                        if ($pending_trx == $original_trx) {
+                            if ($pt_success) {
+                                if ($same_payment) {
+                                    $this->orderSuccess($order, $pt_tran_ref, $pt_tran_type, $pt_token, $pt_message, false, true, false, false, null);
+
+                                    PaytabsHelper::log("{$pt_tran_type} done, {$pt_order_id} - {$pt_tran_ref}", 1);
+                                } else {
+                                    PaytabsHelper::log('Sale could not be registered, Not same payment', 3);
+                                }
+                            } else {
+                                PaytabsHelper::log("Sale failed, {$pt_order_id} - {$pt_message}", 3);
+                                // $order->update_status('on-hold', __('Capture failed: ' . $pt_message, 'PayTabs'));
+                                $this->setNewStatus($order, false, $pt_tran_type, true);
+                            }
+                        } else {
+                            PaytabsHelper::log('Sale could not be registered, Not same transaction, {$pt_tran_ref} - {$pending_trx}', 3);
+                        }
+                    }
+                } else {
+                    PaytabsHelper::log("IPN does not support creating new Orders", 2);
+                }
+                break;
+
+            case PaytabsEnum::TRAN_TYPE_PAYMENT_REQUEST:
+
+                if (!$is_registered) {
+                    PaytabsHelper::log("{$pt_order_id} - {$pt_tran_ref} - No Pending payment found", 2);
+                } else {
+                    if (!$same_payment) {
+                        PaytabsHelper::log('Expired could not be registered, Not same payment', 3);
+                    } else {
+                        PaytabsHelper::log("{$pt_tran_type} done (Expired), {$pt_order_id} - {$pt_tran_ref}", 1);
+                        $this->orderFailed($order, $pt_message, true);
+                    }
+                }
+
                 break;
 
             case PaytabsEnum::TRAN_TYPE_CAPTURE:
@@ -956,6 +1013,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 break;
 
             default:
+                PaytabsHelper::log("IPN does not recognize the Action {$pt_tran_type}", 2);
                 break;
         }
 
