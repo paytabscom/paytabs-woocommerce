@@ -12,7 +12,7 @@
  * Version:       4.11.1
  * Requires PHP:  7.0
  * Author:        ClickPay
- * Author URI:    w.elsaeed@paytabs.com
+ * Author URI:    https://ClickPay.com.sa/
  * Revision Date: 12/April/2022
  */
 

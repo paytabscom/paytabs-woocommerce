@@ -877,7 +877,7 @@ class ClickpayApi
     const BASE_URLS = [
         'SAU' => [
             'title' => 'Saudi Arabia',
-            'endpoint' => 'https://merchant.clickpay.com.sa/'
+            'endpoint' => 'https://secure.clickpay.com.sa/'
         ]
     ];
 
