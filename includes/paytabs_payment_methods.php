@@ -1188,7 +1188,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         if ($is_on_hold) {
             $order->update_status('wc-on-hold', 'Payment for this order is On-Hold, you can Capture/Decline manualy from your dashboard on PayTabs portal', true);
         } elseif ($is_pending) {
-            $_msg = 'Payment for this order is Pening';
+            $_msg = 'Payment for this order is Pending';
             if ($response_code) {
                 $_msg .= " (Reference number: {$response_code}) ";
             }
