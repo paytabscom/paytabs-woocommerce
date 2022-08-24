@@ -535,7 +535,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             if ($this->is_frammed_page) {
                 $this->pt_echo_animation(true);
 
-                echo "<iframe src='{$payment_url}' width='100%' height='auto' style='min-width: 400px; min-height: 700px; border: 0' onload='document.getElementById(\"pt_loader\").style.display=\"none\";' />";
+                echo "<iframe src='{$payment_url}' width='100%' height='auto' style='min-width: auto; min-height: 700px; border: 0' onload='document.getElementById(\"pt_loader\").style.display=\"none\";' />";
             }
         } else {
             $_logPaypage = json_encode($paypage);
