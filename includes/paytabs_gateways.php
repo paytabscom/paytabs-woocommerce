@@ -164,7 +164,7 @@ class WC_Gateway_Paytabs_Paypal extends WC_Gateway_Paytabs
     protected $_title = 'PayTabs - PayPal';
     protected $_description = 'PayTabs - PayPal payment method';
 
-    // protected $_icon = "urpay.svg";
+    protected $_icon = "paypal.svg";
 }
 
 
