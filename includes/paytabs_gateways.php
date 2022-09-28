@@ -156,3 +156,23 @@ class WC_Gateway_Paytabs_Urpay extends WC_Gateway_Paytabs
 
     protected $_icon = "urpay.svg";
 }
+
+
+class WC_Gateway_Paytabs_Paypal extends WC_Gateway_Paytabs
+{
+    protected $_code = 'paypal';
+    protected $_title = 'PayTabs - PayPal';
+    protected $_description = 'PayTabs - PayPal payment method';
+
+    protected $_icon = "paypal.svg";
+}
+
+
+class WC_Gateway_Paytabs_Installment extends WC_Gateway_Paytabs
+{
+    protected $_code = 'installment';
+    protected $_title = 'PayTabs - Installment';
+    protected $_description = 'PayTabs - Installment payment method';
+
+    protected $_icon = "nbe-installment.png";
+}
