@@ -174,5 +174,5 @@ class WC_Gateway_Paytabs_Installment extends WC_Gateway_Paytabs
     protected $_title = 'PayTabs - Installment';
     protected $_description = 'PayTabs - Installment payment method';
 
-    // protected $_icon = "urpay.svg";
+    protected $_icon = "nbe-installment.png";
 }
