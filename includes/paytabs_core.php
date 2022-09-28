@@ -300,6 +300,11 @@ abstract class PaytabsEnum
         return strcasecmp($tran_type, PaytabsEnum::TRAN_TYPE_REFUND) == 0;
     }
 
+    static function TransAreSame($tran_type1, $tran_type2)
+    {
+        return strcasecmp($tran_type1, $tran_type2) == 0;
+    }
+
 
     static function TranIsPaymentComplete($ipn_data)
     {
