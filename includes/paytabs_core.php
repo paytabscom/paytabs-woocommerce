@@ -11,7 +11,28 @@ define('PAYTABS_SDK_VERSION', '2.9.0');
 define('PAYTABS_DEBUG_FILE_NAME', 'debug_paytabs.log');
 define('PAYTABS_DEBUG_SEVERITY', ['Info', 'Warning', 'Error']);
 define('PAYTABS_PREFIX', 'PayTabs');
+define('PAYTABS_HTACCESS_FILE', WP_CONTENT_DIR . "/.htaccess");
 
+
+
+class  PaytabsDebugPermission
+{
+    public static function check_log_permission()
+    {
+        // prevent debug file from opening inside the browser
+        // must all override all into your appache server to let the htaccess working
+        if(!file_exists(PAYTABS_HTACCESS_FILE))
+        {
+            $myhtaccessfile = fopen(PAYTABS_HTACCESS_FILE, "w");
+            $permission = "<Files " . PAYTABS_DEBUG_FILE_NAME .">  
+            Order Allow,Deny
+            Deny from all
+        </Files>";
+            fwrite($myhtaccessfile, $permission);
+            fclose($myhtaccessfile);
+        }
+    }
+}
 
 abstract class PaytabsHelper
 {
@@ -207,6 +228,7 @@ abstract class PaytabsHelper
     {
         try {
             paytabs_error_log($msg, $severity);
+            PaytabsDebugPermission::check_log_permission();
         } catch (\Throwable $th) {
             try {
                 $severity_str = PAYTABS_DEBUG_SEVERITY[$severity];
@@ -214,6 +236,8 @@ abstract class PaytabsHelper
                 $_msg = ($_prefix . $msg . PHP_EOL);
 
                 file_put_contents(PAYTABS_DEBUG_FILE_NAME, $_msg, FILE_APPEND);
+                PaytabsDebugPermission::check_log_permission();
+
             } catch (\Throwable $th) {
                 // var_export($th);
             }
