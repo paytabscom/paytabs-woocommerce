@@ -84,6 +84,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $this->order_status_success = $this->get_option('status_success');
         $this->order_status_failed  = $this->get_option('status_failed');
 
+        $this->failed_send_note  = $this->get_option('failed_send_note') == 'yes';
+
         $this->trans_type = $this->get_option('trans_type', PaytabsEnum::TRAN_TYPE_SALE);
         $this->order_status_auth_success = $this->get_option('status_auth_success', 'wc-on-hold');
 
@@ -316,6 +318,11 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                     . "<br>Supported events: <strong>Capture (Full)</strong>, <strong>Void (Full)</strong>, <strong>Refund (Full & Partial)</strong>.",
                 'required'    => false,
             ),
+            'failed_send_note' => array(
+                'title'       => __('Send a note on payment failure', 'PayTabs'),
+                'type'        => 'checkbox',
+                'description' => "Send a note to the customer if the Order fail due to payment failure, The note contains the failure reason returned from the payment gateway.",
+            )
         );
 
         $this->form_fields = array_merge($fields, $addional_fields);
@@ -1243,6 +1250,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     private function orderFailed($order, $message, $is_ipn)
     {
         wc_add_notice($message, 'error');
+
+        if ($this->failed_send_note) {
+            $order->add_order_note($message, true);
+        }
 
         $order->update_status('failed', $message);
 
