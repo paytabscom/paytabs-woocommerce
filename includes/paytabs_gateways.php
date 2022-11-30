@@ -177,11 +177,12 @@ class WC_Gateway_Paytabs_Installment extends WC_Gateway_Paytabs
     protected $_icon = "nbe-installment.png";
 }
 
+
 class WC_Gateway_Paytabs_Touchpoints extends WC_Gateway_Paytabs
 {
     protected $_code = 'touchpoints';
     protected $_title = 'PayTabs - Touchpoints';
-    protected $_description = 'PayTabs - Touchpoints payment method';
+    protected $_description = 'PayTabs - ADCB Touchpoints payment method';
 
     protected $_icon = "touchpoints_adcb.svg";
 }
