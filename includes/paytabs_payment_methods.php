@@ -125,6 +125,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         add_action('woocommerce_order_status_cancelled', array($this, 'process_void'), 10, 1);
         // $this->checkCallback();
 
+        add_action('woocommerce_thankyou_' . $this->id, array($this, 'pt_thankyou_page'));
+
         add_action('woocommerce_receipt_' . $this->id, array($this, 'receipt_page'));
     }
 
@@ -1028,6 +1030,15 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     }
 
 
+    function pt_thankyou_page($order_id)
+    {
+        if (isset($_GET['pt_msg'])) {
+            $msg = $_GET['pt_msg'];
+            wc_print_notice($msg, 'error');
+        }
+    }
+
+
     private function handle_response($is_ipn)
     {
         $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
@@ -1061,7 +1072,12 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 }
 
                 if (!$is_ipn && !$pt_reach) {
-                    wp_redirect($order->get_checkout_order_received_url());
+                    $_redirect_url = $order->get_checkout_order_received_url();
+                    if ($response_data->failed) {
+                        $_redirect_url = add_query_arg('pt_msg', $response_data->message, $_redirect_url);
+                    }
+                    wp_redirect($_redirect_url);
+                    exit;
                 }
             } else {
                 PaytabsHelper::log("{$handler} failed, Order {$orderId}, Payment method mismatch", 3);
@@ -1251,9 +1267,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     {
         wc_add_notice($message, 'error');
 
-        if ($this->failed_send_note) {
-            $order->add_order_note($message, true);
-        }
+        $order->add_order_note($message, $this->failed_send_note);
 
         $order->update_status('failed', $message);
 
