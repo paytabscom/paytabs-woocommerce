@@ -21,10 +21,9 @@ class  PaytabsDebugPermission
     {
         // prevent debug file from opening inside the browser
         // must all override all into your appache server to let the htaccess working
-        if(!file_exists(PAYTABS_HTACCESS_FILE))
-        {
+        if (!file_exists(PAYTABS_HTACCESS_FILE)) {
             $myhtaccessfile = fopen(PAYTABS_HTACCESS_FILE, "w");
-            $permission = "<Files " . PAYTABS_DEBUG_FILE_NAME .">  
+            $permission = "<Files " . PAYTABS_DEBUG_FILE_NAME . ">  
             Order Allow,Deny
             Deny from all
         </Files>";
@@ -237,7 +236,6 @@ abstract class PaytabsHelper
 
                 file_put_contents(PAYTABS_DEBUG_FILE_NAME, $_msg, FILE_APPEND);
                 PaytabsDebugPermission::check_log_permission();
-
             } catch (\Throwable $th) {
                 // var_export($th);
             }
@@ -1278,6 +1276,8 @@ class PaytabsApi
         $_verify->reference_no = @$verify->cart_id;
         $_verify->transaction_id = @$verify->tran_ref;
 
+        $_verify->failed = !($_verify->success || $_verify->is_on_hold || $_verify->is_pending);
+
         return $_verify;
     }
 
@@ -1305,6 +1305,8 @@ class PaytabsApi
             $_verify->transaction_id = $return_data['tranRef'];
             $_verify->reference_no = $return_data['cartId'];
         }
+
+        $_verify->failed = !($_verify->success || $_verify->is_on_hold || $_verify->is_pending);
 
         return $_verify;
     }
