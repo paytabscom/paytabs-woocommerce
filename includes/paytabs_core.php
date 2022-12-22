@@ -2,11 +2,11 @@
 
 /**
  * PayTabs v2 PHP SDK
- * Version: 2.10.2
+ * Version: 2.10.2.1
  * PHP >= 7.0.0
  */
 
-define('PAYTABS_SDK_VERSION', '2.10.2');
+define('PAYTABS_SDK_VERSION', '2.10.2.1');
 
 define('PAYTABS_DEBUG_FILE_NAME', 'debug_paytabs.log');
 define('PAYTABS_DEBUG_SEVERITY', ['Info', 'Warning', 'Error']);
@@ -21,10 +21,9 @@ class  PaytabsDebugPermission
     {
         // prevent debug file from opening inside the browser
         // must all override all into your appache server to let the htaccess working
-        if(!file_exists(PAYTABS_HTACCESS_FILE))
-        {
+        if (!file_exists(PAYTABS_HTACCESS_FILE)) {
             $myhtaccessfile = fopen(PAYTABS_HTACCESS_FILE, "w");
-            $permission = "<Files " . PAYTABS_DEBUG_FILE_NAME .">  
+            $permission = "<Files " . PAYTABS_DEBUG_FILE_NAME . ">  
             Order Allow,Deny
             Deny from all
         </Files>";
@@ -237,7 +236,6 @@ abstract class PaytabsHelper
 
                 file_put_contents(PAYTABS_DEBUG_FILE_NAME, $_msg, FILE_APPEND);
                 PaytabsDebugPermission::check_log_permission();
-
             } catch (\Throwable $th) {
                 // var_export($th);
             }
@@ -968,7 +966,7 @@ class PaytabsApi
         '7'  => ['name' => 'sadad', 'title' => 'PayTabs - Sadad', 'currencies' => ['SAR'], 'groups' => [PaytabsApi::GROUP_IFRAME]],
         '8'  => ['name' => 'fawry', 'title' => 'PayTabs - @Fawry', 'currencies' => ['EGP'], 'groups' => [PaytabsApi::GROUP_IFRAME]],
         '9'  => ['name' => 'knet', 'title' => 'PayTabs - KnPay', 'currencies' => ['KWD'], 'groups' => [PaytabsApi::GROUP_CARDS]],
-        '10' => ['name' => 'amex', 'title' => 'PayTabs - Amex', 'currencies' => ['AED', 'SAR'], 'groups' => [PaytabsApi::GROUP_TOKENIZE, PaytabsApi::GROUP_CARDS, PaytabsApi::GROUP_CARDS_INTERNATIONAL, PaytabsApi::GROUP_AUTH_CAPTURE, PaytabsApi::GROUP_IFRAME]],
+        '10' => ['name' => 'amex', 'title' => 'PayTabs - Amex', 'currencies' => ['AED', 'SAR', 'USD'], 'groups' => [PaytabsApi::GROUP_TOKENIZE, PaytabsApi::GROUP_CARDS, PaytabsApi::GROUP_CARDS_INTERNATIONAL, PaytabsApi::GROUP_AUTH_CAPTURE, PaytabsApi::GROUP_IFRAME]],
         '11' => ['name' => 'valu', 'title' => 'PayTabs - valU', 'currencies' => ['EGP'], 'groups' => [PaytabsApi::GROUP_IFRAME]],
         '12' => ['name' => 'meeza', 'title' => 'PayTabs - Meeza', 'currencies' => ['EGP'], 'groups' => [PaytabsApi::GROUP_CARDS, PaytabsApi::GROUP_AUTH_CAPTURE, PaytabsApi::GROUP_IFRAME]],
         '13' => ['name' => 'meezaqr', 'title' => 'PayTabs - Meeza (QR)', 'currencies' => ['EGP'], 'groups' => [PaytabsApi::GROUP_IFRAME]],
@@ -1278,6 +1276,8 @@ class PaytabsApi
         $_verify->reference_no = @$verify->cart_id;
         $_verify->transaction_id = @$verify->tran_ref;
 
+        $_verify->failed = !($_verify->success || $_verify->is_on_hold || $_verify->is_pending);
+
         return $_verify;
     }
 
@@ -1305,6 +1305,8 @@ class PaytabsApi
             $_verify->transaction_id = $return_data['tranRef'];
             $_verify->reference_no = $return_data['cartId'];
         }
+
+        $_verify->failed = !($_verify->success || $_verify->is_on_hold || $_verify->is_pending);
 
         return $_verify;
     }
