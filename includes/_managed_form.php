@@ -12,21 +12,23 @@ $_js_url = $this->get_endpoint_url() . $_js_path;
 
     <div>
         <span style="color: red;" id="paymentErrors"></span>
+		<div>
+		<label class="card-number-label">Card Number</label>
+		</div>
         <div class="row">
-            <label>Card Number</label>
-            <input type="text" data-paylib="number" size="20">
+            
+            <input type="text" data-paylib="number" size="20" placeholder="Card Number">
         </div>
-        <div class="row">
-            <label>Expiry Date (MM/YYYY)</label>
-            <input type="text" data-paylib="expmonth" size="2">
-            <input type="text" data-paylib="expyear" size="4">
-        </div>
-        <div class="row">
-            <label>Security Code</label>
-            <input type="text" data-paylib="cvv" size="4">
-            <input type="hidden" name="token" id="pt_token">
-        </div>
+		<div>
+		<label class="card-details-label">Card Details</label>
+		</div>
+        <div class="row-mm">
+            
+            <input type="text" id="expmonth" class="form-control" data-paylib="expmonth" name="ccmonth" autocomplete="cc-exp-month" placeholder="MM" autocorrect="off" spellcheck="false" aria-label="expmonth" aria-invalid="false" maxlength="2" pattern="[0-9]*" inputmode="numeric">
+            <input type="text" id="expyear" class="form-control-two" data-paylib="expyear" name="ccyear" autocomplete="cc-exp-year" placeholder="YY" autocorrect="off" spellcheck="false" aria-label="expyear" aria-invalid="false" maxlength="2" pattern="[0-9]*" inputmode="numeric">
+			<input type="text" data-paylib="cvv" size="4" placeholder="CVV"><input type="hidden" name="token" id="pt_token" value="">
 
+        </div>
     </div>
 </div>
 
