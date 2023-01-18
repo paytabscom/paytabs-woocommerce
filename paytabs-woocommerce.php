@@ -9,7 +9,7 @@
  * Plugin URI:    https://paytabs.com/
  * Description:   PayTabs is a <strong>3rd party payment gateway</strong>. Ideal payment solutions for your internet business.
 
- * Version:       4.14.2
+ * Version:       4.15.0
  * Requires PHP:  7.0
  * Author:        PayTabs
  * Author URI:    integration@paytabs.com
@@ -21,7 +21,7 @@ if (!function_exists('add_action')) {
 
 
 
-define('PAYTABS_PAYPAGE_VERSION', '4.14.2');
+define('PAYTABS_PAYPAGE_VERSION', '4.15.0');
 define('PAYTABS_PAYPAGE_DIR', plugin_dir_path(__FILE__));
 define('PAYTABS_PAYPAGE_ICONS_URL', plugins_url("icons/", __FILE__));
 define('PAYTABS_PAYPAGE_IMAGES_URL', plugins_url("images/", __FILE__));
@@ -34,7 +34,7 @@ define('PAYTABS_PAYPAGE_METHODS', [
   // 'stcpayqr' => 'WC_Gateway_Paytabs_Stcpayqr',
   'applepay'   => 'WC_Gateway_Paytabs_Applepay',
   'omannet'    => 'WC_Gateway_Paytabs_Omannet',
-  // 'sadad'      => 'WC_Gateway_Paytabs_Sadad',
+  'sadad'      => 'WC_Gateway_Paytabs_Sadad',
   'fawry'      => 'WC_Gateway_Paytabs_Fawry',
   'knet'       => 'WC_Gateway_Paytabs_Knpay',
   'amex'       => 'WC_Gateway_Paytabs_Amex',
