@@ -1385,7 +1385,11 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             return "{$p->get_name()} ({$p->get_quantity()})";
         }, $products);
 
-        $cart_desc = implode(', ', $items_arr);
+        $cart_desc = trim(implode(', ', $items_arr));
+
+        if (empty($cart_desc)) {
+            $cart_desc = "#{$order->get_id()}";
+        }
 
         // $cdetails = PaytabsHelper::getCountryDetails($order->get_billing_country());
         // $phoneext = $cdetails['phone'];
