@@ -324,6 +324,12 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 'title'       => __('Send a note on payment failure', 'PayTabs'),
                 'type'        => 'checkbox',
                 'description' => "Send a note to the customer if the Order fail due to payment failure, The note contains the failure reason returned from the payment gateway.",
+            ),
+            'restock-items' =>array(
+                'title'       => __('Increase Stock After Refund', 'PayTabs'),
+                'type'        => 'checkbox',
+                'description' => '',
+                'default'     => 'yes'
             )
         );
 
@@ -1008,8 +1014,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                     'refund_payment' => false,
                     // 'refund_id' => 0,
                     // 'line_items'   => $line_items,
-                    // 'restock_items'  => false
+                     'restock_items'  => $this->get_option('restock-items',true)
                 ]);
+                PaytabsHelper::log("restock:".$this->get_option('restock-items',true), 2);
 
                 if (!is_wp_error($refund)) {
                     PaytabsHelper::log("{$pt_tran_type} done, {$pt_order_id} - {$pt_tran_ref}", 1);
