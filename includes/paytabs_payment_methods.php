@@ -320,16 +320,16 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                     . "<br>Supported events: <strong>Capture (Full)</strong>, <strong>Void (Full)</strong>, <strong>Refund (Full & Partial)</strong>.",
                 'required'    => false,
             ),
+            'restock_items' => array(
+                'title'       => __('Restock refunded items (IPN)', 'PayTabs'),
+                'type'        => 'checkbox',
+                'description' => 'Refund isssued on PayTabs Dashboard will be reflected on your Store (if IPN option enabled), This option will Restock all the orders\' items if the refund amount matched the remaining refund amount, So <strong>use carefully if there is a cross use between the Woo admin refund & PayTabs dashboard refund</strong>.',
+                'default'     => 'yes'
+            ),
             'failed_send_note' => array(
                 'title'       => __('Send a note on payment failure', 'PayTabs'),
                 'type'        => 'checkbox',
                 'description' => "Send a note to the customer if the Order fail due to payment failure, The note contains the failure reason returned from the payment gateway.",
-            ),
-            'restock-items' =>array(
-                'title'       => __('Increase Stock After Refund', 'PayTabs'),
-                'type'        => 'checkbox',
-                'description' => '',
-                'default'     => 'yes'
             )
         );
 
@@ -1007,19 +1007,30 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                     return;
                 }
 
+                $restock = $this->get_option('restock_items') == 'yes';
+                $line_items = [];
+                if ($restock) {
+                    if ($order->get_remaining_refund_amount() == $pt_tran_total) {
+                        // IPN does not contain the refunded items
+                        // if the refund match the total remaining amount => restock all items
+                        // issue happens if the Woo admin create a Refund, then another Refund triggered from IPN => items restock twice
+                        $line_items = $order->get_items();
+                    }
+                }
+
                 $refund = wc_create_refund([
                     'amount'         => $pt_tran_total,
                     'reason'         => 'PayTabs dashboard',
                     'order_id'       => $pt_order_id,
                     'refund_payment' => false,
                     // 'refund_id' => 0,
-                    // 'line_items'   => $line_items,
-                     'restock_items'  => $this->get_option('restock-items',true)
+                    'line_items'     => $line_items,
+                    'restock_items'  => $restock,
                 ]);
-                PaytabsHelper::log("restock:".$this->get_option('restock-items',true), 2);
 
                 if (!is_wp_error($refund)) {
-                    PaytabsHelper::log("{$pt_tran_type} done, {$pt_order_id} - {$pt_tran_ref}", 1);
+                    $cnt = count($line_items);
+                    PaytabsHelper::log("{$pt_tran_type} done, {$pt_order_id} - {$pt_tran_ref} - Refund ({$refund->get_id()}) - Restock ($restock - $cnt items)", 1);
                     $this->pt_set_tran_ref($order, $pt_tran_type, $pt_tran_ref);
                     // $this->setNewStatus($order, true, $pt_tran_type, true);
                 } else {
