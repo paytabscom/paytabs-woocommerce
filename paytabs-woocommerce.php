@@ -21,7 +21,7 @@ if (!function_exists('add_action')) {
 
 
 
-define('PAYTABS_PAYPAGE_VERSION', '4.16.2');
+define('PAYTABS_PAYPAGE_VERSION', '4.16.3');
 define('PAYTABS_PAYPAGE_DIR', plugin_dir_path(__FILE__));
 define('PAYTABS_PAYPAGE_ICONS_URL', plugins_url("icons/", __FILE__));
 define('PAYTABS_PAYPAGE_IMAGES_URL', plugins_url("images/", __FILE__));
