@@ -1142,7 +1142,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         //
 
         if ($success || $is_on_hold || $is_pending) {
-            return $this->orderSuccess($order, $transaction_ref, $transaction_type, $token, $message, $is_tokenise, $is_ipn, $is_on_hold, $is_pending, $response_code);
+            return $this->orderSuccess($order, $transaction_ref, $transaction_type, $token, $message, $is_tokenise, $is_ipn, $is_on_hold, $is_pending, $response_code,$result);
         } else {
             $_logVerify = json_encode($result);
             // $_data = WooCommerce2 ? $order->data : $order->get_data();
@@ -1208,7 +1208,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     /**
      * Payment successed => Order status change to success
      */
-    private function orderSuccess($order, $transaction_id, $transaction_type, $token_str, $message, $is_tokenise, $is_ipn, $is_on_hold, $is_pending, $response_code)
+    private function orderSuccess($order, $transaction_id, $transaction_type, $token_str, $message, $is_tokenise, $is_ipn, $is_on_hold, $is_pending, $response_code,$result=null)
     {
         global $woocommerce;
 
@@ -1242,7 +1242,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         }
 
         if ($token_str) {
-            $this->saveToken($order, $token_str, $transaction_id);
+            $this->saveToken($order, $token_str, $transaction_id,$result);
         }
 
         if ($is_ipn) {
@@ -1262,16 +1262,32 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     }
 
 
-    private function saveToken($order, $token_str, $transaction_id)
+    private function saveToken($order, $token_str, $transaction_id,$result=null)
     {
         $user_id = $order->get_user_id();
 
         $token = new WC_Payment_Token_Paytabs();
-        $token->set_token($token_str);
         $token->set_tran_ref($transaction_id);
         $token->set_gateway_id($this->id);
         $token->set_user_id($user_id);
+        $token->set_token($token_str);
+        $schema = strtolower($result->payment_info->card_scheme);
+        $last4 = substr($result->payment_info->payment_description, -4);
+        $short_year = substr($result->payment_info->expiryYear, -2);
+        $short_month = $result->payment_info->expiryMonth;
+        $token->set_card_type($schema);
+        $token->set_last4($last4);
+        PaytabsHelper::log("result_params:schema#" . $schema . "#last4:" . $last4 . "#exm:" . $short_month . "#exy:" . $short_year, 3);
+        $token->set_expiry_month($short_month);
+        $token->set_expiry_year($short_year);
+        $token->set_user_id($user_id);
+
         $tokeId = $token->save();
+
+
+
+
+
 
         $order->add_payment_token($token);
         $order->save();
