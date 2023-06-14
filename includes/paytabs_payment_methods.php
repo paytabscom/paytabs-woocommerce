@@ -82,9 +82,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $this->hide_shipping = $this->get_option('hide_shipping') == 'yes';
 
         $this->order_status_success = $this->get_option('status_success');
-        $this->order_status_failed  = $this->get_option('status_failed');
+        $this->order_status_failed = $this->get_option('status_failed');
 
-        $this->failed_send_note  = $this->get_option('failed_send_note') == 'yes';
+        $this->failed_send_note = $this->get_option('failed_send_note') == 'yes';
 
         $this->trans_type = $this->get_option('trans_type', PaytabsEnum::TRAN_TYPE_SALE);
         $this->order_status_auth_success = $this->get_option('status_auth_success', 'wc-on-hold');
@@ -156,7 +156,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         // $siteUrl = get_site_url();
         $ipn_url = add_query_arg('wc-api', 'wc_gateway_paytabs', home_url('/'));
 
-        return  $ipn_url;
+        return $ipn_url;
     }
 
 
@@ -184,7 +184,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $redirect_modes = [
             'redirect' => __('Redirect to hosted form on PayTabs server', 'PayTabs'),
-            'iframe'   => __('iFrame payment form integrated into checkout', 'PayTabs')
+            'iframe' => __('iFrame payment form integrated into checkout', 'PayTabs')
         ];
         if ($this->_code == 'creditcard') {
             $redirect_modes['managed_form'] = __('Managed form');
@@ -193,142 +193,142 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         if ($this->_is_card_method) {
             $addional_fields['allow_associated_methods'] = [
-                'title'       => __('Allow associated methods', 'PayTabs'),
-                'type'        => 'checkbox',
+                'title' => __('Allow associated methods', 'PayTabs'),
+                'type' => 'checkbox',
                 'description' => 'Accept all associated methods of the current payment method, do not limit to this one only.',
-                'default'     => 'yes'
+                'default' => 'yes'
             ];
         }
 
         if ($this->_support_tokenise) {
             $addional_fields['enable_tokenise'] = [
-                'title'       => __('Enable Tokenise', 'PayTabs'),
-                'type'        => 'checkbox',
+                'title' => __('Enable Tokenise', 'PayTabs'),
+                'type' => 'checkbox',
                 'description' => 'Allow your customers to save their payment methods for later use.',
-                'default'     => 'yes'
+                'default' => 'yes'
             ];
         }
 
         if ($this->_support_auth_capture) {
             $addional_fields['trans_type'] = [
-                'title'       => __('Transaction Type', 'PayTabs'),
-                'label'       => __('Transaction Type', 'PayTabs'),
-                'type'        => 'select',
+                'title' => __('Transaction Type', 'PayTabs'),
+                'label' => __('Transaction Type', 'PayTabs'),
+                'type' => 'select',
                 'description' => 'Set the transaction type to Auth or Sale',
-                'options'     => array(
+                'options' => array(
                     PaytabsEnum::TRAN_TYPE_SALE => __('Sale', 'PayTabs'),
                     PaytabsEnum::TRAN_TYPE_AUTH => __('Auth', 'PayTabs'),
                 ),
-                'default'     => PaytabsEnum::TRAN_TYPE_SALE
+                'default' => PaytabsEnum::TRAN_TYPE_SALE
             ];
 
             $addional_fields['status_auth_success'] = [
-                'title'       => __('Auth Order status', 'PayTabs'),
-                'type'        => 'select',
+                'title' => __('Auth Order status', 'PayTabs'),
+                'type' => 'select',
                 'description' => 'Set the Order status if the Auth succeed.',
-                'options'     => $orderStatuses,
-                'default'     => 'wc-on-hold'
+                'options' => $orderStatuses,
+                'default' => 'wc-on-hold'
             ];
         }
 
         if ($this->_support_iframe) {
             $addional_fields['payment_form'] = [
-                'title'       => __('Payment form type', 'PayTabs'),
-                'type'        => 'select',
-                'options'     => $redirect_modes,
+                'title' => __('Payment form type', 'PayTabs'),
+                'type' => 'select',
+                'options' => $redirect_modes,
                 'description' => __("Hosted form on PayTabs server is the secure solution of choice, While iFrame provides better customer experience (https strongly advised)", 'PayTabs'),
-                'default'     => 'redirect',
-                'desc_tip'    => false,
+                'default' => 'redirect',
+                'desc_tip' => false,
             ];
         }
 
         $fields = array(
             'enabled' => array(
-                'title'       => __('Enable/Disable', 'PayTabs'),
-                'label'       => __('Enable Payment Gateway.', 'PayTabs'),
-                'type'        => 'checkbox',
+                'title' => __('Enable/Disable', 'PayTabs'),
+                'label' => __('Enable Payment Gateway.', 'PayTabs'),
+                'type' => 'checkbox',
                 'description' => '',
-                'default'     => 'no'
+                'default' => 'no'
             ),
             'endpoint' => array(
-                'title'       => __('PayTabs endpoint region', 'PayTabs'),
-                'type'        => 'select',
+                'title' => __('PayTabs endpoint region', 'PayTabs'),
+                'type' => 'select',
                 'description' => 'Select your domain',
-                'options'     => $endpoints,
+                'options' => $endpoints,
             ),
             'title' => array(
-                'title'       => __('Title', 'PayTabs'),
-                'type'        => 'text',
+                'title' => __('Title', 'PayTabs'),
+                'type' => 'text',
                 'description' => __('This controls the title which the user sees during checkout.', 'PayTabs'),
-                'default'     => $this->_title,
-                'desc_tip'    => true,
+                'default' => $this->_title,
+                'desc_tip' => true,
             ),
             'description' => array(
-                'title'       => __('Description', 'PayTabs'),
-                'type'        => 'textarea',
+                'title' => __('Description', 'PayTabs'),
+                'type' => 'textarea',
                 'description' => __('This controls the description which the user sees during checkout.', 'PayTabs'),
-                'default'     => __('Pay securely through PayTabs Secure Servers.', 'PayTabs'),
+                'default' => __('Pay securely through PayTabs Secure Servers.', 'PayTabs'),
             ),
             // PT
             'profile_id' => array(
-                'title'       => __('Profile ID', 'PayTabs'),
-                'type'        => 'text',
+                'title' => __('Profile ID', 'PayTabs'),
+                'type' => 'text',
                 'description' => __('Please enter the "Profile ID" of your PayTabs Merchant account.', 'PayTabs'),
-                'default'     => '',
-                'required'    => true
+                'default' => '',
+                'required' => true
             ),
             'server_key' => array(
-                'title'       => __('Server Key', 'PayTabs'),
-                'type'        => 'text',
+                'title' => __('Server Key', 'PayTabs'),
+                'type' => 'text',
                 'description' => __('Please enter your PayTabs "Server Key". You can find it on your Merchant’s Portal', 'PayTabs'),
-                'default'     => '',
-                'required'    => true
+                'default' => '',
+                'required' => true
             ),
             'client_key' => array(
-                'title'       => __('Client Key', 'PayTabs'),
-                'type'        => 'text',
+                'title' => __('Client Key', 'PayTabs'),
+                'type' => 'text',
                 'description' => __('Please enter your PayTabs "Client Key". You can find it on your Merchant’s Portal', 'PayTabs'),
-                'default'     => '',
-                'required'    => true
+                'default' => '',
+                'required' => true
             ),
             'hide_shipping' => array(
-                'title'       => __('Hide shipping info', 'PayTabs'),
-                'label'       => __('Hide shipping info', 'PayTabs'),
-                'type'        => 'checkbox',
+                'title' => __('Hide shipping info', 'PayTabs'),
+                'label' => __('Hide shipping info', 'PayTabs'),
+                'type' => 'checkbox',
                 'description' => 'Enable if you wish to hide Shipping info of the customer in PayTabs payment page.',
-                'default'     => 'no'
+                'default' => 'no'
             ),
             'status_success' => array(
-                'title'       => __('Captured Order status', 'PayTabs'),
-                'type'        => 'select',
+                'title' => __('Captured Order status', 'PayTabs'),
+                'type' => 'select',
                 'description' => 'Set the Order status after successful payment.'
                     . '<br><strong>Warning</strong> Be very careful when you change the Default option because when you change it, you change the normal flow of the Order into WooCommerce system, you may encounter some consequences based on the new value you set',
-                'options'     => $orderStatuses,
+                'options' => $orderStatuses,
             ),
             'status_failed' => array(
-                'title'       => __('Failed Order status', 'PayTabs'),
-                'type'        => 'select',
+                'title' => __('Failed Order status', 'PayTabs'),
+                'type' => 'select',
                 'description' => 'Set the Order status after failed payment.'
                     . '<br><strong>Warning</strong> Be very careful when you change the Default option because when you change it, you change the normal flow of the Order into WooCommerce system, you may encounter some consequences based on the new value you set',
-                'options'     => $orderStatuses,
+                'options' => $orderStatuses,
             ),
             'ipn_enable' => array(
-                'title'       => __('Allow IPN events', 'PayTabs'),
-                'type'        => 'checkbox',
+                'title' => __('Allow IPN events', 'PayTabs'),
+                'type' => 'checkbox',
                 'description' => "<strong>$ipn_url</strong>"
                     . "<br>Copy the link provided and use it in the merchant's dashboard."
                     . "<br>Supported events: <strong>Capture (Full)</strong>, <strong>Void (Full)</strong>, <strong>Refund (Full & Partial)</strong>.",
-                'required'    => false,
+                'required' => false,
             ),
             'restock_items' => array(
-                'title'       => __('Restock refunded items (IPN)', 'PayTabs'),
-                'type'        => 'checkbox',
+                'title' => __('Restock refunded items (IPN)', 'PayTabs'),
+                'type' => 'checkbox',
                 'description' => 'Refund isssued on PayTabs Dashboard will be reflected on your Store (if IPN option enabled), This option will Restock all the orders\' items if the refund amount matched the remaining refund amount, So <strong>use carefully if there is a cross use between the Woo admin refund & PayTabs dashboard refund</strong>.',
-                'default'     => 'yes'
+                'default' => 'yes'
             ),
             'failed_send_note' => array(
-                'title'       => __('Send a note on payment failure', 'PayTabs'),
-                'type'        => 'checkbox',
+                'title' => __('Send a note on payment failure', 'PayTabs'),
+                'type' => 'checkbox',
                 'description' => "Send a note to the customer if the Order fail due to payment failure, The note contains the failure reason returned from the payment gateway.",
             )
         );
@@ -390,7 +390,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
     private function is_tokenise()
     {
-        return (bool) filter_input(INPUT_POST, $this->tokenise_param, FILTER_VALIDATE_BOOLEAN);
+        return (bool)filter_input(INPUT_POST, $this->tokenise_param, FILTER_VALIDATE_BOOLEAN);
     }
 
     private function get_token()
@@ -441,7 +441,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         } elseif ($this->is_frammed_page) {
 
             return array(
-                'result'   => 'success',
+                'result' => 'success',
                 'redirect' => $order->get_checkout_payment_url(true) . "&t={$this->is_tokenise()}"
             );
         } elseif ($this->is_managed_form) {
@@ -470,7 +470,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 $payment_url = $paypage->payment_url;
 
                 return array(
-                    'result'   => 'success',
+                    'result' => 'success',
                     'redirect' => $payment_url,
                 );
             }
@@ -531,7 +531,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     {
         $order = wc_get_order($order_id);
 
-        $is_tokenize = (bool) filter_input(INPUT_GET, 't');
+        $is_tokenize = (bool)filter_input(INPUT_GET, 't');
         $values = WooCommerce2 ? $this->prepareOrder2($order, $is_tokenize) : $this->prepareOrder($order, $is_tokenize);
 
         $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
@@ -1019,13 +1019,13 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 }
 
                 $refund = wc_create_refund([
-                    'amount'         => $pt_tran_total,
-                    'reason'         => 'PayTabs dashboard',
-                    'order_id'       => $pt_order_id,
+                    'amount' => $pt_tran_total,
+                    'reason' => 'PayTabs dashboard',
+                    'order_id' => $pt_order_id,
                     'refund_payment' => false,
                     // 'refund_id' => 0,
-                    'line_items'     => $line_items,
-                    'restock_items'  => $restock,
+                    'line_items' => $line_items,
+                    'restock_items' => $restock,
                 ]);
 
                 if (!is_wp_error($refund)) {
@@ -1155,7 +1155,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
     private function pt_handled($order)
     {
-        $pt_handled = (bool) get_post_meta($order->get_id(), $this::PT_HANDLED, true);
+        $pt_handled = (bool)get_post_meta($order->get_id(), $this::PT_HANDLED, true);
         return $pt_handled;
     }
 
@@ -1272,10 +1272,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $token->set_gateway_id($this->id);
         $token->set_user_id($user_id);
 
-        $schema = strtolower($result->payment_info->card_scheme);
-        $last4 = substr($result->payment_info->payment_description, -4);
-        $short_year = substr($result->payment_info->expiryYear, -2);
-        $short_month = $result->payment_info->expiryMonth;
+        $schema = (isset($result->payment_info->card_scheme)) ? strtolower($result->payment_info->card_scheme) : "N/A";
+        $last4 = (isset($result->payment_info->payment_description) && strlen($result->payment_info->payment_description) > 3) ? substr($result->payment_info->payment_description, -4) : "N/A";
+        $short_year = isset($result->payment_info->expiryYear) ? substr($result->payment_info->expiryYear, -2) : "N/A";
+        $short_month = isset($result->payment_info->expiryMonth) ? $result->payment_info->expiryMonth : "N/A";
         $token->set_card_type($schema);
         $token->set_last4($last4);
         PaytabsHelper::log("result_params:schema#" . $schema . "#last4:" . $last4 . "#exm:" . $short_month . "#exy:" . $short_year, 3);
@@ -1429,7 +1429,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $countryBilling = $order->get_billing_country();
         $addressBilling = trim($order->get_billing_address_1() . ' ' . $order->get_billing_address_2());
 
-        $is_diff_shipping_address = (bool) filter_input(INPUT_POST, 'ship_to_different_address', FILTER_VALIDATE_BOOLEAN);
+        $is_diff_shipping_address = (bool)filter_input(INPUT_POST, 'ship_to_different_address', FILTER_VALIDATE_BOOLEAN);
         if ($is_diff_shipping_address) {
             $countryShipping = $order->get_shipping_country();
             $addressShipping = trim($order->get_shipping_address_1() . ' ' . $order->get_shipping_address_2());
@@ -1552,7 +1552,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $countryBilling = $order->billing_country;
         $addressBilling = trim($order->billing_address_1 . ' ' . $order->billing_address_2);
 
-        $is_diff_shipping_address = (bool) filter_input(INPUT_POST, 'ship_to_different_address', FILTER_VALIDATE_BOOLEAN);
+        $is_diff_shipping_address = (bool)filter_input(INPUT_POST, 'ship_to_different_address', FILTER_VALIDATE_BOOLEAN);
         if ($is_diff_shipping_address) {
             $addressShipping = trim($order->shipping_address_1 . ' ' . $order->shipping_address_2);
             $countryShipping = $order->shipping_country;
