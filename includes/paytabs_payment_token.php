@@ -154,8 +154,9 @@ class WC_Paytabs_Payment_Tokens extends WC_Payment_Token_PayTabs
     {
         if ('paytabs' === strtolower($payment_token->get_type())) {
             $item['method']['last4'] = $payment_token->get_last4();
-            $item['method']['expire'] = $this->get_expiry_year();
+            // $item['method']['expire'] = $payment_token->get_expiry_year();
             $item['method']['brand'] = isset($item['method']['gateway']) ? $item['method']['gateway'] : ('PayTabs, ' . $this->get_display_name());
+            $item['expires'] = $payment_token->get_expiry_month() . '/' .$payment_token->get_expiry_year();
         }
         return $item;
     }
