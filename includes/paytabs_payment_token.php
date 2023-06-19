@@ -12,7 +12,6 @@ class WC_Payment_Token_PayTabs extends WC_Payment_Token
     protected $extra_data = array(
         'tran_ref' => '',
         'last4' => '',
-        'gateway_id' => '',
         'expiry_year' => '',
         'expiry_month' => '',
         'payment_method_type' => '',
@@ -36,7 +35,7 @@ class WC_Payment_Token_PayTabs extends WC_Payment_Token
     {
         $last4 = $this->get_last4();
         if (empty($last4) || $last4 == 'N/A') {
-            $str = substr($this->get_tran_ref(), -3);
+            $str = 'P' . substr($this->get_tran_ref(), -3);
         } else {
             $str = $last4;
         }
