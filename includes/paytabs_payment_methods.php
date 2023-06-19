@@ -139,9 +139,14 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
 
     // add capture button to order page
+    // add capture button to order page
     function woocommerce_order_add_capture_button($order)
     {
-        if($this->_support_auth_capture && $this->capture_trans_type == 'manual'){
+        $transaction_type = array_values(
+            $this->pt_get_tran_type($order->get_id())
+        )[0];
+
+        if(in_array($transaction_type, ["auth", "void"]) && ($this->capture_trans_type == 'manual')){
             echo '<button type="button" onclick="document.post.submit();" class="button generate-items">' . __( 'Capture') . '</button>';
             echo '<input type="hidden" value="1" name="capture_order" />';
         }
