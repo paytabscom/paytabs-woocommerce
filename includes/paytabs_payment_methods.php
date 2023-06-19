@@ -1242,7 +1242,11 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         }
 
         if ($token_str) {
-            $this->saveToken($order, $token_str, $transaction_id, $result);
+            try {
+                $this->saveToken($order, $token_str, $transaction_id, $result);
+            } catch (\Throwable $th) {
+                PaytabsHelper::log("Tokenise exception: " . $th->getMessage(), 3);
+            }
         }
 
         if ($is_ipn) {
