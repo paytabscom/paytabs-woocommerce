@@ -148,31 +148,34 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     }
 
     //handle the order capture
-    function capture_auth_order($post_id, $post, $update){
-        if(is_admin()){
+    function capture_auth_order($order_id, $order){
 
-            if ($post->post_type != 'shop_order') {
+        $transaction_type = $this->pt_get_tran_type($order_id);
+
+        if ($order->post_type != 'shop_order') {
                 return;
-            }
-            if(isset($_POST['capture_order']) && $_POST['capture_order']){
+        }
 
-                $order = wc_get_order($post_id);
+        if (!in_array(PaytabsEnum::TRAN_TYPE_AUTH, $transaction_type)) {
+            PaytabsHelper::log("Capture not allowed on non Auth transactions, {$order_id}", 2);
+            return;
+        }
 
-                if( $order->get_meta('_pt_transaction_type') == 'auth'){
-                    $this->process_capture($post_id);
+        if(isset($_POST['capture_order']) && $_POST['capture_order']){
 
-                    // change order status
-                    $order->set_status('processing');
+            $order = wc_get_order($order_id);
 
-                    // Adding note
-                    $order->add_order_note( __("The holded amount have been caputred") );
-                    $order->save();
+            $this->process_capture($order_id);
 
-                }else{
-                    return;
-                }
+            // change order status
+            $order->set_status('processing');
 
-            }
+            // Adding note
+            $order->add_order_note( __("The held amount have been captured") );
+            $order->save();
+            // $order->add_order_note('Capture status: ' . "can't make capture on non Auth transaction", false);
+            PaytabsHelper::log("Capture done for order , {$order_id}");
+
         }
     }
 
