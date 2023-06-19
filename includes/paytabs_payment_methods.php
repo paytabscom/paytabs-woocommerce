@@ -1278,12 +1278,12 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $short_month = isset($result->payment_info->expiryMonth) ? $result->payment_info->expiryMonth : "N/A";
         $token->set_card_type($schema);
         $token->set_last4($last4);
-        PaytabsHelper::log("result_params:schema#" . $schema . "#last4:" . $last4 . "#exm:" . $short_month . "#exy:" . $short_year, 3);
         $token->set_expiry_month($short_month);
         $token->set_expiry_year($short_year);
-        $token->set_user_id($user_id);
 
         $tokeId = $token->save();
+
+        PaytabsHelper::log("Tokenise: ($schema, $last4, $short_month, $short_year) = [$tokeId]", 1);
 
         $order->add_payment_token($token);
         $order->save();
