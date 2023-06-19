@@ -128,6 +128,52 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         add_action('woocommerce_thankyou_' . $this->id, array($this, 'pt_thankyou_page'));
 
         add_action('woocommerce_receipt_' . $this->id, array($this, 'receipt_page'));
+
+
+        // capture button actions
+        add_action( 'woocommerce_order_item_add_action_buttons', array($this, 'woocommerce_order_add_capture_button'), 10, 1);
+
+        add_action('save_post', array($this, 'capture_auth_order'), 10, 3);
+    }
+
+
+    // add capture button to order page
+    function woocommerce_order_add_capture_button( $order )
+    {
+        if($this->_support_auth_capture){
+            echo '<button type="button" onclick="document.post.submit();" class="button generate-items">' . __( 'Capture') . '</button>';
+            echo '<input type="hidden" value="1" name="capture_order" />';
+        }
+
+    }
+
+    //handle the order capture
+    function capture_auth_order($post_id, $post, $update){
+        if(is_admin()){
+
+            if ($post->post_type != 'shop_order') {
+                return;
+            }
+            if(isset($_POST['capture_order']) && $_POST['capture_order']){
+
+                $order = wc_get_order($post_id);
+
+                if( $order->get_meta('_pt_transaction_type') == 'auth'){
+                    $this->process_capture($post_id);
+
+                    // change order status
+                    $order->set_status('processing');
+
+                    // Adding note
+                    $order->add_order_note( __("The holded amount have been caputred") );
+                    $order->save();
+
+                }else{
+                    return;
+                }
+
+            }
+        }
     }
 
 
