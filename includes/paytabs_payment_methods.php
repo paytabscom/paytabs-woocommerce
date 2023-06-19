@@ -89,6 +89,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $this->trans_type = $this->get_option('trans_type', PaytabsEnum::TRAN_TYPE_SALE);
         $this->order_status_auth_success = $this->get_option('status_auth_success', 'wc-on-hold');
 
+        $this->capture_trans_type = $this->get_option('auth_trans_capture_type', 'status-change');
 
         if ($this->_code == 'valu') {
             $this->valu_product_id = $this->get_option('valu_product_id');
@@ -138,9 +139,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
 
     // add capture button to order page
-    function woocommerce_order_add_capture_button( $order )
+    function woocommerce_order_add_capture_button($order)
     {
-        if($this->_support_auth_capture){
+        if($this->_support_auth_capture && $this->capture_trans_type == 'manual'){
             echo '<button type="button" onclick="document.post.submit();" class="button generate-items">' . __( 'Capture') . '</button>';
             echo '<input type="hidden" value="1" name="capture_order" />';
         }
@@ -153,7 +154,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $transaction_type = $this->pt_get_tran_type($order_id);
 
         if ($order->post_type != 'shop_order') {
-                return;
+            return;
         }
 
         if (!in_array(PaytabsEnum::TRAN_TYPE_AUTH, $transaction_type)) {
@@ -178,7 +179,6 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         }
     }
-
 
     /**
      * Returns the icon URL for this payment method
@@ -277,6 +277,17 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 'description' => 'Set the Order status if the Auth succeed.',
                 'options'     => $orderStatuses,
                 'default'     => 'wc-on-hold'
+            ];
+
+            $addional_fields['auth_trans_capture_type'] = [
+                'title'       => __('Capture the amount type', 'PayTabs'),
+                'type'        => 'select',
+                'description' => 'Choose the capture type of Auth trans Manual/On order status change',
+                'options'     => array(
+                    'status-change' => __('On Status Change', 'PayTabs'),
+                    'manual' => __('Manual', 'PayTabs'),
+                ),
+                'default'     => 'status-change'
             ];
         }
 
