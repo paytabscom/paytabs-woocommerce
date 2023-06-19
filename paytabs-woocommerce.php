@@ -125,5 +125,6 @@ function woocommerce_paytabs_init()
 
   add_filter('woocommerce_payment_gateways', 'woocommerce_add_paytabs_gateway');
   add_filter('woocommerce_payment_gateways', 'paytabs_filter_gateways', 10, 1);
+  add_filter('woocommerce_payment_methods_list_item', 'get_account_saved_payment_methods_list_item_paytabs', 10, 2);
   add_filter('plugin_action_links_' . plugin_basename(__FILE__), 'paytabs_add_action_links');
 }

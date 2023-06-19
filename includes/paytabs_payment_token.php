@@ -142,24 +142,13 @@ class WC_Payment_Token_PayTabs extends WC_Payment_Token
     }
 }
 
-
-class WC_Paytabs_Payment_Tokens extends WC_Payment_Token_PayTabs
+function get_account_saved_payment_methods_list_item_paytabs($item, $payment_token)
 {
-    public function __construct()
-    {
-        add_filter('woocommerce_payment_methods_list_item', [$this, 'get_account_saved_payment_methods_list_item_paytabs'], 10, 2);
+    if ('paytabs' === strtolower($payment_token->get_type())) {
+        $item['method']['last4'] = $payment_token->get_last4();
+        // $item['method']['expire'] = $payment_token->get_expiry_year();
+        $item['method']['brand'] = isset($item['method']['gateway']) ? $item['method']['gateway'] : ('PayTabs, ' . $payment_token->get_display_name());
+        $item['expires'] = $payment_token->get_expiry_month() . '/' . $payment_token->get_expiry_year();
     }
-
-    public function get_account_saved_payment_methods_list_item_paytabs($item, $payment_token)
-    {
-        if ('paytabs' === strtolower($payment_token->get_type())) {
-            $item['method']['last4'] = $payment_token->get_last4();
-            // $item['method']['expire'] = $payment_token->get_expiry_year();
-            $item['method']['brand'] = isset($item['method']['gateway']) ? $item['method']['gateway'] : ('PayTabs, ' . $this->get_display_name());
-            $item['expires'] = $payment_token->get_expiry_month() . '/' .$payment_token->get_expiry_year();
-        }
-        return $item;
-    }
+    return $item;
 }
-
-new WC_Paytabs_Payment_Tokens();
