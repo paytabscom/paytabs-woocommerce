@@ -34,7 +34,12 @@ class WC_Payment_Token_PayTabs extends WC_Payment_Token
 
     public function get_display_name($deprecated = '')
     {
-        $str = substr($this->get_tran_ref(), -3);
+        $last4 = $this->get_last4();
+        if (empty($last4) || $last4 == 'N/A') {
+            $str = substr($this->get_tran_ref(), -3);
+        } else {
+            $str = $last4;
+        }
         return "Pay using existing card (...$str)";
     }
 
