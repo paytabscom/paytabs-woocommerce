@@ -139,7 +139,6 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
 
     // add capture button to order page
-    // add capture button to order page
     function woocommerce_order_add_capture_button($order)
     {
         $transaction_type = array_values(
@@ -147,8 +146,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         )[0];
 
         if(in_array($transaction_type, ["auth", "void"]) && ($this->capture_trans_type == 'manual')){
-            echo '<button type="button" onclick="document.post.submit();" class="button generate-items">' . __( 'Capture') . '</button>';
-            echo '<input type="hidden" value="1" name="capture_order" />';
+
+            echo $this->generate_form_submission_button('Capture', 'capture_order');
+
         }
 
     }
@@ -183,6 +183,22 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             PaytabsHelper::log("Capture done for order , {$order_id}");
 
         }
+    }
+
+    /**
+     * Generating form submission
+     * @param string $button_name
+     * @param string $post_req_name
+     * @param string $form_type
+     * @return string
+     */
+    function generate_form_submission_button(string $button_name,string $post_req_name, string $form_type = 'post'): string
+    {
+        return <<<FORM
+        <form method="$form_type">
+        <button type="submit" class="button" name="$post_req_name">$button_name</button>
+        </form>
+        FORM;
     }
 
     /**
