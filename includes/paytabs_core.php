@@ -283,6 +283,11 @@ abstract class PaytabsEnum
 
     //
 
+
+    const CAPTURE_TRANS_MANUAL = 'manual';
+
+    const CAPTURE_TRANS_ON_STATUS_CHANGE = 'status-change';
+
     static function TranIsAuth($tran_type)
     {
         return strcasecmp($tran_type, PaytabsEnum::TRAN_TYPE_AUTH) == 0;

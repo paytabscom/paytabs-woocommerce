@@ -89,6 +89,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $this->trans_type = $this->get_option('trans_type', PaytabsEnum::TRAN_TYPE_SALE);
         $this->order_status_auth_success = $this->get_option('status_auth_success', 'wc-on-hold');
 
+        $this->capture_trans_type = $this->get_option('auth_trans_capture_type', 'status-change');
 
         if ($this->_code == 'valu') {
             $this->valu_product_id = $this->get_option('valu_product_id');
@@ -128,8 +129,77 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         add_action('woocommerce_thankyou_' . $this->id, array($this, 'pt_thankyou_page'));
 
         add_action('woocommerce_receipt_' . $this->id, array($this, 'receipt_page'));
+
+
+        // capture button actions
+        add_action( 'woocommerce_order_item_add_action_buttons', array($this, 'woocommerce_order_add_capture_button'), 10, 1);
+
+        add_action('save_post', array($this, 'capture_auth_order'), 10, 3);
     }
 
+
+    // add capture button to order page
+    function woocommerce_order_add_capture_button($order)
+    {
+        $transaction_type = array_values(
+            $this->pt_get_tran_type($order->get_id())
+        )[0];
+
+        if(in_array($transaction_type, ["auth", "void"]) && ($this->capture_trans_type == 'manual')){
+
+            echo $this->generate_form_submission_button('Capture', 'capture_order');
+
+        }
+
+    }
+
+    //handle the order capture
+    function capture_auth_order($order_id, $order){
+
+        $transaction_type = $this->pt_get_tran_type($order_id);
+
+        if ($order->post_type != 'shop_order') {
+            return;
+        }
+
+        if (!in_array(PaytabsEnum::TRAN_TYPE_AUTH, $transaction_type)) {
+            PaytabsHelper::log("Capture not allowed on non Auth transactions, {$order_id}", 2);
+            return;
+        }
+
+        if(isset($_POST['capture_order']) && $_POST['capture_order']){
+
+            $order = wc_get_order($order_id);
+
+            $this->process_capture($order_id);
+
+            // change order status
+            $order->set_status('processing');
+
+            // Adding note
+            $order->add_order_note( __("The held amount have been captured") );
+            $order->save();
+            // $order->add_order_note('Capture status: ' . "can't make capture on non Auth transaction", false);
+            PaytabsHelper::log("Capture done for order , {$order_id}");
+
+        }
+    }
+
+    /**
+     * Generating form submission
+     * @param string $button_name
+     * @param string $post_req_name
+     * @param string $form_type
+     * @return string
+     */
+    function generate_form_submission_button(string $button_name,string $post_req_name, string $form_type = 'post'): string
+    {
+        return <<<FORM
+        <form method="$form_type">
+        <button type="submit" class="button" name="$post_req_name">$button_name</button>
+        </form>
+        FORM;
+    }
 
     /**
      * Returns the icon URL for this payment method
@@ -228,6 +298,17 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 'description' => 'Set the Order status if the Auth succeed.',
                 'options' => $orderStatuses,
                 'default' => 'wc-on-hold'
+            ];
+
+            $addional_fields['auth_trans_capture_type'] = [
+                'title'       => __('Capture the amount type', 'PayTabs'),
+                'type'        => 'select',
+                'description' => 'Choose the capture type of Auth trans Manual/On order status change',
+                'options'     => array(
+                    'status-change' => __('On Status Change', 'PayTabs'),
+                    'manual' => __('Manual', 'PayTabs'),
+                ),
+                'default'     => 'status-change'
             ];
         }
 
