@@ -395,7 +395,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
     private function get_token()
     {
-        $token_id = $_POST[$this->token_id_param];
+        $token_id = @$_POST[$this->token_id_param] ?? false;
 
         if (!$token_id) {
             return null;
@@ -460,8 +460,11 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $message = @$paypage->message;
         // $is_redirect = @$paypage->is_redirect;
         $is_completed = @$paypage->is_completed;
+        $tran_ref = @$paypage->tran_ref;
 
         if ($success || $is_on_hold || $is_pending) {
+            PaytabsHelper::log("Created PayPage, Order {$order_id}, [{$tran_ref}]", 1);
+
             $this->set_handled($order_id, false);
             if ($is_completed) {
                 return $this->validate_payment($paypage, $order, true, false);

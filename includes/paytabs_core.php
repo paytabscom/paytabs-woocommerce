@@ -2,11 +2,11 @@
 
 /**
  * PayTabs v2 PHP SDK
- * Version: 2.11.4.1
+ * Version: 2.11.5.1
  * PHP >= 7.0.0
  */
 
-define('PAYTABS_SDK_VERSION', '2.11.4.1');
+define('PAYTABS_SDK_VERSION', '2.11.5.1');
 
 define('PAYTABS_DEBUG_FILE_NAME', 'debug_paytabs.log');
 define('PAYTABS_DEBUG_SEVERITY', ['Info', 'Warning', 'Error']);
@@ -342,7 +342,7 @@ abstract class PaytabsEnum
 
             // Or Expired
             $tran_status = @$ipn_data->payment_result->response_status;
-            if ($tran_status  === 'X') {
+            if ($tran_status === 'X') {
                 return true;
             }
         }
@@ -1205,7 +1205,7 @@ class PaytabsApi
             // Lower case all keys
             $headers = array_change_key_case($headers);
 
-            $signature = $headers['signature'];
+            $signature = @$headers['signature'] ?? '';
             // $client_key = $headers['Client-Key'];
 
             $is_valid = $this->is_valid_ipn($response, $signature, false);
