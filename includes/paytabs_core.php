@@ -1219,7 +1219,8 @@ class PaytabsApi
         }
 
         if (!$is_valid) {
-            PaytabsHelper::log("Paytabs Admin: Invalid Signature", 3);
+            $hashed_key = explode('-', @$this->server_key ?? '')[0];
+            PaytabsHelper::log("Paytabs Admin: Invalid Signature ({$hashed_key}, {$signature})", 3);
             return false;
         }
 

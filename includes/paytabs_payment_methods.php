@@ -544,8 +544,11 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $success = $paypage->success;
         $message = @$paypage->message;
+        $tran_ref = @$paypage->tran_ref;
 
         if ($success) {
+            PaytabsHelper::log("Created PayPage (iFrame), Order {$order_id}, [{$tran_ref}]", 1);
+
             $this->set_handled($order_id, false);
 
             $payment_url = $paypage->payment_url;
