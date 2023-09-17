@@ -186,3 +186,12 @@ class WC_Gateway_Paytabs_Touchpoints extends WC_Gateway_Paytabs
 
     protected $_icon = "touchpoints_adcb.svg";
 }
+
+class WC_Gateway_Paytabs_Forsa extends WC_Gateway_Paytabs
+{
+    protected $_code = 'forsa';
+    protected $_title = 'PayTabs - Forsa';
+    protected $_description = 'PayTabs - Forsa payment method';
+
+    protected $_icon = "forsa.png";
+}
