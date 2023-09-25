@@ -128,6 +128,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         add_action('woocommerce_thankyou_' . $this->id, array($this, 'pt_thankyou_page'));
 
         add_action('woocommerce_receipt_' . $this->id, array($this, 'receipt_page'));
+
+        add_action('woocommerce_after_single_product_summary' . $this->id, array($this, 'valu_widget'),30);
     }
 
 
@@ -569,6 +571,21 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         }
     }
 
+
+    function valu_widget()
+    {
+        global $product;
+
+        if ($this->_code == 'valu') {
+            echo '<div class="text">';
+            echo '<p>Valu Widget Random text now</p>';
+            echo '</div>';
+        }
+
+        echo '<div class="text">';
+        echo '<p>Valu Widget Random text now</p>';
+        echo '</div>';
+    }
 
     public function scheduled_subscription_payment($amount_to_charge, $renewal_order)
     {
