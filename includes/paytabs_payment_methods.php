@@ -72,6 +72,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $this->payment_form = $this->get_option('payment_form');
         $this->is_frammed_page = ($this->payment_form === 'iframe');
         $this->is_managed_form = ($this->payment_form === "managed_form");
+        
 
         // PT
         $this->paytabs_endpoint = $this->get_option('endpoint');
@@ -91,7 +92,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
 
         if ($this->_code == 'valu') {
-            $this->valu_product_id = $this->get_option('valu_product_id');
+            //$this->valu_product_id = $this->get_option('valu_product_id');
+            $this->enable_valu_widget = $this->get_option('enable_valu_widget');
+            $this->valu_phone_number = $this->get_option('valu_phone_number');
+            $this->valu_price_threshold = $this->get_option('valu_price_threshold');
         }
 
         $this->enable_tokenise = $this->get_option('enable_tokenise') == 'yes';
@@ -129,7 +133,6 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         add_action('woocommerce_receipt_' . $this->id, array($this, 'receipt_page'));
 
-        add_action('woocommerce_after_single_product_summary' . $this->id, array($this, 'valu_widget'),30);
     }
 
 
@@ -244,6 +247,29 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             ];
         }
 
+        if ($this->_code == 'valu') {
+            $addional_fields['enable_valu_widget'] = [
+                'title' => __('Valu Widget', 'Valu Widget'),
+                'label' => __('Enable  Valu Widget.', 'Valu Widget'),
+                'type' => 'checkbox',
+                'description' => '',
+                'default' => 'no'
+            ];
+            $addional_fields['valu_phone_number'] = [
+                'title' => __('Valu Phone number', 'Valu Phone number'),
+                'type' => 'text',
+                'description' => __('This For the valu phone number.', 'PayTabs'),
+                'default' => '',
+                'desc_tip' => true,
+            ];
+            $addional_fields['valu_price_threshold'] = [
+                'title' => __('Valu Price threshold', 'Valu Price threshold'),
+                'type' => 'text',
+                'description' => __('Display The widget if the product price Higher than the current thershold.', 'PayTabs'),
+                'default' => '1000',
+                'desc_tip' => true,
+            ];
+        }
         $fields = array(
             'enabled' => array(
                 'title' => __('Enable/Disable', 'PayTabs'),
@@ -569,22 +595,6 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
             echo "<h2>$errorMessage</h2>";
         }
-    }
-
-
-    function valu_widget()
-    {
-        global $product;
-
-        if ($this->_code == 'valu') {
-            echo '<div class="text">';
-            echo '<p>Valu Widget Random text now</p>';
-            echo '</div>';
-        }
-
-        echo '<div class="text">';
-        echo '<p>Valu Widget Random text now</p>';
-        echo '</div>';
     }
 
     public function scheduled_subscription_payment($amount_to_charge, $renewal_order)

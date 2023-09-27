@@ -94,20 +94,6 @@ class WC_Gateway_Paytabs_Valu extends WC_Gateway_Paytabs
     protected $_code = 'valu';
     protected $_title = 'PayTabs - valU';
     protected $_description = 'valU payments powered by PayTabs';
-
-
-    public function init_form_fields()
-    {
-        parent::init_form_fields();
-
-        $this->form_fields['valu_product_id'] = array(
-            'title'       => __('valU product ID', 'PayTabs'),
-            'type'        => 'text',
-            'description' => __('Please enter the product ID of your valU account.', 'PayTabs'),
-            'default'     => '',
-            'required'    => true
-        );
-    }
 }
 
 class WC_Gateway_Paytabs_Meeza extends WC_Gateway_Paytabs
