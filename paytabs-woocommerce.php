@@ -53,7 +53,7 @@ define('PAYTABS_PAYPAGE_METHODS', [
 
 //load plugin function when woocommerce loaded
 add_action('plugins_loaded', 'woocommerce_paytabs_init', 0);
-add_action('woocommerce_before_single_product_summary', 'valu_widget', 30);
+add_action('woocommerce_single_product_summary', 'valu_widget', 30);
 
 function valu_widget()
 {
