@@ -72,7 +72,6 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $this->payment_form = $this->get_option('payment_form');
         $this->is_frammed_page = ($this->payment_form === 'iframe');
         $this->is_managed_form = ($this->payment_form === "managed_form");
-        
 
         // PT
         $this->paytabs_endpoint = $this->get_option('endpoint');
@@ -132,7 +131,6 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         add_action('woocommerce_thankyou_' . $this->id, array($this, 'pt_thankyou_page'));
 
         add_action('woocommerce_receipt_' . $this->id, array($this, 'receipt_page'));
-
     }
 
 
@@ -270,6 +268,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 'desc_tip' => true,
             ];
         }
+
         $fields = array(
             'enabled' => array(
                 'title' => __('Enable/Disable', 'PayTabs'),

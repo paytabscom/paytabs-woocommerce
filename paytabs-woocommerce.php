@@ -20,7 +20,6 @@ if (!function_exists('add_action')) {
 }
 
 
-
 define('PAYTABS_PAYPAGE_VERSION', '4.18.0');
 define('PAYTABS_PAYPAGE_DIR', plugin_dir_path(__FILE__));
 define('PAYTABS_PAYPAGE_ICONS_URL', plugins_url("icons/", __FILE__));
@@ -54,120 +53,93 @@ define('PAYTABS_PAYPAGE_METHODS', [
 
 //load plugin function when woocommerce loaded
 add_action('plugins_loaded', 'woocommerce_paytabs_init', 0);
-add_action('woocommerce_before_single_product_summary','valu_widget',30);
+add_action('woocommerce_before_single_product_summary', 'valu_widget', 30);
 
 function valu_widget()
 {
   $enabled_gateways = WC()->payment_gateways->get_available_payment_gateways();
   $valu_payment = $enabled_gateways['paytabs_valu'];
-   foreach ($enabled_gateways as $gateway) 
-    {
-      if(isset($valu_payment))
-      {
-        if($valu_payment->enable_valu_widget === "yes")
-        {
 
-          $product_price = get_product_price();
-          if ($product_price) 
-          {
-            if($product_price >= $valu_payment->valu_price_threshold)
-            {
-                $plan = call_valu_api($valu_payment,$product_price);
+  if (isset($valu_payment)) {
+    if ($valu_payment->enable_valu_widget === "yes") {
 
-                // Get the dynamic URL of a paytabs plugin's directory.
-                $plugin_directory_url = plugins_url('paytabs-woocommerce');
-                $asset_url = $plugin_directory_url . '/icons/valu.png';
+      $product_price = get_product_price();
+      if ($product_price) {
+        if ($product_price >= $valu_payment->valu_price_threshold) {
+          $plan = call_valu_api($valu_payment, $product_price);
 
-                echo '<div class="paytabs_valu_widget" style="float: right; width: 48%; clear: none;">';
-                echo '<img src="' . esc_url($asset_url) . '" alt="Valu Logo">';
-                echo '<p style="display: inline-block; margin-left: 2%;">Pay 3 interest-free payments of EGP' .$plan['emi'] .'.</p>';
-                echo '</div>';
-
-            }
-
-          }
+          include('includes/_valu_widget.php');
         }
-        break;
       }
     }
-
+  }
 }
 
 
 function get_product_price()
 {
-   // Get the current product's ID.
-   $product_id = get_the_ID();
-   $product = wc_get_product($product_id);
-   $product_price;
-   if ($product) 
-   {
-     // Get the product price.
-     $product_price = $product->get_price();
-   }
+  // Get the current product's ID.
+  $product_id = get_the_ID();
+  $product = wc_get_product($product_id);
+  $product_price = 0;
 
-   return $product_price;
+  if ($product) {
+    // Get the product price.
+    $product_price = $product->get_price();
+  }
 
+  return $product_price;
 }
 
-function call_valu_api($valu_payment,$product_price)
+function call_valu_api($valu_payment, $product_price)
 {
-    $profile_id = $valu_payment->merchant_id;
-    $server_key = $valu_payment->merchant_key;
-    $phone_number = $valu_payment->valu_phone_number;
-  
-    $request_url = 'https://secure-egypt.paytabs.com/payment/info/valu/inquiry';
+  $profile_id = $valu_payment->merchant_id;
+  $server_key = $valu_payment->merchant_key;
+  $phone_number = $valu_payment->valu_phone_number;
 
-    $data = array(
-      'profile_id' => $profile_id,
-      'cart_amount' => $product_price,
-      'cart_currency' => "EGP",
-      'customer_details' => array("phone"=>$phone_number),
-    );
+  $request_url = 'https://secure-egypt.paytabs.com/payment/info/valu/inquiry';
 
-    // Encode the data as JSON.
-    $json_data = json_encode($data);
+  $data = array(
+    'profile_id' => $profile_id,
+    'cart_amount' => $product_price,
+    'cart_currency' => "EGP",
+    'customer_details' => array("phone" => $phone_number),
+  );
 
-    // Define your cURL request parameters.
-    $request_args = array(
-      'method' => 'POST', // Use the POST method.
-      'timeout' => 45, // Timeout in seconds.
-      'headers' => array(
-          'Authorization' => $server_key, 
-          'Content-Type' => 'application/json',
-      ),
-      'body' => $json_data, 
-    );
+  // Encode the data as JSON.
+  $json_data = json_encode($data);
+
+  // Define your cURL request parameters.
+  $request_args = array(
+    'method' => 'POST', // Use the POST method.
+    'timeout' => 45, // Timeout in seconds.
+    'headers' => array(
+      'Authorization' => $server_key,
+      'Content-Type' => 'application/json',
+    ),
+    'body' => $json_data,
+  );
 
 
-    //Make the cURL POST request.
-    $response = wp_remote_request($request_url, $request_args);
+  //Make the cURL POST request.
+  $response = wp_remote_request($request_url, $request_args);
 
-    // Check if the request was successful.
-    if (is_wp_error($response)) 
-    {
-        // Handle the error.
-        //echo 'Error: ' . $response->get_error_message();
-    } 
-    else
-    {
-        // The request was successful.
-        $body = wp_remote_retrieve_body($response);
+  // Check if the request was successful.
+  if (is_wp_error($response)) {
+    // Handle the error.
+    //echo 'Error: ' . $response->get_error_message();
+  } else {
+    // The request was successful.
+    $body = wp_remote_retrieve_body($response);
 
-        $valu_response = json_decode($body, true);
-        $installment_plans = $valu_response['valuResponse']['productList'][0]['tenureList'];
-        foreach($installment_plans as $plan)
-        {
-         if($plan['tenorMonth'] == 3)
-         {
-          return $plan;
-         }
-
-        }
-
-       
+    $valu_response = json_decode($body, true);
+    $installment_plans = $valu_response['valuResponse']['productList'][0]['tenureList'];
+    foreach ($installment_plans as $plan) {
+      if ($plan['tenorMonth'] == 3) {
+        return $plan;
+      }
     }
-
+  }
 }
 
 function woocommerce_paytabs_init()
