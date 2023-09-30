@@ -247,23 +247,23 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         if ($this->_code == 'valu') {
             $addional_fields['valu_widget_enable'] = [
-                'title' => __('Valu Widget', 'Valu Widget'),
-                'label' => __('Enable  Valu Widget.', 'Valu Widget'),
+                'title' => __('ValU widget', 'PayTabs'),
+                'label' => __('Enable ValU widget.', 'PayTabs'),
+                'description' => __('Show valU widget in product\'s details page.', 'PayTabs'),
                 'type' => 'checkbox',
-                'description' => '',
                 'default' => 'no'
             ];
             $addional_fields['valu_widget_phone_number'] = [
-                'title' => __('Valu Phone number', 'Valu Phone number'),
+                'title' => __('ValU phone number', 'PayTabs'),
                 'type' => 'text',
-                'description' => __('This For the valu phone number.', 'PayTabs'),
+                'description' => __('Registered valU phone number.', 'PayTabs'),
                 'default' => '',
                 'desc_tip' => true,
             ];
             $addional_fields['valu_widget_price_threshold'] = [
-                'title' => __('Valu Price threshold', 'Valu Price threshold'),
+                'title' => __('ValU price threshold', 'PayTabs'),
                 'type' => 'text',
-                'description' => __('Display The widget if the product price Higher than the current thershold.', 'PayTabs'),
+                'description' => __('Display The widget if the product price higher than the current thershold.', 'PayTabs'),
                 'default' => '1000',
                 'desc_tip' => true,
             ];
