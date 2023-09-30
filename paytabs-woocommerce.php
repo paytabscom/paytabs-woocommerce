@@ -61,7 +61,7 @@ function valu_widget()
 
   if (array_key_exists('paytabs_valu', $enabled_gateways)) {
     $valu_payment = $enabled_gateways['paytabs_valu'];
-    if ($valu_payment->valu_widget_enable === "yes") {
+    if ($valu_payment->valu_widget_enable) {
 
       $product_price = get_product_price();
       if ($product_price) {
