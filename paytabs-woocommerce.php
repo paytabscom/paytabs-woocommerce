@@ -58,14 +58,14 @@ add_action('woocommerce_single_product_summary', 'valu_widget', 30);
 function valu_widget()
 {
   $enabled_gateways = WC()->payment_gateways->get_available_payment_gateways();
-  $valu_payment = $enabled_gateways['paytabs_valu'];
 
-  if (isset($valu_payment)) {
-    if ($valu_payment->enable_valu_widget === "yes") {
+  if (array_key_exists('paytabs_valu', $enabled_gateways)) {
+    $valu_payment = $enabled_gateways['paytabs_valu'];
+    if ($valu_payment->valu_widget_enable === "yes") {
 
       $product_price = get_product_price();
       if ($product_price) {
-        if ($product_price >= $valu_payment->valu_price_threshold) {
+        if ($product_price >= $valu_payment->valu_widget_price_threshold) {
           $plan = call_valu_api($valu_payment, $product_price);
 
           include('includes/_valu_widget.php');
@@ -95,7 +95,7 @@ function call_valu_api($valu_payment, $product_price)
 {
   $profile_id = $valu_payment->merchant_id;
   $server_key = $valu_payment->merchant_key;
-  $phone_number = $valu_payment->valu_phone_number;
+  $phone_number = $valu_payment->valu_widget_phone_number;
 
   $request_url = 'https://secure-egypt.paytabs.com/payment/info/valu/inquiry';
 

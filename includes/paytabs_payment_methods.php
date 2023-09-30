@@ -92,9 +92,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         if ($this->_code == 'valu') {
             //$this->valu_product_id = $this->get_option('valu_product_id');
-            $this->enable_valu_widget = $this->get_option('enable_valu_widget');
-            $this->valu_phone_number = $this->get_option('valu_phone_number');
-            $this->valu_price_threshold = $this->get_option('valu_price_threshold');
+            $this->valu_widget_enable = $this->get_option('valu_widget_enable');
+            $this->valu_widget_phone_number = $this->get_option('valu_widget_phone_number');
+            $this->valu_widget_price_threshold = $this->get_option('valu_widget_price_threshold');
         }
 
         $this->enable_tokenise = $this->get_option('enable_tokenise') == 'yes';
@@ -246,21 +246,21 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         }
 
         if ($this->_code == 'valu') {
-            $addional_fields['enable_valu_widget'] = [
+            $addional_fields['valu_widget_enable'] = [
                 'title' => __('Valu Widget', 'Valu Widget'),
                 'label' => __('Enable  Valu Widget.', 'Valu Widget'),
                 'type' => 'checkbox',
                 'description' => '',
                 'default' => 'no'
             ];
-            $addional_fields['valu_phone_number'] = [
+            $addional_fields['valu_widget_phone_number'] = [
                 'title' => __('Valu Phone number', 'Valu Phone number'),
                 'type' => 'text',
                 'description' => __('This For the valu phone number.', 'PayTabs'),
                 'default' => '',
                 'desc_tip' => true,
             ];
-            $addional_fields['valu_price_threshold'] = [
+            $addional_fields['valu_widget_price_threshold'] = [
                 'title' => __('Valu Price threshold', 'Valu Price threshold'),
                 'type' => 'text',
                 'description' => __('Display The widget if the product price Higher than the current thershold.', 'PayTabs'),
