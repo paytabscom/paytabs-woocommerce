@@ -55,22 +55,6 @@ define('PAYTABS_PAYPAGE_METHODS', [
 add_action('plugins_loaded', 'woocommerce_paytabs_init', 0);
 
 
-function get_product_price()
-{
-  // Get the current product's ID.
-  $product_id = get_the_ID();
-  $product = wc_get_product($product_id);
-  $product_price = 0;
-
-  if ($product) {
-    // Get the product price.
-    $product_price = $product->get_price();
-  }
-
-  return $product_price;
-}
-
-
 function woocommerce_paytabs_init()
 {
   require_once PAYTABS_PAYPAGE_DIR . 'includes/paytabs_functions.php';
