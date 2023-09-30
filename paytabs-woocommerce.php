@@ -129,7 +129,7 @@ function woocommerce_paytabs_init()
   add_filter('woocommerce_payment_methods_list_item', 'get_account_saved_payment_methods_list_item_paytabs', 10, 2);
   add_filter('plugin_action_links_' . plugin_basename(__FILE__), 'paytabs_add_action_links');
 
-  add_action('woocommerce_single_product_summary', 'valu_widget', 20);
+  add_action('woocommerce_single_product_summary', 'valu_widget', 21);
 
   function valu_widget()
   {
