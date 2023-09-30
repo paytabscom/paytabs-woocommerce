@@ -1,8 +1,6 @@
 <?php
 
-// Get the dynamic URL of a paytabs plugin's directory.
-$plugin_directory_url = plugins_url('paytabs-woocommerce');
-$asset_url = $plugin_directory_url . '/icons/valu.png';
+$_url_logo = $valu_payment->getIcon();
 
 ?>
 
@@ -10,7 +8,7 @@ $asset_url = $plugin_directory_url . '/icons/valu.png';
     <table>
         <tr>
             <td style="width: 1%; white-space: nowrap;">
-                <img src="<?= esc_url($asset_url) ?>" alt="valU logo" style="min-height: 64px; max-width: 128px;">
+                <img src="<?= esc_url($_url_logo) ?>" alt="valU logo" style="min-height: 64px; max-width: 128px;">
             </td>
             <td style="vertical-align: middle;">
                 Pay 3 interest-free payments of EGP <?= $plan['emi'] ?>

@@ -140,7 +140,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
      * example: stcpay.png, applepay.png ...
      * @return string
      */
-    private function getIcon()
+    public function getIcon()
     {
         $icon_name = $this->_icon ?? "{$this->_code}.png";
 
