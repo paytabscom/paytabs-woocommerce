@@ -68,7 +68,9 @@ function valu_widget()
         if ($product_price >= $valu_payment->valu_widget_price_threshold) {
           $plan = call_valu_api($valu_payment, $product_price);
 
-          include('includes/_valu_widget.php');
+          if ($plan) {
+            include('includes/_valu_widget.php');
+          }
         }
       }
     }
@@ -93,53 +95,68 @@ function get_product_price()
 
 function call_valu_api($valu_payment, $product_price)
 {
-  $profile_id = $valu_payment->merchant_id;
-  $server_key = $valu_payment->merchant_key;
+  $_paytabsApi = PaytabsApi::getInstance($valu_payment->paytabs_endpoint, $valu_payment->merchant_id, $valu_payment->merchant_key);
   $phone_number = $valu_payment->valu_widget_phone_number;
 
-  $request_url = 'https://secure-egypt.paytabs.com/payment/info/valu/inquiry';
-
-  $data = array(
-    'profile_id' => $profile_id,
+  $data = [
     'cart_amount' => $product_price,
     'cart_currency' => "EGP",
-    'customer_details' => array("phone" => $phone_number),
-  );
+    'customer_details' => [
+      "phone" => $phone_number
+    ],
+  ];
 
-  // Encode the data as JSON.
-  $json_data = json_encode($data);
+  PaytabsHelper::log("valU inqiry, {$product_price}", 1);
+  $details = $_paytabsApi->inqiry_valu($data);
 
-  // Define your cURL request parameters.
-  $request_args = array(
-    'method' => 'POST', // Use the POST method.
-    'timeout' => 45, // Timeout in seconds.
-    'headers' => array(
-      'Authorization' => $server_key,
-      'Content-Type' => 'application/json',
-    ),
-    'body' => $json_data,
-  );
+  if (!$details || !$details->success) {
+    $_err_msg = json_encode($details);
+    PaytabsHelper::log("valU Details error: [{$_err_msg}]", 3);
+    return false;
+  }
 
+  $installments_count = 3;
+  $valu_plan = getValUPlan($details, $installments_count);
 
-  //Make the cURL POST request.
-  $response = wp_remote_request($request_url, $request_args);
+  if (!$valu_plan) {
+    return false;
+  }
 
-  // Check if the request was successful.
-  if (is_wp_error($response)) {
-    // Handle the error.
-    //echo 'Error: ' . $response->get_error_message();
-  } else {
-    // The request was successful.
-    $body = wp_remote_retrieve_body($response);
+  try {
+    $installment_amount = $valu_plan->emi;
 
-    $valu_response = json_decode($body, true);
-    $installment_plans = $valu_response['valuResponse']['productList'][0]['tenureList'];
-    foreach ($installment_plans as $plan) {
-      if ($plan['tenorMonth'] == 3) {
+    $calculated_installment = round($product_price / $installments_count, 2);
+    $is_free_interest = $calculated_installment >= $installment_amount;
+
+    $txt_free = $is_free_interest ? "interest-free" : "";
+
+    $msg = "Pay {$installments_count} {$txt_free} payments of EGP $installment_amount.";
+
+    return $msg;
+  } catch (\Throwable $th) {
+    PaytabsHelper::log("valU widget error: " . $th->getMessage(), 3);
+  }
+
+  return false;
+}
+
+function getValUPlan($details, $installments_count)
+{
+  try {
+    $plansList = $details->valuResponse->productList[0]->tenureList;
+    foreach ($plansList as $plan) {
+      if ($plan->tenorMonth == $installments_count) {
         return $plan;
       }
     }
+  } catch (\Throwable $th) {
+    PaytabsHelper::log("valU Plan error: " . $th->getMessage(), 3);
   }
+
+  $_log = json_encode($plansList);
+  PaytabsHelper::log("valU Plan error: No Plan selected, [{$_log}]", 2);
+
+  return false;
 }
 
 function woocommerce_paytabs_init()

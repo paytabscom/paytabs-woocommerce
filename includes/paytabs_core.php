@@ -2,11 +2,11 @@
 
 /**
  * PayTabs v2 PHP SDK
- * Version: 2.11.6.1
+ * Version: 2.11.6.2
  * PHP >= 7.0.0
  */
 
-define('PAYTABS_SDK_VERSION', '2.11.6.1');
+define('PAYTABS_SDK_VERSION', '2.11.6.2');
 
 define('PAYTABS_DEBUG_FILE_NAME', 'debug_paytabs.log');
 define('PAYTABS_DEBUG_SEVERITY', ['Info', 'Warning', 'Error']);
@@ -1034,6 +1034,8 @@ class PaytabsApi
     const URL_TOKEN_QUERY  = 'payment/token';
     const URL_TOKEN_DELETE = 'payment/token/delete';
 
+    const URL_INQUIRY_VALU = 'payment/info/valu/inquiry';
+
     //
 
     private $base_url;
@@ -1137,6 +1139,22 @@ class PaytabsApi
         return $res;
     }
 
+    function inqiry_valu($params)
+    {
+        $res1 = $this->sendRequest(self::URL_INQUIRY_VALU, $params);
+
+        $res = json_decode($res1);
+
+        $res->success = false;
+
+        if (isset($res->valuResponse, $res->valuResponse->responseCode)) {
+            if ($res->valuResponse->responseCode == 0) {
+                $res->success = true;
+            }
+        }
+
+        return $res;
+    }
     //
 
     function is_valid_redirect($post_values)

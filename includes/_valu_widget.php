@@ -11,7 +11,7 @@ $_url_logo = $valu_payment->getIcon();
                 <img src="<?= esc_url($_url_logo) ?>" alt="valU logo" style="min-height: 64px; max-width: 128px;">
             </td>
             <td style="vertical-align: middle;">
-                Pay 3 interest-free payments of EGP <?= $plan['emi'] ?>
+                <?= $plan ?>
             </td>
         </tr>
     </table>
