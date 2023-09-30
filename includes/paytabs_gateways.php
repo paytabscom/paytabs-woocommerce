@@ -94,6 +94,34 @@ class WC_Gateway_Paytabs_Valu extends WC_Gateway_Paytabs
     protected $_code = 'valu';
     protected $_title = 'PayTabs - valU';
     protected $_description = 'valU payments powered by PayTabs';
+
+
+    public function init_form_fields()
+    {
+        parent::init_form_fields();
+
+        $this->form_fields['valu_widget_enable'] = [
+            'title' => __('ValU widget', 'PayTabs'),
+            'label' => __('Enable ValU widget.', 'PayTabs'),
+            'description' => __('Show valU widget in product\'s details page.', 'PayTabs'),
+            'type' => 'checkbox',
+            'default' => 'no'
+        ];
+        $this->form_fields['valu_widget_phone_number'] = [
+            'title' => __('ValU phone number', 'PayTabs'),
+            'type' => 'text',
+            'description' => __('Registered valU phone number.', 'PayTabs'),
+            'default' => '',
+            'desc_tip' => true,
+        ];
+        $this->form_fields['valu_widget_price_threshold'] = [
+            'title' => __('ValU price threshold', 'PayTabs'),
+            'type' => 'text',
+            'description' => __('Display The widget if the product price higher than the current thershold.', 'PayTabs'),
+            'default' => '1000',
+            'desc_tip' => true,
+        ];
+    }
 }
 
 class WC_Gateway_Paytabs_Meeza extends WC_Gateway_Paytabs
