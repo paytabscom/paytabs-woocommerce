@@ -51,6 +51,7 @@ define('PAYTABS_PAYPAGE_METHODS', [
   'touchpoints' => 'WC_Gateway_Paytabs_Touchpoints',
   // 'samsungpay' => 'WC_Gateway_Paytabs_Samsungpay',
   'forsa'       => 'WC_Gateway_Paytabs_Forsa',
+  'tabby'       => 'WC_Gateway_Paytabs_Tabby',
 ]);
 
 
