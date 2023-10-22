@@ -58,6 +58,53 @@ define('PAYTABS_PAYPAGE_METHODS', [
 add_action('plugins_loaded', 'woocommerce_paytabs_init', 0);
 
 
+function check_log_permission()
+{
+
+    //print message for the merchant to make sure allow the appache setting.
+    add_action('admin_notices', 'display_paytabs_admin_message');
+    // prevent debug file from opening inside the browser
+    // must allow override all into your appache server to let the htaccess working
+    if (!file_exists(PAYTABS_HTACCESS_FILE)) {
+        $myhtaccessfile = fopen(PAYTABS_HTACCESS_FILE, "w");
+        $permission = "<Files " . PAYTABS_DEBUG_FILE_NAME . ">  
+        Order Allow,Deny
+        Deny from all
+    </Files>";
+        fwrite($myhtaccessfile, $permission);
+        fclose($myhtaccessfile);
+    }
+    else
+    {
+      // URL to the file you want to check.
+      $paytabs_debug_file = PAYTABS_DEBUG_FILE;
+
+      // Attempt to fetch the file.
+      $fileContent = @file_get_contents($fileUrl);  
+
+      // Check the HTTP status code.
+      $httpStatus = $http_response_header[0];
+
+      if (strpos($httpStatus, '403') !== false) {
+
+        PaytabsHelper::log("debug file secured successfully", 1);
+
+      } 
+      else {
+          $paytabs_file_permission = "<Files " . PAYTABS_DEBUG_FILE_NAME . ">  
+          Order Allow,Deny
+          Deny from all
+      </Files>";
+
+      $htaccessFile = PAYTABS_HTACCESS_FILE;
+      file_put_contents($htaccessFile, $paytabs_file_permission, FILE_APPEND);
+      
+      }
+
+    }
+}
+register_activation_hook( __FILE__, 'check_log_permission');
+
 function woocommerce_paytabs_init()
 {
   require_once PAYTABS_PAYPAGE_DIR . 'includes/paytabs_functions.php';
@@ -123,53 +170,6 @@ function woocommerce_paytabs_init()
     $links[] = "<a href='{$settings_url}'>Settings</a>";
 
     return $links;
-  }
-
-
-  function check_log_permission()
-  {
-
-      //print message for the merchant to make sure allow the appache setting.
-      add_action('admin_notices', 'display_paytabs_admin_message');
-      // prevent debug file from opening inside the browser
-      // must allow override all into your appache server to let the htaccess working
-      if (!file_exists(PAYTABS_HTACCESS_FILE)) {
-          $myhtaccessfile = fopen(PAYTABS_HTACCESS_FILE, "w");
-          $permission = "<Files " . PAYTABS_DEBUG_FILE_NAME . ">  
-          Order Allow,Deny
-          Deny from all
-      </Files>";
-          fwrite($myhtaccessfile, $permission);
-          fclose($myhtaccessfile);
-      }
-      else
-      {
-        // URL to the file you want to check.
-        $paytabs_debug_file = PAYTABS_DEBUG_FILE;
-
-        // Attempt to fetch the file.
-        $fileContent = @file_get_contents($fileUrl);  
-
-        // Check the HTTP status code.
-        $httpStatus = $http_response_header[0];
-
-        if (strpos($httpStatus, '403') !== false) {
-
-          PaytabsHelper::log("debug file secured successfully", 1);
-
-        } 
-        else {
-            $paytabs_file_permission = "<Files " . PAYTABS_DEBUG_FILE_NAME . ">  
-            Order Allow,Deny
-            Deny from all
-        </Files>";
-
-        $htaccessFile = PAYTABS_HTACCESS_FILE;
-        file_put_contents($htaccessFile, $paytabs_file_permission, FILE_APPEND);
-        
-        }
-
-      }
   }
 
   add_filter('woocommerce_payment_gateways', 'woocommerce_add_paytabs_gateway');
