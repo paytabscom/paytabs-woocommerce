@@ -26,7 +26,10 @@ define('PAYTABS_PAYPAGE_DIR', plugin_dir_path(__FILE__));
 define('PAYTABS_PAYPAGE_ICONS_URL', plugins_url("icons/", __FILE__));
 define('PAYTABS_PAYPAGE_IMAGES_URL', plugins_url("images/", __FILE__));
 define('PAYTABS_DEBUG_FILE', WP_CONTENT_DIR . "/debug_paytabs.log");
+define('PAYTABS_DEBUG_FILE_NAME_HTACCESS', 'debug_paytabs.log');
 define('PAYTABS_HTACCESS_FILE', WP_CONTENT_DIR . "/.htaccess");
+define('PAYTABS_DEBUG_FILE_URL', get_bloginfo('url') . "/wp-content/debug_paytabs.log");
+
 
 define('PAYTABS_PAYPAGE_METHODS', [
   'mada'       => 'WC_Gateway_Paytabs_Mada',
@@ -68,7 +71,7 @@ function check_log_permission()
     // must allow override all into your appache server to let the htaccess working
     if (!file_exists(PAYTABS_HTACCESS_FILE)) {
         $myhtaccessfile = fopen(PAYTABS_HTACCESS_FILE, "w");
-        $permission = "<Files " . PAYTABS_DEBUG_FILE_NAME . ">  
+        $permission = "<Files " . PAYTABS_DEBUG_FILE_NAME_HTACCESS . ">  
         Order Allow,Deny
         Deny from all
     </Files>";
@@ -78,21 +81,25 @@ function check_log_permission()
     else
     {
       // URL to the file you want to check.
-      $paytabs_debug_file = PAYTABS_DEBUG_FILE;
+      $paytabs_debug_file_url = PAYTABS_DEBUG_FILE_URL;
 
-      // Attempt to fetch the file.
-      $fileContent = @file_get_contents($fileUrl);  
+      $url = PAYTABS_DEBUG_FILE_URL;
+      $ch = curl_init($url);
+      curl_setopt($ch, CURLOPT_HEADER, true);    // we want headers
+      curl_setopt($ch, CURLOPT_NOBODY, true);    // we don't need body
+      curl_setopt($ch, CURLOPT_RETURNTRANSFER,1);
+      curl_setopt($ch, CURLOPT_TIMEOUT,10);
+      $output = curl_exec($ch);
+      $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+      curl_close($ch);
 
-      // Check the HTTP status code.
-      $httpStatus = $http_response_header[0];
-
-      if (strpos($httpStatus, '403') !== false) {
+      if ($httpCode === '403') {
 
         PaytabsHelper::log("debug file secured successfully", 1);
 
       } 
       else {
-          $paytabs_file_permission = "<Files " . PAYTABS_DEBUG_FILE_NAME . ">  
+          $paytabs_file_permission = "<Files " . PAYTABS_DEBUG_FILE_NAME_HTACCESS . ">  
           Order Allow,Deny
           Deny from all
       </Files>";
@@ -101,6 +108,7 @@ function check_log_permission()
       file_put_contents($htaccessFile, $paytabs_file_permission, FILE_APPEND);
       
       }
+        
 
     }
 }
