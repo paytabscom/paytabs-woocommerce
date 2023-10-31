@@ -213,4 +213,3 @@ class WC_Gateway_Paytabs_Souhoola extends WC_Gateway_Paytabs
 
     protected $_icon = "souhoola.png";
 }
-
