@@ -204,3 +204,12 @@ class WC_Gateway_Paytabs_Tabby extends WC_Gateway_Paytabs
 
     protected $_icon = "tabby.svg";
 }
+
+class WC_Gateway_Paytabs_Souhoola extends WC_Gateway_Paytabs
+{
+    protected $_code = 'souhoola';
+    protected $_title = 'PayTabs - Souhoola';
+    protected $_description = 'PayTabs - Souhoola payment method';
+
+    protected $_icon = "souhoola.png";
+}
