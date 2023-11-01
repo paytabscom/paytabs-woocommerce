@@ -59,7 +59,10 @@ define('PAYTABS_PAYPAGE_METHODS', [
 
 require_once PAYTABS_PAYPAGE_DIR . 'includes/paytabs_core.php';
 
-//load plugin function when woocommerce loaded
+// Plugin activated
+register_activation_hook(__FILE__, 'check_log_permission');
+
+// Load plugin function when woocommerce loaded
 add_action('plugins_loaded', 'woocommerce_paytabs_init', 0);
 
 function woocommerce_paytabs_init()
@@ -138,54 +141,45 @@ function woocommerce_paytabs_init()
 
 function check_log_permission()
 {
+  //print message for the merchant to make sure allow the appache setting.
+  add_action('admin_notices', 'woocommerce_paytabs_htaccess_notice');
 
-    //print message for the merchant to make sure allow the appache setting.
-    add_action('admin_notices', 'display_paytabs_admin_message');
-    // prevent debug file from opening inside the browser
-    // must allow override all into your appache server to let the htaccess working
-    if (!file_exists(PAYTABS_HTACCESS_FILE)) {
-        $myhtaccessfile = fopen(PAYTABS_HTACCESS_FILE, "w");
-        $permission = "<Files " . PAYTABS_DEBUG_FILE_NAME_HTACCESS . ">  
-        Order Allow,Deny
-        Deny from all
-    </Files>";
-        fwrite($myhtaccessfile, $permission);
-        fclose($myhtaccessfile);
-    }
-    else
-    {
-      // URL to the file you want to check.
-      $paytabs_debug_file_url = PAYTABS_DEBUG_FILE_URL;
+  $permission = "<Files " . PAYTABS_DEBUG_FILE_NAME . ">
+      Order Allow,Deny
+      Deny from all
+  </Files>";
 
-      $url = PAYTABS_DEBUG_FILE_URL;
-      $ch = curl_init($url);
-      curl_setopt($ch, CURLOPT_HEADER, true);    // we want headers
-      curl_setopt($ch, CURLOPT_NOBODY, true);    // we don't need body
-      curl_setopt($ch, CURLOPT_RETURNTRANSFER,1);
-      curl_setopt($ch, CURLOPT_TIMEOUT,10);
-      @curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-      @curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-      $output = curl_exec($ch);
-      $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-      curl_close($ch);
-      
-      if ($httpcode === 403) {
+  // prevent debug file from opening inside the browser
+  // must allow override all into your appache server to let the htaccess working
+  if (!file_exists(PAYTABS_HTACCESS_FILE)) {
+    $myhtaccessfile = fopen(PAYTABS_HTACCESS_FILE, "w");
+    fwrite($myhtaccessfile, $permission);
+    fclose($myhtaccessfile);
 
-        PaytabsHelper::log("debug file secured successfully", 1);
+    PaytabsHelper::log("Debug file secured.", 1);
+  } else {
+    // URL to the file you want to check.
+    $paytabs_debug_file_url = PAYTABS_DEBUG_FILE_URL;
 
-      } 
-      else {
-          $paytabs_file_permission = "<Files " . PAYTABS_DEBUG_FILE_NAME_HTACCESS . ">  
-          Order Allow,Deny
-          Deny from all
-      </Files>";
+    $url = PAYTABS_DEBUG_FILE_URL;
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_HEADER, true);    // we want headers
+    curl_setopt($ch, CURLOPT_NOBODY, true);    // we don't need body
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+    @curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    @curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+    $output = curl_exec($ch);
+    $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
 
+    if ($httpcode === 403) {
+      PaytabsHelper::log("Debug file already secured.", 1);
+    } else {
       $htaccessFile = PAYTABS_HTACCESS_FILE;
-      file_put_contents($htaccessFile, $paytabs_file_permission, FILE_APPEND);
-      
-      }
-        
+      file_put_contents($htaccessFile, $permission, FILE_APPEND);
 
+      PaytabsHelper::log("Debug file appended to htaccess.", 1);
     }
+  }
 }
-register_activation_hook( __FILE__, 'check_log_permission');

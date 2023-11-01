@@ -25,8 +25,4 @@ function paytabs_error_log($message, $severity)
     error_log($_prefix . $message . PHP_EOL, 3, PAYTABS_DEBUG_FILE);
 }
 
-function display_paytabs_admin_message() 
-  {
-    echo '<div class="notice notice-warning is-dismissible"><p>Please make sure to allow override all into your appache server to let the htaccess working.
-    </p></div>';
-  }
+
