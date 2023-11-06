@@ -99,6 +99,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $this->ipn_enable = $this->get_option('ipn_enable') == 'yes';
 
+        // theme id
+        $this->config_id = $this->get_option('config_id') ?? '';
+
         // This action hook saves the settings
         add_action("woocommerce_update_options_payment_gateways_{$this->id}", array($this, 'process_admin_options'));
 
@@ -241,6 +244,15 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 'desc_tip' => false,
             ];
         }
+
+        // Adding theme field
+        $addional_fields['config_id'] = [
+            'title' => __('Theme id', 'PayTabs'),
+            'type' => 'text',
+            'description' => "Enter the id of the theme (if any) you want to apply for the payment page, You will find it in Dashboard => Developers => PayPage Settings (Themes)",
+            'default' => '',
+            'required' => false
+        ];
 
         $fields = array(
             'enabled' => array(
@@ -396,7 +408,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     private function get_token()
     {
         $token_id = @$_POST[$this->token_id_param] ?? false;
-
+        // file_put_contents('token_id.txt', " mytoken: " . $token_id);
         if (!$token_id) {
             return null;
         }
@@ -424,6 +436,17 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         return $tokenObj;
     }
+
+
+    /**
+     *  triggered when update the payment options 
+     */
+     public function process_admin_options()
+     {
+        parent::process_admin_options();
+
+        PaytabsHelper::log("Settings of {$this->_code} has been updated", 1);
+     }
 
 
     /**
@@ -459,7 +482,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $is_pending = @$paypage->is_pending;
         $message = @$paypage->message;
         // $is_redirect = @$paypage->is_redirect;
-        $is_completed = @$paypage->is_completed;
+        $is_completed = @$paypage->is_completed; // when using own form => returns payment_result obj
         $tran_ref = @$paypage->tran_ref;
 
         if ($success || $is_on_hold || $is_pending) {
@@ -1068,6 +1091,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
 
         $response_data = $_paytabsApi->read_response($is_ipn);
+        // file_put_contents('test-resp.txt',  "test resp " . json_encode($response_data));
         if (!$response_data) {
             return;
         }

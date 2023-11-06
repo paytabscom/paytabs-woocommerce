@@ -438,6 +438,8 @@ class PaytabsHolder
             $this->plugin_info
         );
 
+        PaytabsHelper::log('Request body built successfully', 1);
+        
         return $all;
     }
 
@@ -1453,7 +1455,9 @@ class PaytabsApi
         $result = @curl_exec($ch);
 
         $error_num = curl_errno($ch);
-        if ($error_num) {
+        if (!$error_num) {
+            PaytabsHelper::log("cUrl: Request Sent sucessfully to paytabs server: [endpoint: $gateway_url]");
+        }else{
             $error_msg = curl_error($ch);
             PaytabsHelper::log("Paytabs Admin: Response [($error_num) $error_msg], [$result]", 3);
 
