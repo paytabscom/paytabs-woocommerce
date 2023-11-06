@@ -26,7 +26,6 @@ define('PAYTABS_PAYPAGE_DIR', plugin_dir_path(__FILE__));
 define('PAYTABS_PAYPAGE_ICONS_URL', plugins_url("icons/", __FILE__));
 define('PAYTABS_PAYPAGE_IMAGES_URL', plugins_url("images/", __FILE__));
 define('PAYTABS_DEBUG_FILE', WP_CONTENT_DIR . "/debug_paytabs.log");
-define('PAYTABS_DEBUG_FILE_NAME_HTACCESS', 'debug_paytabs.log');
 define('PAYTABS_HTACCESS_FILE', WP_CONTENT_DIR . "/.htaccess");
 define('PAYTABS_DEBUG_FILE_URL', get_bloginfo('url') . "/wp-content/debug_paytabs.log");
 
@@ -58,6 +57,7 @@ define('PAYTABS_PAYPAGE_METHODS', [
 ]);
 
 require_once PAYTABS_PAYPAGE_DIR . 'includes/paytabs_core.php';
+require_once PAYTABS_PAYPAGE_DIR . 'includes/paytabs_functions.php';
 
 // Plugin activated
 register_activation_hook(__FILE__, 'check_log_permission');
@@ -67,7 +67,6 @@ add_action('plugins_loaded', 'woocommerce_paytabs_init', 0);
 
 function woocommerce_paytabs_init()
 {
-  require_once PAYTABS_PAYPAGE_DIR . 'includes/paytabs_functions.php';
 
   if (!class_exists('WooCommerce') || !class_exists('WC_Payment_Gateway')) {
     add_action('admin_notices', 'woocommerce_paytabs_missing_wc_notice');
@@ -141,16 +140,16 @@ function woocommerce_paytabs_init()
 
 function check_log_permission()
 {
-  //print message for the merchant to make sure allow the appache setting.
+  //print message for the merchant to make sure allow the webserver setting.
   add_action('admin_notices', 'woocommerce_paytabs_htaccess_notice');
 
   $permission = "<Files " . PAYTABS_DEBUG_FILE_NAME . ">
       Order Allow,Deny
       Deny from all
   </Files>";
+  $htaccess_file_content = file_get_contents(PAYTABS_HTACCESS_FILE);
 
   // prevent debug file from opening inside the browser
-  // must allow override all into your appache server to let the htaccess working
   if (!file_exists(PAYTABS_HTACCESS_FILE)) {
     $myhtaccessfile = fopen(PAYTABS_HTACCESS_FILE, "w");
     fwrite($myhtaccessfile, $permission);
@@ -158,9 +157,6 @@ function check_log_permission()
 
     PaytabsHelper::log("Debug file secured.", 1);
   } else {
-    // URL to the file you want to check.
-    $paytabs_debug_file_url = PAYTABS_DEBUG_FILE_URL;
-
     $url = PAYTABS_DEBUG_FILE_URL;
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_HEADER, true);    // we want headers
@@ -175,6 +171,8 @@ function check_log_permission()
 
     if ($httpcode === 403) {
       PaytabsHelper::log("Debug file already secured.", 1);
+    } elseif(strpos($htaccess_file_content, PAYTABS_DEBUG_FILE_NAME) !== false){
+      PaytabsHelper::log("Paytabs need to allow override all into your webserver to let the htaccess working.", 1);
     } else {
       $htaccessFile = PAYTABS_HTACCESS_FILE;
       file_put_contents($htaccessFile, $permission, FILE_APPEND);

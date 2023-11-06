@@ -25,4 +25,8 @@ function paytabs_error_log($message, $severity)
     error_log($_prefix . $message . PHP_EOL, 3, PAYTABS_DEBUG_FILE);
 }
 
+function woocommerce_paytabs_htaccess_notice()
+{
+    echo '<div class="error"><p><strong>Please make sure to allow override all into your webserver to let the htaccess working.</strong></p></div>';
+}
 
