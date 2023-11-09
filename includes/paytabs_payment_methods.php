@@ -563,9 +563,14 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             $_logParams = json_encode($values);
             PaytabsHelper::log("Create PayPage failed, Order {$order_id}, [{$_logPaypage}], [{$_logParams}]", 3);
 
-            $errorMessage = $message;
-
-            echo "<h2>$errorMessage</h2>";
+            if (PaytabsEnum::PPIsDuplicate($paypage)) {
+                PaytabsHelper::log("Duplicate issue, Order {$order_id}, re-try", 1);
+                sleep(10);
+                $this->receipt_page($order_id);
+            } else {
+                $errorMessage = $message;
+                echo "<h2>$errorMessage</h2>";
+            }
         }
     }
 
