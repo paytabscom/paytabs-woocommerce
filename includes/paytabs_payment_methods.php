@@ -553,6 +553,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
             $payment_url = $paypage->payment_url;
 
+            WC()->session->set('payment_page_' . $order_id, $payment_url);
+
             if ($this->is_frammed_page) {
                 $this->pt_echo_animation(true);
 
@@ -564,9 +566,16 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             PaytabsHelper::log("Create PayPage failed, Order {$order_id}, [{$_logPaypage}], [{$_logParams}]", 3);
 
             if (PaytabsEnum::PPIsDuplicate($paypage)) {
-                PaytabsHelper::log("Duplicate issue, Order {$order_id}, re-try", 1);
-                sleep(10);
-                $this->receipt_page($order_id);
+                PaytabsHelper::log("Duplicate issue, Order {$order_id}", 1);
+
+                $cached_payment_page = WC()->session->get('payment_page_' . $order_id);
+                $payment_url = $cached_payment_page;
+
+                if ($this->is_frammed_page) {
+                    $this->pt_echo_animation(true);
+
+                    echo "<iframe src='{$payment_url}' width='100%' height='auto' style='min-width: auto; min-height: 700px; border: 0' onload='document.getElementById(\"pt_loader\").style.display=\"none\";' />";
+                }
             } else {
                 $errorMessage = $message;
                 echo "<h2>$errorMessage</h2>";
