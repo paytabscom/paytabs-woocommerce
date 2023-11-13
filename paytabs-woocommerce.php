@@ -140,11 +140,11 @@ function woocommerce_paytabs_init()
 function woocommerce_paytabs_activated()
 {
   PaytabsHelper::log("Activate hook.", 1);
-  check_log_permission();
+  woocommerce_paytabs_check_log_permission();
 }
 
 
-function check_log_permission()
+function woocommerce_paytabs_check_log_permission()
 {
   //print message for the merchant to make sure allow the webserver setting.
   add_action('admin_notices', 'woocommerce_paytabs_htaccess_notice');
