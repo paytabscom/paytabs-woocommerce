@@ -60,7 +60,7 @@ require_once PAYTABS_PAYPAGE_DIR . 'includes/paytabs_core.php';
 require_once PAYTABS_PAYPAGE_DIR . 'includes/paytabs_functions.php';
 
 // Plugin activated
-register_activation_hook(__FILE__, 'check_log_permission');
+register_activation_hook(__FILE__, 'woocommerce_paytabs_activated');
 
 // Load plugin function when woocommerce loaded
 add_action('plugins_loaded', 'woocommerce_paytabs_init', 0);
@@ -137,6 +137,12 @@ function woocommerce_paytabs_init()
 }
 
 
+function woocommerce_paytabs_activated()
+{
+  PaytabsHelper::log("Activate hook.", 1);
+  check_log_permission();
+}
+
 
 function check_log_permission()
 {
@@ -171,8 +177,8 @@ function check_log_permission()
 
     if ($httpcode === 403) {
       PaytabsHelper::log("Debug file already secured.", 1);
-    } elseif(strpos($htaccess_file_content, PAYTABS_DEBUG_FILE_NAME) !== false){
-      PaytabsHelper::log("Paytabs need to allow override all into your webserver to let the htaccess working.", 1);
+    } elseif (strpos($htaccess_file_content, PAYTABS_DEBUG_FILE_NAME) !== false) {
+      PaytabsHelper::log("Paytabs needs to allow override all into your webserver to enable the proper functioning of the .htaccess file.", 1);
     } else {
       $htaccessFile = PAYTABS_HTACCESS_FILE;
       file_put_contents($htaccessFile, $permission, FILE_APPEND);
