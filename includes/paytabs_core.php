@@ -208,7 +208,6 @@ abstract class PaytabsHelper
     {
         try {
             paytabs_error_log($msg, $severity);
-            PaytabsDebugPermission::check_log_permission();
         } catch (\Throwable $th) {
             try {
                 $severity_str = PAYTABS_DEBUG_SEVERITY[--$severity];
@@ -217,7 +216,6 @@ abstract class PaytabsHelper
 
                 $_file = defined('PAYTABS_DEBUG_FILE') ? PAYTABS_DEBUG_FILE : PAYTABS_DEBUG_FILE_NAME;
                 file_put_contents($_file, $_msg, FILE_APPEND);
-                PaytabsDebugPermission::check_log_permission();
             } catch (\Throwable $th) {
                 // var_export($th);
             }
