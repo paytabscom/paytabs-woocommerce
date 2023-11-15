@@ -34,7 +34,7 @@ function woocommerce_paytabs_htaccess_notice()
 function woocommerce_paytabs_check_log_permission()
 {
     // Print message to the merchant to make sure allow the webserver setting.
-    add_action('admin_notices', 'woocommerce_paytabs_htaccess_notice');
+    // add_action('admin_notices', 'woocommerce_paytabs_htaccess_notice');
 
     $permission = "<Files " . PAYTABS_DEBUG_FILE_NAME . ">
       Order Allow,Deny
