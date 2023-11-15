@@ -42,7 +42,6 @@ function woocommerce_paytabs_check_log_permission()
         "  Order Allow,Deny" . PHP_EOL .
         "  Deny from all" . PHP_EOL .
         "</Files>";
-    $htaccess_file_content = file_get_contents(PAYTABS_HTACCESS_FILE);
 
     // prevent debug file from opening inside the browser
     if (!file_exists(PAYTABS_HTACCESS_FILE)) {
@@ -75,13 +74,17 @@ function woocommerce_paytabs_check_log_permission()
         } elseif ($error_num) {
             $output_err = curl_error($ch);
             PaytabsHelper::log("Checking .htaccess error: [{$output_err}].", 2);
-        } elseif (strpos($htaccess_file_content, PAYTABS_DEBUG_FILE_NAME) !== false) {
-            PaytabsHelper::log("Allow 'override all' into your webserver to enable the proper functioning of the .htaccess file.", 2);
         } else {
-            $htaccessFile = PAYTABS_HTACCESS_FILE;
-            file_put_contents($htaccessFile, $permission, FILE_APPEND);
+            $htaccess_file_content = file_get_contents(PAYTABS_HTACCESS_FILE);
 
-            PaytabsHelper::log("Debug file appended to htaccess.", 1);
+            if (strpos($htaccess_file_content, PAYTABS_DEBUG_FILE_NAME) !== false) {
+                PaytabsHelper::log("Allow 'override all' into your webserver to enable the proper functioning of the .htaccess file.", 2);
+            } else {
+                $htaccessFile = PAYTABS_HTACCESS_FILE;
+                file_put_contents($htaccessFile, $permission, FILE_APPEND);
+
+                PaytabsHelper::log("Debug file appended to htaccess.", 1);
+            }
         }
     }
 }
