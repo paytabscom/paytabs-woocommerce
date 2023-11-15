@@ -30,3 +30,47 @@ function woocommerce_paytabs_htaccess_notice()
     echo '<div class="error"><p><strong>Please make sure to allow override all into your webserver to let the htaccess working.</strong></p></div>';
 }
 
+
+function woocommerce_paytabs_check_log_permission()
+{
+    // Print message to the merchant to make sure allow the webserver setting.
+    add_action('admin_notices', 'woocommerce_paytabs_htaccess_notice');
+
+    $permission = "<Files " . PAYTABS_DEBUG_FILE_NAME . ">
+      Order Allow,Deny
+      Deny from all
+    </Files>";
+    $htaccess_file_content = file_get_contents(PAYTABS_HTACCESS_FILE);
+
+    // prevent debug file from opening inside the browser
+    if (!file_exists(PAYTABS_HTACCESS_FILE)) {
+        $myhtaccessfile = fopen(PAYTABS_HTACCESS_FILE, "w");
+        fwrite($myhtaccessfile, $permission);
+        fclose($myhtaccessfile);
+
+        PaytabsHelper::log("Debug file secured.", 1);
+    } else {
+        $url = PAYTABS_DEBUG_FILE_URL;
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_HEADER, true);    // we want headers
+        curl_setopt($ch, CURLOPT_NOBODY, true);    // we don't need body
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        @curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        @curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        $output = curl_exec($ch);
+        $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpcode === 403) {
+            PaytabsHelper::log("Debug file already secured.", 1);
+        } elseif (strpos($htaccess_file_content, PAYTABS_DEBUG_FILE_NAME) !== false) {
+            PaytabsHelper::log("Paytabs needs to allow override all into your webserver to enable the proper functioning of the .htaccess file.", 1);
+        } else {
+            $htaccessFile = PAYTABS_HTACCESS_FILE;
+            file_put_contents($htaccessFile, $permission, FILE_APPEND);
+
+            PaytabsHelper::log("Debug file appended to htaccess.", 1);
+        }
+    }
+}
