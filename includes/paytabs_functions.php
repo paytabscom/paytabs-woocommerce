@@ -45,11 +45,16 @@ function woocommerce_paytabs_check_log_permission()
     // prevent debug file from opening inside the browser
     if (!file_exists(PAYTABS_HTACCESS_FILE)) {
         $myhtaccessfile = fopen(PAYTABS_HTACCESS_FILE, "w");
-        fwrite($myhtaccessfile, $permission);
+        $res = fwrite($myhtaccessfile, $permission);
         fclose($myhtaccessfile);
 
-        PaytabsHelper::log("Debug file secured.", 1);
+        if ($res) {
+            PaytabsHelper::log("Debug file secured.", 1);
+        } else {
+            PaytabsHelper::log("Could not write to .htaccess file.", 3);
+        }
     } else {
+        // Try to read the content online
         $url = PAYTABS_DEBUG_FILE_URL;
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_HEADER, true);    // we want headers
@@ -59,11 +64,15 @@ function woocommerce_paytabs_check_log_permission()
         @curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         @curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
         $output = curl_exec($ch);
+        $error_num = curl_errno($ch);
         $httpcode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
         if ($httpcode === 403) {
             PaytabsHelper::log("Debug file already secured.", 1);
+        } elseif ($error_num) {
+            $output_err = curl_error($ch);
+            PaytabsHelper::log("Checking .htaccess error: [{$output_err}].", 2);
         } elseif (strpos($htaccess_file_content, PAYTABS_DEBUG_FILE_NAME) !== false) {
             PaytabsHelper::log("Allow 'override all' into your webserver to enable the proper functioning of the .htaccess file.", 2);
         } else {
