@@ -65,7 +65,7 @@ function woocommerce_paytabs_check_log_permission()
         if ($httpcode === 403) {
             PaytabsHelper::log("Debug file already secured.", 1);
         } elseif (strpos($htaccess_file_content, PAYTABS_DEBUG_FILE_NAME) !== false) {
-            PaytabsHelper::log("Paytabs needs to allow override all into your webserver to enable the proper functioning of the .htaccess file.", 1);
+            PaytabsHelper::log("Allow 'override all' into your webserver to enable the proper functioning of the .htaccess file.", 2);
         } else {
             $htaccessFile = PAYTABS_HTACCESS_FILE;
             file_put_contents($htaccessFile, $permission, FILE_APPEND);
