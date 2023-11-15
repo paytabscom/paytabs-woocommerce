@@ -11,6 +11,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     //
     protected $_paytabsApi;
 
+    // identify the theme in paypage
+    private $theme_config_id;
+
     //
 
     const PT_HANDLED = '_pt_handled';
@@ -98,6 +101,8 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $this->allow_associated_methods = $this->get_option('allow_associated_methods') == 'yes';
 
         $this->ipn_enable = $this->get_option('ipn_enable') == 'yes';
+
+        $this->theme_config_id = $this->get_option('theme_config_id', '');
 
         // This action hook saves the settings
         add_action("woocommerce_update_options_payment_gateways_{$this->id}", array($this, 'process_admin_options'));
@@ -330,6 +335,13 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 'title' => __('Send a note on payment failure', 'PayTabs'),
                 'type' => 'checkbox',
                 'description' => "Send a note to the customer if the Order fail due to payment failure, The note contains the failure reason returned from the payment gateway.",
+            ),
+            'theme_config_id' => array(
+                'title' => __('Theme config id', 'PayTabs'),
+                'type' => 'text',
+                'description' => "Enter the config id of the theme (if any) you want to apply for the payment page, You will find it in Dashboard => Developers => PayPage Settings (Themes)",
+                'default' => '',
+                'required' => false
             )
         );
 
@@ -1503,6 +1515,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             ->set08Lang($lang)
             ->set09Framed($this->is_frammed_page, 'top')
             ->set10Tokenise($tokenise)
+            ->set11ThemeConfigId($this->theme_config_id)
             ->set99PluginInfo('WooCommerce', $woocommerce->version, PAYTABS_PAYPAGE_VERSION);
 
         if ($this->_code == 'valu') {
@@ -1616,6 +1629,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             ->set08Lang($lang)
             ->set09Framed($this->is_frammed_page, 'top')
             ->set10Tokenise($tokenise)
+            ->set11ThemeConfigId($this->theme_config_id)
             ->set99PluginInfo('WooCommerce', $woocommerce->version, PAYTABS_PAYPAGE_VERSION);
 
         if ($this->_code == 'valu') {

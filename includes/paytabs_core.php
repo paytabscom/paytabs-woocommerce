@@ -755,6 +755,11 @@ class PaytabsRequestHolder extends PaytabsBasicHolder
      */
     private $framed;
 
+    /**
+     * config_id
+     */
+    private $theme_config;
+
     //
 
     /**
@@ -767,7 +772,8 @@ class PaytabsRequestHolder extends PaytabsBasicHolder
         $this->pt_merges(
             $all,
             $this->hide_shipping,
-            $this->framed
+            $this->framed,
+            $this->theme_config
         );
 
         return $all;
@@ -793,6 +799,19 @@ class PaytabsRequestHolder extends PaytabsBasicHolder
             'framed_return_top' => $redirect_target == 'top'
         ];
 
+        return $this;
+    }
+
+    public function set11ThemeConfigId($config_id)
+    {
+        $config_id = (int) trim($config_id);
+
+        if( isset($config_id) && ( is_int($config_id) && $config_id > 0 ) ){
+            $this->theme_config = [
+                'config_id' => $config_id
+            ];    
+        }
+        
         return $this;
     }
 }
