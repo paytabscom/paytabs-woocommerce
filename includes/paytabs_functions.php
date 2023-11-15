@@ -36,10 +36,12 @@ function woocommerce_paytabs_check_log_permission()
     // Print message to the merchant to make sure allow the webserver setting.
     // add_action('admin_notices', 'woocommerce_paytabs_htaccess_notice');
 
-    $permission = "<Files " . PAYTABS_DEBUG_FILE_NAME . ">
-      Order Allow,Deny
-      Deny from all
-    </Files>";
+    $permission =
+        PHP_EOL .
+        "<Files " . PAYTABS_DEBUG_FILE_NAME . ">" . PHP_EOL .
+        "  Order Allow,Deny" . PHP_EOL .
+        "  Deny from all" . PHP_EOL .
+        "</Files>";
     $htaccess_file_content = file_get_contents(PAYTABS_HTACCESS_FILE);
 
     // prevent debug file from opening inside the browser
