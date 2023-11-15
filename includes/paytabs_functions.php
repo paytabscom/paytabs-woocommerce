@@ -27,7 +27,7 @@ function paytabs_error_log($message, $severity)
 
 function woocommerce_paytabs_htaccess_notice()
 {
-    echo '<div class="error"><p><strong>Please make sure to allow override all into your webserver to let the htaccess working.</strong></p></div>';
+    echo '<div class="notice notice-warning is-dismissible"><p>Ensure that you allow "<strong>override all</strong>" in your server\'s configurations to enable the proper functionality of the .htaccess file.</p></div>';
 }
 
 
