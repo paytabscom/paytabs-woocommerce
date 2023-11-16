@@ -2,36 +2,15 @@
 
 /**
  * PayTabs v2 PHP SDK
- * Version: 2.13.0.1
+ * Version: 2.14.0
  * PHP >= 7.0.0
  */
 
-define('PAYTABS_SDK_VERSION', '2.13.0.1');
+define('PAYTABS_SDK_VERSION', '2.14.0');
 
 define('PAYTABS_DEBUG_FILE_NAME', 'debug_paytabs.log');
 define('PAYTABS_DEBUG_SEVERITY', ['Info', 'Warning', 'Error']);
 define('PAYTABS_PREFIX', 'PayTabs');
-define('PAYTABS_HTACCESS_FILE', WP_CONTENT_DIR . "/.htaccess");
-
-
-
-class  PaytabsDebugPermission
-{
-    public static function check_log_permission()
-    {
-        // prevent debug file from opening inside the browser
-        // must all override all into your appache server to let the htaccess working
-        if (!file_exists(PAYTABS_HTACCESS_FILE)) {
-            $myhtaccessfile = fopen(PAYTABS_HTACCESS_FILE, "w");
-            $permission = "<Files " . PAYTABS_DEBUG_FILE_NAME . ">  
-            Order Allow,Deny
-            Deny from all
-        </Files>";
-            fwrite($myhtaccessfile, $permission);
-            fclose($myhtaccessfile);
-        }
-    }
-}
 
 
 abstract class PaytabsHelper
@@ -238,16 +217,14 @@ abstract class PaytabsHelper
     {
         try {
             paytabs_error_log($msg, $severity);
-            PaytabsDebugPermission::check_log_permission();
         } catch (\Throwable $th) {
             try {
-                $severity_str = PAYTABS_DEBUG_SEVERITY[$severity];
-                $_prefix = date('c') . " " . PAYTABS_PREFIX . "{$severity_str}: ";
+                $severity_str = PAYTABS_DEBUG_SEVERITY[--$severity];
+                $_prefix = date('c') . " " . PAYTABS_PREFIX . ".{$severity_str} (FB): ";
                 $_msg = ($_prefix . $msg . PHP_EOL);
 
                 $_file = defined('PAYTABS_DEBUG_FILE') ? PAYTABS_DEBUG_FILE : PAYTABS_DEBUG_FILE_NAME;
                 file_put_contents($_file, $_msg, FILE_APPEND);
-                PaytabsDebugPermission::check_log_permission();
             } catch (\Throwable $th) {
                 // var_export($th);
             }
@@ -806,12 +783,12 @@ class PaytabsRequestHolder extends PaytabsBasicHolder
     {
         $config_id = (int) trim($config_id);
 
-        if( isset($config_id) && ( is_int($config_id) && $config_id > 0 ) ){
+        if (isset($config_id) && (is_int($config_id) && $config_id > 0)) {
             $this->theme_config = [
                 'config_id' => $config_id
-            ];    
+            ];
         }
-        
+
         return $this;
     }
 }
@@ -1310,6 +1287,8 @@ class PaytabsApi
             $_paypage = new stdClass();
             $_paypage->success = false;
             $_paypage->message = 'Create paytabs payment failed';
+        } else if (isset($_paypage->code)) {
+            $_paypage->success = false;
         } else {
             $_paypage->success = isset($paypage->tran_ref, $paypage->redirect_url) && !empty($paypage->redirect_url);
 
