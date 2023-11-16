@@ -11,7 +11,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     //
     protected $_paytabsApi;
 
-    // identify the theme in paypage
+    // Select the PayPage to use
     private $theme_config_id;
 
     //
@@ -339,7 +339,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             'theme_config_id' => array(
                 'title' => __('Theme config id', 'PayTabs'),
                 'type' => 'text',
-                'description' => "Enter the config id of the theme (if any) you want to apply for the payment page, You will find it in Dashboard => Developers => PayPage Settings (Themes)",
+                'description' => "Config id of the theme/payment page (if any) you want to open, You may find it in <strong>Dashboard > Developers > PayPage Settings (Themes)</strong>",
                 'default' => '',
                 'required' => false
             )

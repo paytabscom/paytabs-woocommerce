@@ -735,7 +735,7 @@ class PaytabsRequestHolder extends PaytabsBasicHolder
     /**
      * config_id
      */
-    private $theme_config;
+    private $config_id;
 
     //
 
@@ -750,7 +750,7 @@ class PaytabsRequestHolder extends PaytabsBasicHolder
             $all,
             $this->hide_shipping,
             $this->framed,
-            $this->theme_config
+            $this->config_id
         );
 
         return $all;
@@ -784,7 +784,7 @@ class PaytabsRequestHolder extends PaytabsBasicHolder
         $config_id = (int) trim($config_id);
 
         if (isset($config_id) && (is_int($config_id) && $config_id > 0)) {
-            $this->theme_config = [
+            $this->config_id = [
                 'config_id' => $config_id
             ];
         }
