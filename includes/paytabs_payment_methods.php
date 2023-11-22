@@ -14,6 +14,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     // Select the PayPage to use
     private $theme_config_id;
 
+    //  Alt currency
+    private $enable_alt_currency;
+    private $alt_currency;
+
     //
 
     const PT_HANDLED = '_pt_handled';
@@ -104,6 +108,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $this->theme_config_id = $this->get_option('theme_config_id', '');
 
+        $this->enable_alt_currency = $this->get_option('enable_alt_currency', "no") == 'yes';
+        $this->alt_currency = $this->get_option('alt_currency', '');
+        
         // This action hook saves the settings
         add_action("woocommerce_update_options_payment_gateways_{$this->id}", array($this, 'process_admin_options'));
 
@@ -340,6 +347,20 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 'title' => __('Theme config id', 'PayTabs'),
                 'type' => 'text',
                 'description' => "Config id of the theme/payment page (if any) you want to open, You may find it in <strong>Dashboard > Developers > PayPage Settings (Themes)</strong>",
+                'default' => '',
+                'required' => false
+            ),
+            'enable_alt_currency' => array(
+                'title' => __('Enable alt currency', 'PayTabs'),
+                'type' => 'checkbox',
+                'description' => "Enable/Disable alt currency to be shown in pay page",
+                'default' => "no",
+                'required' => false
+            ),
+            'alt_currency' => array(
+                'title' => __('Alt Currency', 'PayTabs'),
+                'type' => 'text',
+                'description' => 'The actual value of alt currency to be used e.g. "USD", "AED, "SAR"',
                 'default' => '',
                 'required' => false
             )
@@ -1515,8 +1536,13 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             ->set08Lang($lang)
             ->set09Framed($this->is_frammed_page, 'top')
             ->set10Tokenise($tokenise)
-            ->set11ThemeConfigId($this->theme_config_id)
-            ->set99PluginInfo('WooCommerce', $woocommerce->version, PAYTABS_PAYPAGE_VERSION);
+            ->set11ThemeConfigId($this->theme_config_id);
+
+            if($this->enable_alt_currency){
+                $holder->set12AltCurrency($this->getAltCurrency());
+            }
+
+            $holder->set99PluginInfo('WooCommerce', $woocommerce->version, PAYTABS_PAYPAGE_VERSION);
 
         if ($this->_code == 'valu') {
             // $holder->set20ValuParams($this->valu_product_id, 0);
@@ -1629,8 +1655,13 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             ->set08Lang($lang)
             ->set09Framed($this->is_frammed_page, 'top')
             ->set10Tokenise($tokenise)
-            ->set11ThemeConfigId($this->theme_config_id)
-            ->set99PluginInfo('WooCommerce', $woocommerce->version, PAYTABS_PAYPAGE_VERSION);
+            ->set11ThemeConfigId($this->theme_config_id);
+
+            if($this->enable_alt_currency){
+                $holder->set12AltCurrency($this->getAltCurrency());
+            }
+
+            $holder->set99PluginInfo('WooCommerce', $woocommerce->version, PAYTABS_PAYPAGE_VERSION);
 
         if ($this->_code == 'valu') {
             // $holder->set20ValuParams($this->valu_product_id, 0);
@@ -1705,5 +1736,14 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     private function getPaymentMethod($order)
     {
         return WooCommerce2 ? $order->payment_method : $order->get_payment_method();
+    }
+
+    private function getAltCurrency()
+    {
+        /*
+        / any logic needed in the future
+        */
+        
+        return $this->alt_currency;
     }
 }
