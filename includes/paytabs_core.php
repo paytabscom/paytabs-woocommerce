@@ -2,11 +2,11 @@
 
 /**
  * PayTabs v2 PHP SDK
- * Version: 2.14.0
+ * Version: 2.15.0
  * PHP >= 7.0.0
  */
 
-define('PAYTABS_SDK_VERSION', '2.14.0');
+define('PAYTABS_SDK_VERSION', '2.15.0');
 
 define('PAYTABS_DEBUG_FILE_NAME', 'debug_paytabs.log');
 define('PAYTABS_DEBUG_SEVERITY', ['Info', 'Warning', 'Error']);
