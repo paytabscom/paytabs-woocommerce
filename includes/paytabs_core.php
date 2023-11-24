@@ -737,7 +737,9 @@ class PaytabsRequestHolder extends PaytabsBasicHolder
      */
     private $config_id;
 
-    //
+    /**
+     * alt_currency
+     */
     private $alt_currency;
 
     //
@@ -785,9 +787,9 @@ class PaytabsRequestHolder extends PaytabsBasicHolder
 
     public function set11ThemeConfigId($config_id)
     {
-        $config_id = (int) trim($config_id);
+        $config_id = (int) trim($config_id ?? "");
 
-        if (isset($config_id) && (is_int($config_id) && $config_id > 0)) {
+        if (is_int($config_id) && $config_id > 0) {
             $this->config_id = [
                 'config_id' => $config_id
             ];
@@ -798,9 +800,9 @@ class PaytabsRequestHolder extends PaytabsBasicHolder
 
     public function set12AltCurrency($alt_currency)
     {
-        $alt_currency = trim($alt_currency);
-        
-        if(isset($alt_currency) && !empty($alt_currency)){
+        $alt_currency = trim($alt_currency ?? "");
+
+        if (!empty($alt_currency)) {
             $this->alt_currency = [
                 'alt_currency' => $alt_currency
             ];
