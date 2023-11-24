@@ -353,7 +353,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             'alt_currency_enable' => array(
                 'title' => __('Enable alternative currency', 'PayTabs'),
                 'type' => 'checkbox',
-                'description' => ">Display alternative currency equivalent in the payment page.",
+                'description' => "Display alternative currency equivalent in the payment page.",
                 'default' => "no",
                 'required' => false
             ),
