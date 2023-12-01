@@ -2,36 +2,16 @@
 
 /**
  * PayTabs v2 PHP SDK
- * Version: 2.11.6.2
+ * Version: 2.15.0.1
  * PHP >= 7.0.0
  */
 
-define('PAYTABS_SDK_VERSION', '2.11.6.2');
+define('PAYTABS_SDK_VERSION', '2.15.0.1');
 
 define('PAYTABS_DEBUG_FILE_NAME', 'debug_paytabs.log');
 define('PAYTABS_DEBUG_SEVERITY', ['Info', 'Warning', 'Error']);
 define('PAYTABS_PREFIX', 'PayTabs');
-define('PAYTABS_HTACCESS_FILE', WP_CONTENT_DIR . "/.htaccess");
 
-
-
-class  PaytabsDebugPermission
-{
-    public static function check_log_permission()
-    {
-        // prevent debug file from opening inside the browser
-        // must all override all into your appache server to let the htaccess working
-        if (!file_exists(PAYTABS_HTACCESS_FILE)) {
-            $myhtaccessfile = fopen(PAYTABS_HTACCESS_FILE, "w");
-            $permission = "<Files " . PAYTABS_DEBUG_FILE_NAME . ">  
-            Order Allow,Deny
-            Deny from all
-        </Files>";
-            fwrite($myhtaccessfile, $permission);
-            fclose($myhtaccessfile);
-        }
-    }
-}
 
 abstract class PaytabsHelper
 {
@@ -134,6 +114,16 @@ abstract class PaytabsHelper
         return false;
     }
 
+    static function supportRefund($code)
+    {
+        foreach (PaytabsApi::PAYMENT_TYPES as $key => $value) {
+            if ($value['name'] === $code) {
+                return in_array(PaytabsApi::GROUP_REFUND, $value['groups']);
+            }
+        }
+        return false;
+    }
+
     //
 
     static function read_ipn_response()
@@ -227,16 +217,14 @@ abstract class PaytabsHelper
     {
         try {
             paytabs_error_log($msg, $severity);
-            PaytabsDebugPermission::check_log_permission();
         } catch (\Throwable $th) {
             try {
-                $severity_str = PAYTABS_DEBUG_SEVERITY[$severity];
-                $_prefix = date('c') . " " . PAYTABS_PREFIX . "{$severity_str}: ";
+                $severity_str = PAYTABS_DEBUG_SEVERITY[--$severity];
+                $_prefix = date('c') . " " . PAYTABS_PREFIX . ".{$severity_str} (FB): ";
                 $_msg = ($_prefix . $msg . PHP_EOL);
 
                 $_file = defined('PAYTABS_DEBUG_FILE') ? PAYTABS_DEBUG_FILE : PAYTABS_DEBUG_FILE_NAME;
                 file_put_contents($_file, $_msg, FILE_APPEND);
-                PaytabsDebugPermission::check_log_permission();
             } catch (\Throwable $th) {
                 // var_export($th);
             }
@@ -744,6 +732,16 @@ class PaytabsRequestHolder extends PaytabsBasicHolder
      */
     private $framed;
 
+    /**
+     * config_id
+     */
+    private $config_id;
+
+    /**
+     * alt_currency
+     */
+    private $alt_currency;
+
     //
 
     /**
@@ -756,7 +754,9 @@ class PaytabsRequestHolder extends PaytabsBasicHolder
         $this->pt_merges(
             $all,
             $this->hide_shipping,
-            $this->framed
+            $this->framed,
+            $this->config_id,
+            $this->alt_currency
         );
 
         return $all;
@@ -782,6 +782,31 @@ class PaytabsRequestHolder extends PaytabsBasicHolder
             'framed_return_top' => $redirect_target == 'top'
         ];
 
+        return $this;
+    }
+
+    public function set11ThemeConfigId($config_id)
+    {
+        $config_id = (int) trim($config_id ?? "");
+
+        if (is_int($config_id) && $config_id > 0) {
+            $this->config_id = [
+                'config_id' => $config_id
+            ];
+        }
+
+        return $this;
+    }
+
+    public function set12AltCurrency($alt_currency)
+    {
+        $alt_currency = trim($alt_currency ?? "");
+
+        if (!empty($alt_currency)) {
+            $this->alt_currency = [
+                'alt_currency' => $alt_currency
+            ];
+        }
         return $this;
     }
 }
@@ -908,6 +933,40 @@ class PaytabsOwnFormHolder extends PaytabsBasicHolder
 
 
 /**
+ * Holder class, Inherit class PaytabsBasicHolder
+ * Holds & Generates the parameters array for the ApplePay form payments
+ * Members:
+ * - apple_pay_token
+ */
+class PaytabsApplePayHolder extends PaytabsBasicHolder
+{
+    /**
+     * apple_pay_token
+     */
+    private $apple_pay_token;
+
+
+    public function set50ApplePay($apple_pay_token)
+    {
+        $this->apple_pay_token = [
+            'apple_pay_token' => $apple_pay_token
+        ];
+
+        return $this;
+    }
+
+    public function pt_build()
+    {
+        $all = parent::pt_build();
+
+        $all = array_merge($all, $this->apple_pay_token);
+
+        return $all;
+    }
+}
+
+
+/**
  * Holder class, Inherit class PaytabsHolder
  * Holder & Generates the parameters array for the Followup requests
  * Followup requests:
@@ -960,33 +1019,37 @@ class PaytabsApi
     const GROUP_CARDS_INTERNATIONAL = 'cards_international';
     const GROUP_TOKENIZE = 'tokenise';
     const GROUP_AUTH_CAPTURE = 'auth_capture';
+    const GROUP_REFUND = 'refund';
     const GROUP_IFRAME = 'iframe';
 
     const PAYMENT_TYPES = [
-        '0'  => ['name' => 'all', 'title' => 'PayTabs - All', 'currencies' => null, 'groups' => [PaytabsApi::GROUP_TOKENIZE, PaytabsApi::GROUP_AUTH_CAPTURE, PaytabsApi::GROUP_IFRAME]],
-        '1'  => ['name' => 'stcpay', 'title' => 'PayTabs - StcPay', 'currencies' => ['SAR'], 'groups' => [PaytabsApi::GROUP_IFRAME]],
+        '0'  => ['name' => 'all', 'title' => 'PayTabs - All', 'currencies' => null, 'groups' => [PaytabsApi::GROUP_TOKENIZE, PaytabsApi::GROUP_AUTH_CAPTURE, PaytabsApi::GROUP_IFRAME, PaytabsApi::GROUP_REFUND]],
+        '1'  => ['name' => 'stcpay', 'title' => 'PayTabs - StcPay', 'currencies' => ['SAR'], 'groups' => [PaytabsApi::GROUP_IFRAME, PaytabsApi::GROUP_REFUND]],
         '2'  => ['name' => 'stcpayqr', 'title' => 'PayTabs - StcPay(QR)', 'currencies' => ['SAR'], 'groups' => []],
-        '3'  => ['name' => 'applepay', 'title' => 'PayTabs - ApplePay', 'currencies' => null, 'groups' => [PaytabsApi::GROUP_TOKENIZE, PaytabsApi::GROUP_AUTH_CAPTURE]],
-        '4'  => ['name' => 'omannet', 'title' => 'PayTabs - OmanNet', 'currencies' => ['OMR'], 'groups' => [PaytabsApi::GROUP_TOKENIZE, PaytabsApi::GROUP_CARDS, PaytabsApi::GROUP_IFRAME]],
-        '5'  => ['name' => 'mada', 'title' => 'PayTabs - mada', 'currencies' => ['SAR'], 'groups' => [PaytabsApi::GROUP_TOKENIZE, PaytabsApi::GROUP_CARDS, PaytabsApi::GROUP_AUTH_CAPTURE, PaytabsApi::GROUP_IFRAME]],
-        '6'  => ['name' => 'creditcard', 'title' => 'PayTabs - CreditCard', 'currencies' => null, 'groups' => [PaytabsApi::GROUP_TOKENIZE, PaytabsApi::GROUP_CARDS, PaytabsApi::GROUP_CARDS_INTERNATIONAL, PaytabsApi::GROUP_AUTH_CAPTURE, PaytabsApi::GROUP_IFRAME]],
+        '3'  => ['name' => 'applepay', 'title' => 'PayTabs - ApplePay', 'currencies' => null, 'groups' => [PaytabsApi::GROUP_TOKENIZE, PaytabsApi::GROUP_AUTH_CAPTURE, PaytabsApi::GROUP_REFUND]],
+        '4'  => ['name' => 'omannet', 'title' => 'PayTabs - OmanNet', 'currencies' => ['OMR'], 'groups' => [PaytabsApi::GROUP_TOKENIZE, PaytabsApi::GROUP_CARDS, PaytabsApi::GROUP_IFRAME, PaytabsApi::GROUP_REFUND]],
+        '5'  => ['name' => 'mada', 'title' => 'PayTabs - mada', 'currencies' => ['SAR'], 'groups' => [PaytabsApi::GROUP_TOKENIZE, PaytabsApi::GROUP_CARDS, PaytabsApi::GROUP_AUTH_CAPTURE, PaytabsApi::GROUP_IFRAME, PaytabsApi::GROUP_REFUND]],
+        '6'  => ['name' => 'creditcard', 'title' => 'PayTabs - CreditCard', 'currencies' => null, 'groups' => [PaytabsApi::GROUP_TOKENIZE, PaytabsApi::GROUP_CARDS, PaytabsApi::GROUP_CARDS_INTERNATIONAL, PaytabsApi::GROUP_AUTH_CAPTURE, PaytabsApi::GROUP_IFRAME, PaytabsApi::GROUP_REFUND]],
         '7'  => ['name' => 'sadad', 'title' => 'PayTabs - Sadad', 'currencies' => ['SAR'], 'groups' => [PaytabsApi::GROUP_IFRAME]],
-        '8'  => ['name' => 'fawry', 'title' => 'PayTabs - @Fawry', 'currencies' => ['EGP'], 'groups' => [PaytabsApi::GROUP_IFRAME]],
-        '9'  => ['name' => 'knet', 'title' => 'PayTabs - KnPay', 'currencies' => ['KWD'], 'groups' => [PaytabsApi::GROUP_CARDS]],
-        '10' => ['name' => 'amex', 'title' => 'PayTabs - Amex', 'currencies' => ['AED', 'SAR', 'USD'], 'groups' => [PaytabsApi::GROUP_TOKENIZE, PaytabsApi::GROUP_CARDS, PaytabsApi::GROUP_CARDS_INTERNATIONAL, PaytabsApi::GROUP_AUTH_CAPTURE, PaytabsApi::GROUP_IFRAME]],
-        '11' => ['name' => 'valu', 'title' => 'PayTabs - valU', 'currencies' => ['EGP'], 'groups' => [PaytabsApi::GROUP_IFRAME]],
-        '12' => ['name' => 'meeza', 'title' => 'PayTabs - Meeza', 'currencies' => ['EGP'], 'groups' => [PaytabsApi::GROUP_CARDS, PaytabsApi::GROUP_AUTH_CAPTURE, PaytabsApi::GROUP_IFRAME]],
-        '13' => ['name' => 'meezaqr', 'title' => 'PayTabs - Meeza (QR)', 'currencies' => ['EGP'], 'groups' => [PaytabsApi::GROUP_IFRAME]],
-        '14' => ['name' => 'unionpay', 'title' => 'PayTabs - UnionPay', 'currencies' => ['AED'], 'groups' => [PaytabsApi::GROUP_AUTH_CAPTURE]],
-        '15' => ['name' => 'samsungpay', 'title' => 'PayTabs - SamsungPay', 'currencies' => ['AED', 'SAR'], 'groups' => []],
-        '16' => ['name' => 'knetdebit', 'title' => 'PayTabs - KnPay (Debit)', 'currencies' => ['KWD'], 'groups' => []],
-        '17' => ['name' => 'knetcredit', 'title' => 'PayTabs - KnPay (Credit)', 'currencies' => ['KWD'], 'groups' => []],
+        '8'  => ['name' => 'fawry', 'title' => 'PayTabs - @Fawry', 'currencies' => ['EGP'], 'groups' => [PaytabsApi::GROUP_IFRAME, PaytabsApi::GROUP_REFUND]],
+        '9'  => ['name' => 'knet', 'title' => 'PayTabs - KnPay', 'currencies' => ['KWD'], 'groups' => [PaytabsApi::GROUP_CARDS, PaytabsApi::GROUP_REFUND]],
+        '10' => ['name' => 'amex', 'title' => 'PayTabs - Amex', 'currencies' => ['AED', 'SAR', 'USD'], 'groups' => [PaytabsApi::GROUP_TOKENIZE, PaytabsApi::GROUP_CARDS, PaytabsApi::GROUP_CARDS_INTERNATIONAL, PaytabsApi::GROUP_AUTH_CAPTURE, PaytabsApi::GROUP_IFRAME, PaytabsApi::GROUP_REFUND]],
+        '11' => ['name' => 'valu', 'title' => 'PayTabs - valU', 'currencies' => ['EGP'], 'groups' => [PaytabsApi::GROUP_IFRAME, PaytabsApi::GROUP_REFUND]],
+        '12' => ['name' => 'meeza', 'title' => 'PayTabs - Meeza', 'currencies' => ['EGP'], 'groups' => [PaytabsApi::GROUP_CARDS, PaytabsApi::GROUP_AUTH_CAPTURE, PaytabsApi::GROUP_IFRAME, PaytabsApi::GROUP_REFUND]],
+        '13' => ['name' => 'meezaqr', 'title' => 'PayTabs - Meeza (QR)', 'currencies' => ['EGP'], 'groups' => [PaytabsApi::GROUP_IFRAME, PaytabsApi::GROUP_REFUND]],
+        '14' => ['name' => 'unionpay', 'title' => 'PayTabs - UnionPay', 'currencies' => ['AED'], 'groups' => [PaytabsApi::GROUP_AUTH_CAPTURE, PaytabsApi::GROUP_REFUND]],
+        '15' => ['name' => 'samsungpay', 'title' => 'PayTabs - SamsungPay', 'currencies' => ['AED', 'SAR'], 'groups' => [PaytabsApi::GROUP_REFUND]],
+        '16' => ['name' => 'knetdebit', 'title' => 'PayTabs - KnPay (Debit)', 'currencies' => ['KWD'], 'groups' => [PaytabsApi::GROUP_REFUND]],
+        '17' => ['name' => 'knetcredit', 'title' => 'PayTabs - KnPay (Credit)', 'currencies' => ['KWD'], 'groups' => [PaytabsApi::GROUP_REFUND]],
         '18' => ['name' => 'aman', 'title' => 'PayTabs - Aman', 'currencies' => ['EGP'], 'groups' => [PaytabsApi::GROUP_IFRAME]],
-        '19' => ['name' => 'urpay', 'title' => 'PayTabs - UrPay', 'currencies' => ['SAR'], 'groups' => [PaytabsApi::GROUP_IFRAME]],
-        '20' => ['name' => 'paypal', 'title' => 'PayTabs - PayPal', 'currencies' => ['AED', 'EGP', 'USD', 'EUR', 'GPB', 'HKD', 'JPY'], 'groups' => []],
+        '19' => ['name' => 'urpay', 'title' => 'PayTabs - UrPay', 'currencies' => ['SAR'], 'groups' => [PaytabsApi::GROUP_IFRAME, PaytabsApi::GROUP_REFUND]],
+        '20' => ['name' => 'paypal', 'title' => 'PayTabs - PayPal', 'currencies' => ['AED', 'EGP', 'USD', 'EUR', 'GPB', 'HKD', 'JPY'], 'groups' => [PaytabsApi::GROUP_REFUND]],
         '21' => ['name' => 'installment', 'title' => 'PayTabs - Installment', 'currencies' => ['EGP'], 'groups' => [PaytabsApi::GROUP_CARDS, PaytabsApi::GROUP_IFRAME]],
         '22' => ['name' => 'touchpoints', 'title' => 'PayTabs - Touchpoints', 'currencies' => ['AED'], 'groups' => [PaytabsApi::GROUP_CARDS, PaytabsApi::GROUP_IFRAME]],
         '23' => ['name' => 'forsa', 'title' => 'PayTabs - Forsa', 'currencies' => ['EGP'], 'groups' => [PaytabsApi::GROUP_IFRAME]],
+        '24' => ['name' => 'tabby', 'title' => 'PayTabs - Tabby', 'currencies' => ['AED'], 'groups' => []],
+        '25' => ['name' => 'souhoola', 'title' => 'PayTabs - Souhoola', 'currencies' => ['EGP'], 'groups' => [PaytabsApi::GROUP_IFRAME, PaytabsApi::GROUP_REFUND]],
+
     ];
 
     const BASE_URLS = [
@@ -1095,6 +1158,7 @@ class PaytabsApi
         $isTokenize =
             $values['tran_class'] == PaytabsEnum::TRAN_CLASS_RECURRING
             || array_key_exists('payment_token', $values)
+            || array_key_exists('apple_pay_token', $values)
             || array_key_exists('card_details', $values);
 
         $response = $this->sendRequest(self::URL_REQUEST, $values);
@@ -1259,6 +1323,8 @@ class PaytabsApi
             $_paypage = new stdClass();
             $_paypage->success = false;
             $_paypage->message = 'Create paytabs payment failed';
+        } else if (isset($_paypage->code)) {
+            $_paypage->success = false;
         } else {
             $_paypage->success = isset($paypage->tran_ref, $paypage->redirect_url) && !empty($paypage->redirect_url);
 

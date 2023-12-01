@@ -9,7 +9,7 @@
  * Plugin URI:    https://paytabs.com/
  * Description:   PayTabs is a <strong>3rd party payment gateway</strong>. Ideal payment solutions for your internet business.
 
- * Version:       4.17.0
+ * Version:       4.20.0.1
  * Requires PHP:  7.0
  * Author:        PayTabs
  * Author URI:    integration@paytabs.com
@@ -20,11 +20,14 @@ if (!function_exists('add_action')) {
 }
 
 
-define('PAYTABS_PAYPAGE_VERSION', '4.18.0');
+define('PAYTABS_PAYPAGE_VERSION', '4.20.0.1');
 define('PAYTABS_PAYPAGE_DIR', plugin_dir_path(__FILE__));
 define('PAYTABS_PAYPAGE_ICONS_URL', plugins_url("icons/", __FILE__));
 define('PAYTABS_PAYPAGE_IMAGES_URL', plugins_url("images/", __FILE__));
 define('PAYTABS_DEBUG_FILE', WP_CONTENT_DIR . "/debug_paytabs.log");
+define('PAYTABS_HTACCESS_FILE', WP_CONTENT_DIR . "/.htaccess");
+define('PAYTABS_DEBUG_FILE_URL', get_bloginfo('url') . "/wp-content/debug_paytabs.log");
+
 define('PAYTABS_PAYPAGE_METHODS', [
   'mada'       => 'WC_Gateway_Paytabs_Mada',
   'all'        => 'WC_Gateway_Paytabs_All',
@@ -48,16 +51,23 @@ define('PAYTABS_PAYPAGE_METHODS', [
   'touchpoints' => 'WC_Gateway_Paytabs_Touchpoints',
   // 'samsungpay' => 'WC_Gateway_Paytabs_Samsungpay',
   'forsa'       => 'WC_Gateway_Paytabs_Forsa',
+  'tabby'       => 'WC_Gateway_Paytabs_Tabby',
+  'souhoola'    => 'WC_Gateway_Paytabs_Souhoola',
 ]);
 
+require_once PAYTABS_PAYPAGE_DIR . 'includes/paytabs_core.php';
+require_once PAYTABS_PAYPAGE_DIR . 'includes/paytabs_functions.php';
 
-//load plugin function when woocommerce loaded
+// Plugin activated
+register_activation_hook(__FILE__, 'woocommerce_paytabs_activated');
+
+// Load plugin function when woocommerce loaded
 add_action('plugins_loaded', 'woocommerce_paytabs_init', 0);
 
+//
 
 function woocommerce_paytabs_init()
 {
-  require_once PAYTABS_PAYPAGE_DIR . 'includes/paytabs_functions.php';
 
   if (!class_exists('WooCommerce') || !class_exists('WC_Payment_Gateway')) {
     add_action('admin_notices', 'woocommerce_paytabs_missing_wc_notice');
@@ -67,7 +77,6 @@ function woocommerce_paytabs_init()
   define('WooCommerce2', !woocommerce_paytabs_version_check('3.0'));
 
   // PT
-  require_once PAYTABS_PAYPAGE_DIR . 'includes/paytabs_core.php';
   require_once PAYTABS_PAYPAGE_DIR . 'includes/paytabs_payment_methods.php';
   require_once PAYTABS_PAYPAGE_DIR . 'includes/paytabs_gateways.php';
   require_once PAYTABS_PAYPAGE_DIR . 'includes/paytabs_payment_token.php';
@@ -123,7 +132,6 @@ function woocommerce_paytabs_init()
     return $links;
   }
 
-
   add_filter('woocommerce_payment_gateways', 'woocommerce_add_paytabs_gateway');
   add_filter('woocommerce_payment_gateways', 'paytabs_filter_gateways', 10, 1);
   add_filter('woocommerce_payment_methods_list_item', 'get_account_saved_payment_methods_list_item_paytabs', 10, 2);
@@ -142,4 +150,11 @@ function woocommerce_paytabs_init()
       $valu_widget->init($valu_payment);
     }
   }
+}
+
+
+function woocommerce_paytabs_activated()
+{
+  PaytabsHelper::log("Activate hook.", 1);
+  woocommerce_paytabs_check_log_permission();
 }

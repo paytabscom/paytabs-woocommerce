@@ -11,6 +11,13 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     //
     protected $_paytabsApi;
 
+    // Select the PayPage to use
+    private $theme_config_id;
+
+    //  Alt currency
+    private $alt_currency_enable;
+    private $alt_currency;
+
     //
 
     const PT_HANDLED = '_pt_handled';
@@ -101,6 +108,11 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $this->allow_associated_methods = $this->get_option('allow_associated_methods') == 'yes';
 
         $this->ipn_enable = $this->get_option('ipn_enable') == 'yes';
+
+        $this->theme_config_id = $this->get_option('theme_config_id', '');
+
+        $this->alt_currency_enable = $this->get_option('alt_currency_enable', "no") == 'yes';
+        $this->alt_currency = $this->get_option('alt_currency', '');
 
         // This action hook saves the settings
         add_action("woocommerce_update_options_payment_gateways_{$this->id}", array($this, 'process_admin_options'));
@@ -333,6 +345,27 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 'title' => __('Send a note on payment failure', 'PayTabs'),
                 'type' => 'checkbox',
                 'description' => "Send a note to the customer if the Order fail due to payment failure, The note contains the failure reason returned from the payment gateway.",
+            ),
+            'theme_config_id' => array(
+                'title' => __('Theme config id', 'PayTabs'),
+                'type' => 'text',
+                'description' => "Config id of the theme/payment page (if any) you want to open, You may find it in <strong>Dashboard > Developers > PayPage Settings (Themes)</strong>",
+                'default' => '',
+                'required' => false
+            ),
+            'alt_currency_enable' => array(
+                'title' => __('Enable alternative currency', 'PayTabs'),
+                'type' => 'checkbox',
+                'description' => "Display alternative currency equivalent in the payment page.",
+                'default' => "no",
+                'required' => false
+            ),
+            'alt_currency' => array(
+                'title' => __('Alternative currency', 'PayTabs'),
+                'type' => 'text',
+                'description' => 'The alternative currency to be shown in the payment page, e.g. "USD", "AED, "SAR"',
+                'default' => '',
+                'required' => false
             )
         );
 
@@ -1505,7 +1538,13 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             ->set08Lang($lang)
             ->set09Framed($this->is_frammed_page, 'top')
             ->set10Tokenise($tokenise)
-            ->set99PluginInfo('WooCommerce', $woocommerce->version, PAYTABS_PAYPAGE_VERSION);
+            ->set11ThemeConfigId($this->theme_config_id);
+
+        if ($this->alt_currency_enable) {
+            $holder->set12AltCurrency($this->getAltCurrency());
+        }
+
+        $holder->set99PluginInfo('WooCommerce', $woocommerce->version, PAYTABS_PAYPAGE_VERSION);
 
         if ($this->_code == 'valu') {
             // $holder->set20ValuParams($this->valu_product_id, 0);
@@ -1618,7 +1657,13 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             ->set08Lang($lang)
             ->set09Framed($this->is_frammed_page, 'top')
             ->set10Tokenise($tokenise)
-            ->set99PluginInfo('WooCommerce', $woocommerce->version, PAYTABS_PAYPAGE_VERSION);
+            ->set11ThemeConfigId($this->theme_config_id);
+
+        if ($this->alt_currency_enable) {
+            $holder->set12AltCurrency($this->getAltCurrency());
+        }
+
+        $holder->set99PluginInfo('WooCommerce', $woocommerce->version, PAYTABS_PAYPAGE_VERSION);
 
         if ($this->_code == 'valu') {
             // $holder->set20ValuParams($this->valu_product_id, 0);
@@ -1693,5 +1738,14 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     private function getPaymentMethod($order)
     {
         return WooCommerce2 ? $order->payment_method : $order->get_payment_method();
+    }
+
+    private function getAltCurrency()
+    {
+        /*
+        / any logic needed in the future
+        */
+
+        return $this->alt_currency;
     }
 }
