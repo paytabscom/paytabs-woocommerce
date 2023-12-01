@@ -10,7 +10,12 @@ class ValuWidget
             $product_price = $this->get_product_price();
             if ($product_price) {
                 if ($product_price >= $valu_payment->valu_widget_price_threshold) {
-                    $plan = $this->call_valu_api($valu_payment, $product_price);
+
+                    if ($valu_payment->valu_widget_static_content) {
+                        $plan = $this->get_static_content();
+                    } else {
+                        $plan = $this->call_valu_api($valu_payment, $product_price);
+                    }
 
                     if ($plan) {
                         include(PAYTABS_PAYPAGE_DIR . 'includes/_valu_widget.php');
@@ -20,7 +25,12 @@ class ValuWidget
         }
     }
 
-    function get_product_price()
+    private function get_static_content()
+    {
+        return "Buy Now & Pay Later up to 60 Months!";
+    }
+
+    private function get_product_price()
     {
         // Get the current product's ID.
         $product_id = get_the_ID();
@@ -35,7 +45,7 @@ class ValuWidget
         return $product_price;
     }
 
-    function call_valu_api($valu_payment, $product_price)
+    private function call_valu_api($valu_payment, $product_price)
     {
         $_paytabsApi = PaytabsApi::getInstance($valu_payment->paytabs_endpoint, $valu_payment->merchant_id, $valu_payment->merchant_key);
         $phone_number = $valu_payment->valu_widget_phone_number;
@@ -82,7 +92,7 @@ class ValuWidget
         return false;
     }
 
-    function getValUPlan($details, $installments_count)
+    private function getValUPlan($details, $installments_count)
     {
         try {
             $plansList = $details->valuResponse->productList[0]->tenureList;

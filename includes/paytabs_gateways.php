@@ -107,6 +107,13 @@ class WC_Gateway_Paytabs_Valu extends WC_Gateway_Paytabs
             'type' => 'checkbox',
             'default' => 'no'
         ];
+        $this->form_fields['valu_widget_static_content'] = [
+            'title' => __('ValU widget, Static content', 'PayTabs'),
+            'type' => 'checkbox',
+            'label' => __('ValU widget, Static content.', 'PayTabs'),
+            'description' => __('Display the static content in the widget, Otherwise call the API to fetch live content based on the price.', 'PayTabs'),
+            'default' => 'no'
+        ];
         $this->form_fields['valu_widget_phone_number'] = [
             'title' => __('ValU phone number', 'PayTabs'),
             'type' => 'text',
@@ -121,6 +128,19 @@ class WC_Gateway_Paytabs_Valu extends WC_Gateway_Paytabs
             'default' => '1000',
             'desc_tip' => true,
         ];
+    }
+
+    public function getIconWidget()
+    {
+        $icon_name = 'valu_long.png';
+
+        $iconPath = PAYTABS_PAYPAGE_DIR . "icons/{$icon_name}";
+        $icon = '';
+        if (file_exists($iconPath)) {
+            $icon = PAYTABS_PAYPAGE_ICONS_URL . "{$icon_name}";
+        }
+
+        return $icon;
     }
 }
 

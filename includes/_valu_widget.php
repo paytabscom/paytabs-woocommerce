@@ -1,6 +1,6 @@
 <?php
 
-$_url_logo = $valu_payment->getIcon();
+$_url_logo = $valu_payment->getIconWidget();
 
 ?>
 
@@ -8,7 +8,7 @@ $_url_logo = $valu_payment->getIcon();
     <table style="margin: 0;">
         <tr>
             <td style="width: 1%; white-space: nowrap;">
-                <img src="<?= esc_url($_url_logo) ?>" alt="valU logo" style="min-height: 64px; max-width: 128px;">
+                <img src="<?= esc_url($_url_logo) ?>" alt="valU logo" style="min-height: 32px; max-width: 128pt;">
             </td>
             <td style="vertical-align: middle;">
                 <?= $plan ?>

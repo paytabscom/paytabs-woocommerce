@@ -100,6 +100,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         if ($this->_code == 'valu') {
             //$this->valu_product_id = $this->get_option('valu_product_id');
             $this->valu_widget_enable = $this->get_option('valu_widget_enable') == 'yes';
+            $this->valu_widget_static_content = $this->get_option('valu_widget_static_content') == 'yes';
             $this->valu_widget_phone_number = $this->get_option('valu_widget_phone_number');
             $this->valu_widget_price_threshold = $this->get_option('valu_widget_price_threshold');
         }
