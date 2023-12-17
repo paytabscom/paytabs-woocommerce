@@ -53,6 +53,7 @@ define('PAYTABS_PAYPAGE_METHODS', [
   'forsa'       => 'WC_Gateway_Paytabs_Forsa',
   'tabby'       => 'WC_Gateway_Paytabs_Tabby',
   'souhoola'    => 'WC_Gateway_Paytabs_Souhoola',
+  'amaninstallments'    => 'WC_Gateway_Paytabs_AmanInstallments',
 ]);
 
 require_once PAYTABS_PAYPAGE_DIR . 'includes/paytabs_core.php';

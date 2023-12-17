@@ -213,3 +213,12 @@ class WC_Gateway_Paytabs_Souhoola extends WC_Gateway_Paytabs
 
     protected $_icon = "souhoola.png";
 }
+
+class WC_Gateway_Paytabs_AmanInstallments extends WC_Gateway_Paytabs
+{
+    protected $_code = 'amaninstallments';
+    protected $_title = 'PayTabs - Aman installments';
+    protected $_description = 'PayTabs - Aman installments payment method';
+
+    protected $_icon = "amaninstallments.svg";
+}
