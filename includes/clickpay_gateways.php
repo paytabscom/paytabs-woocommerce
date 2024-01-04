@@ -23,8 +23,8 @@ class WC_Gateway_Clickpay_Creditcard extends WC_Gateway_Clickpay
 class WC_Gateway_Clickpay_Mada extends WC_Gateway_Clickpay
 {
     protected $_code = 'mada';
-    protected $_title = 'Clickpay - Mada';
-    protected $_description = 'Clickpay - Mada payment method';
+    protected $_title = 'Clickpay - mada';
+    protected $_description = 'Clickpay - mada payment method';
 
     protected $_icon = "mada.svg";
 }
@@ -71,4 +71,13 @@ class WC_Gateway_Clickpay_Samsungpay extends WC_Gateway_Clickpay
     protected $_code = 'samsungpay';
     protected $_title = 'ClickPay - SamsungPay';
     protected $_description = 'ClickPay - SamsungPay payment method';
+}
+
+class WC_Gateway_Clickpay_Urpay extends WC_Gateway_Clickpay
+{
+    protected $_code = 'urpay';
+    protected $_title = 'ClickPay - UrPay';
+    protected $_description = 'ClickPay - UrPay payment method';
+
+    protected $_icon = "urpay.svg";
 }

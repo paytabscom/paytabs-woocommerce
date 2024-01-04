@@ -9,11 +9,11 @@
  * Plugin URI:    https://ClickPay.com.sa/
  * Description:   ClickPay is a <strong>3rd party payment gateway</strong>. Ideal payment solutions for your internet business.
 
- * Version:       4.11.1
+ * Version:       4.20.0
  * Requires PHP:  7.0
  * Author:        ClickPay
  * Author URI:    https://ClickPay.com.sa/
- * Revision Date: 12/April/2022
+ * Revision Date: 21/April/2022
  */
 
 if (!function_exists('add_action')) {
@@ -22,11 +22,13 @@ if (!function_exists('add_action')) {
 
 
 
-define('CLICKPAY_PAYPAGE_VERSION', '4.11.1');
+define('CLICKPAY_PAYPAGE_VERSION', '4.20.0');
 define('CLICKPAY_PAYPAGE_DIR', plugin_dir_path(__FILE__));
 define('CLICKPAY_PAYPAGE_ICONS_URL', plugins_url("icons/", __FILE__));
 define('CLICKPAY_PAYPAGE_IMAGES_URL', plugins_url("images/", __FILE__));
 define('CLICKPAY_DEBUG_FILE', WP_CONTENT_DIR . "/debug_clickpay.log");
+define('CLICKPAY_HTACCESS_FILE', WP_CONTENT_DIR . "/.htaccess");
+define('CLICKPAY_DEBUG_FILE_URL', get_bloginfo('url') . "/wp-content/debug_clickpay.log");
 define('CLICKPAY_PAYPAGE_METHODS', [
   'mada'       => 'WC_Gateway_clickpay_Mada',
   'all'        => 'WC_Gateway_clickpay_All',
@@ -34,19 +36,26 @@ define('CLICKPAY_PAYPAGE_METHODS', [
   'stcpay'     => 'WC_Gateway_clickpay_Stcpay',
   // 'stcpayqr' => 'WC_Gateway_clickpay_Stcpayqr',
   'applepay'   => 'WC_Gateway_clickpay_Applepay',
-  // 'sadad'      => 'WC_Gateway_clickpay_Sadad',
+  'sadad'      => 'WC_Gateway_clickpay_Sadad',
   'amex'       => 'WC_Gateway_clickpay_Amex',
   // 'samsungpay' => 'WC_Gateway_clickpay_Samsungpay',
+  'urpay'      => 'WC_Gateway_clickpay_Urpay',
 ]);
 
 
-//load plugin function when woocommerce loaded
+require_once CLICKPAY_PAYPAGE_DIR . 'includes/clickpay_core.php';
+require_once CLICKPAY_PAYPAGE_DIR . 'includes/clickpay_functions.php';
+
+
+// Plugin activated
+register_activation_hook(__FILE__, 'woocommerce_clickpay_activated');
+
+// Load plugin function when woocommerce loaded
 add_action('plugins_loaded', 'woocommerce_clickpay_init', 0);
 
 
 function woocommerce_clickpay_init()
 {
-  require_once CLICKPAY_PAYPAGE_DIR . 'includes/clickpay_functions.php';
 
   if (!class_exists('WooCommerce') || !class_exists('WC_Payment_Gateway')) {
     add_action('admin_notices', 'woocommerce_clickpay_missing_wc_notice');
@@ -56,7 +65,6 @@ function woocommerce_clickpay_init()
   define('WooCommerce2', !woocommerce_clickpay_version_check('3.0'));
 
   // PT
-  require_once CLICKPAY_PAYPAGE_DIR . 'includes/clickpay_core.php';
   require_once CLICKPAY_PAYPAGE_DIR . 'includes/clickpay_payment_methods.php';
   require_once CLICKPAY_PAYPAGE_DIR . 'includes/clickpay_gateways.php';
   require_once CLICKPAY_PAYPAGE_DIR . 'includes/clickpay_payment_token.php';
@@ -114,5 +122,12 @@ function woocommerce_clickpay_init()
 
   add_filter('woocommerce_payment_gateways', 'woocommerce_add_clickpay_gateway');
   add_filter('woocommerce_payment_gateways', 'clickpay_filter_gateways', 10, 1);
+  add_filter('woocommerce_payment_methods_list_item', 'get_account_saved_payment_methods_list_item_clickpay', 10, 2);
   add_filter('plugin_action_links_' . plugin_basename(__FILE__), 'clickpay_add_action_links');
+}
+
+function woocommerce_clickpay_activated()
+{
+  ClickpayHelper::log("Activate hook.", 1);
+  woocommerce_clickpay_check_log_permission();
 }
