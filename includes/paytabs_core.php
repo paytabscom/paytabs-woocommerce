@@ -2,11 +2,11 @@
 
 /**
  * PayTabs v2 PHP SDK
- * Version: 2.15.0
+ * Version: 2.17.0
  * PHP >= 7.0.0
  */
 
-define('PAYTABS_SDK_VERSION', '2.15.0');
+define('PAYTABS_SDK_VERSION', '2.17.0');
 
 define('PAYTABS_DEBUG_FILE_NAME', 'debug_paytabs.log');
 define('PAYTABS_DEBUG_SEVERITY', ['Info', 'Warning', 'Error']);
@@ -737,7 +737,9 @@ class PaytabsRequestHolder extends PaytabsBasicHolder
      */
     private $config_id;
 
-    //
+    /**
+     * alt_currency
+     */
     private $alt_currency;
 
     //
@@ -785,9 +787,9 @@ class PaytabsRequestHolder extends PaytabsBasicHolder
 
     public function set11ThemeConfigId($config_id)
     {
-        $config_id = (int) trim($config_id);
+        $config_id = (int) trim($config_id ?? "");
 
-        if (isset($config_id) && (is_int($config_id) && $config_id > 0)) {
+        if (is_int($config_id) && $config_id > 0) {
             $this->config_id = [
                 'config_id' => $config_id
             ];
@@ -798,9 +800,9 @@ class PaytabsRequestHolder extends PaytabsBasicHolder
 
     public function set12AltCurrency($alt_currency)
     {
-        $alt_currency = trim($alt_currency);
-        
-        if(isset($alt_currency) && !empty($alt_currency)){
+        $alt_currency = trim($alt_currency ?? "");
+
+        if (!empty($alt_currency)) {
             $this->alt_currency = [
                 'alt_currency' => $alt_currency
             ];
@@ -1048,6 +1050,7 @@ class PaytabsApi
         '24' => ['name' => 'tabby', 'title' => 'PayTabs - Tabby', 'currencies' => ['AED'], 'groups' => []],
         '25' => ['name' => 'souhoola', 'title' => 'PayTabs - Souhoola', 'currencies' => ['EGP'], 'groups' => [PaytabsApi::GROUP_IFRAME, PaytabsApi::GROUP_REFUND]],
         '26' => ['name' => 'amaninstallments', 'title' => 'PayTabs - Aman installments', 'currencies' => ['EGP'], 'groups' => [PaytabsApi::GROUP_IFRAME, PaytabsApi::GROUP_REFUND]],
+
     ];
 
     const BASE_URLS = [
@@ -1094,6 +1097,8 @@ class PaytabsApi
 
     const URL_TOKEN_QUERY  = 'payment/token';
     const URL_TOKEN_DELETE = 'payment/token/delete';
+
+    const URL_INQUIRY_VALU = 'payment/info/valu/inquiry';
 
     //
 
@@ -1199,6 +1204,22 @@ class PaytabsApi
         return $res;
     }
 
+    function inqiry_valu($params)
+    {
+        $res1 = $this->sendRequest(self::URL_INQUIRY_VALU, $params);
+
+        $res = json_decode($res1);
+
+        $res->success = false;
+
+        if (isset($res->valuResponse, $res->valuResponse->responseCode)) {
+            if ($res->valuResponse->responseCode == 0) {
+                $res->success = true;
+            }
+        }
+
+        return $res;
+    }
     //
 
     function is_valid_redirect($post_values)

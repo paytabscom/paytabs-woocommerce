@@ -100,13 +100,47 @@ class WC_Gateway_Paytabs_Valu extends WC_Gateway_Paytabs
     {
         parent::init_form_fields();
 
-        $this->form_fields['valu_product_id'] = array(
-            'title'       => __('valU product ID', 'PayTabs'),
-            'type'        => 'text',
-            'description' => __('Please enter the product ID of your valU account.', 'PayTabs'),
-            'default'     => '',
-            'required'    => true
-        );
+        $this->form_fields['valu_widget_enable'] = [
+            'title' => __('ValU widget', 'PayTabs'),
+            'label' => __('Enable ValU widget.', 'PayTabs'),
+            'description' => __('Show valU widget in product\'s details page.', 'PayTabs'),
+            'type' => 'checkbox',
+            'default' => 'no'
+        ];
+        $this->form_fields['valu_widget_static_content'] = [
+            'title' => __('ValU widget, Static content', 'PayTabs'),
+            'type' => 'checkbox',
+            'label' => __('ValU widget, Static content.', 'PayTabs'),
+            'description' => __('Display the static content in the widget, Otherwise call the API to fetch live content based on the price.', 'PayTabs'),
+            'default' => 'no'
+        ];
+        $this->form_fields['valu_widget_phone_number'] = [
+            'title' => __('ValU phone number', 'PayTabs'),
+            'type' => 'text',
+            'description' => __('Registered valU phone number.', 'PayTabs'),
+            'default' => '',
+            'desc_tip' => true,
+        ];
+        $this->form_fields['valu_widget_price_threshold'] = [
+            'title' => __('ValU price threshold', 'PayTabs'),
+            'type' => 'text',
+            'description' => __('Display The widget if the product price higher than the current thershold.', 'PayTabs'),
+            'default' => '1000',
+            'desc_tip' => true,
+        ];
+    }
+
+    public function getIconWidget()
+    {
+        $icon_name = 'valu_long.png';
+
+        $iconPath = PAYTABS_PAYPAGE_DIR . "icons/{$icon_name}";
+        $icon = '';
+        if (file_exists($iconPath)) {
+            $icon = PAYTABS_PAYPAGE_ICONS_URL . "{$icon_name}";
+        }
+
+        return $icon;
     }
 }
 
