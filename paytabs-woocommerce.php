@@ -83,6 +83,17 @@ function woocommerce_paytabs_init()
   require_once PAYTABS_PAYPAGE_DIR . 'includes/paytabs_payment_token.php';
   require_once PAYTABS_PAYPAGE_DIR . 'includes/widgets/valu.php';
 
+  if (is_admin()) {
+    
+    $checkout_page_id = get_option('woocommerce_checkout_page_id');
+    $page_content = get_post_field('post_content', $checkout_page_id);
+    $classic_checkout_shortcode = '[woocommerce_checkout]';
+    
+    if (strpos($page_content, $classic_checkout_shortcode) === false) {
+      add_action('admin_notices', 'alert_checkout_warning');
+    }
+    
+  }
 
   /**
    * Add the Gateway to WooCommerce
@@ -158,4 +169,29 @@ function woocommerce_paytabs_activated()
 {
   PaytabsHelper::log("Activate hook.", 1);
   woocommerce_paytabs_check_log_permission();
+}
+
+function alert_checkout_warning() {
+  $alert_shown = get_option('paytabs_block_editor');
+
+  if (!$alert_shown) {
+      echo '<div class="notice notice-warning is-dismissible">
+          <h3>Paytabs-WARNING :: You may face some issues in checkout page due to the compatibility with block editor.</h3>
+          <p>If you faced any problem you may use this approach :
+            <ol>
+              <li>Go to admin dash board</li>
+              <li>Go to pages</li>
+              <li>Locate the checkout page</li>
+              <li>Click edit on it</li>
+              <li>Inside edit page, click on payment methods block</li>
+              <li>After clicking you will get a warning message in the right panel</li>
+              <li>In this panel you will find a button says change to classic editor, click on it</li>
+              <li>Save the updates</li>
+            </ol>
+          </p>
+      </div>';
+
+      // Set the option to indicate that the alert has been shown
+      update_option('paytabs_block_editor', true);
+  }
 }
