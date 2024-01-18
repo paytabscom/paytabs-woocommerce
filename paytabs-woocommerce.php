@@ -65,21 +65,6 @@ register_activation_hook(__FILE__, 'woocommerce_paytabs_activated');
 // Load plugin function when woocommerce loaded
 add_action('plugins_loaded', 'woocommerce_paytabs_init', 0);
 
-// Schedule the event to run once every day
-add_action('wp', 'schedule_paytabs_update_check');
-
-//
-// $scheduled_event = wp_get_schedule('check_paytabs_updates_event');
-// file_put_contents('event-scheduled', json_encode($scheduled_event));
-function schedule_paytabs_update_check() {
-  if (!wp_next_scheduled('check_paytabs_updates_event')) {
-      wp_schedule_event(time(), 'daily', 'check_paytabs_updates_event');
-  }
-}
-
-add_action('check_paytabs_updates_event', 'check_paytabs_updates');
-
-
 function woocommerce_paytabs_init()
 {
 
@@ -95,6 +80,31 @@ function woocommerce_paytabs_init()
   require_once PAYTABS_PAYPAGE_DIR . 'includes/paytabs_gateways.php';
   require_once PAYTABS_PAYPAGE_DIR . 'includes/paytabs_payment_token.php';
   require_once PAYTABS_PAYPAGE_DIR . 'includes/widgets/valu.php';
+
+
+  // update process
+
+  global $paytabsGUpdateArr; 
+  $paytabsGUpdateArr = getPaytabsUpdate();
+
+  if ($paytabsGUpdateArr && $paytabsGUpdateArr['has_update']) {
+    add_filter('plugin_row_meta', 'paytabs_plugin_row_meta', 10, 2);
+    
+    function paytabs_plugin_row_meta($meta, $file) {
+
+      global $paytabsGUpdateArr;
+      if (strpos($file, 'paytabs-woocommerce-main/paytabs-woocommerce.php') !== false) {
+        $noticeTypeClass = ($paytabsGUpdateArr['update_severity'] == 'mandatory' ? 'notice-error' : 'notice-warning');
+        $update_message = '<div class="update-message notice inline '. $noticeTypeClass .' notice-alt">
+                            <p>There is a newer <b>('.$paytabsGUpdateArr['update_severity'].')</b> version['.$paytabsGUpdateArr['latest_version'].'] of PayTabs available.</p>
+                          </div>';
+        array_push($meta, $update_message);
+      }
+
+      return $meta;
+
+    }
+  }
 
 
   /**
@@ -173,14 +183,26 @@ function woocommerce_paytabs_activated()
   woocommerce_paytabs_check_log_permission();
 }
 
-function woocommerce_paytabs_deactivated()
-{
-  PaytabsHelper::log("Deactivate hook.", 1);
-  wp_clear_scheduled_hook( 'check_paytabs_updates_event' );
-}
 
-function check_paytabs_updates() 
+function getPaytabsUpdate() 
 {
+  
+  //   TESTING-PURPPOSES
+  //  --------------------
+  // $paytabsUpdateValue = [
+  //   'has_update' => true,
+  //   'latest_version' => '4.3.0',
+  //   'update_severity' => 'mandatory'
+  // ];
+  // set_transient('paytabs_update', json_encode($paytabsUpdateValue), DAY_IN_SECONDS);
+  // return $paytabsUpdateValue;
+
+  $paytabsUpdateTransient = get_transient('paytabs_update');
+  
+  if ($paytabsUpdateTransient) {
+    return json_decode($paytabsUpdateTransient, true);
+  }
+
   $api_url = '';
 
   $response = wp_remote_get($api_url);
@@ -198,43 +220,17 @@ function check_paytabs_updates()
 
     $latest_version = $data['version'];
     $update_severity = $data['update_severity'];
+    
+    $hasUpdate = version_compare(PAYTABS_PAYPAGE_VERSION, $latest_version, '<');
 
-    // Comapre versions
-    if (version_compare(PAYTABS_PAYPAGE_VERSION, $latest_version, '<')){
-      alert_paytabs_update($update_severity);
-    }
-
-  }
-}
-
-
-function alert_paytabs_update($update_severity) {
-
-  $alert_update = get_option('paytabs_alert_update');
-
-  if (!$alert_update) {
-    if ($update_severity == "mandatory") {
-      add_action('admin_notices', 'alert_pt2_mandatory_update');
-    } else {
-      add_action('admin_notices', 'alert_pt2_optional_update');
-    }
-    if(is_admin()){
-      update_option('paytabs_alert_update', true);
-    }
+    $paytabsUpdateValue = [
+      'has_update' => (bool) $hasUpdate,
+      'latest_version' => $data['version'],
+      'update_severity' => $data['update_severity']
+    ];
+    
+    set_transient('paytabs_update', json_encode($paytabsUpdateValue), DAY_IN_SECONDS);
+    return $paytabsUpdateValue;
   }
 
-}
-
-function alert_pt2_mandatory_update()
-{
-  echo '<div class="notice notice-error is-dismissible">
-          <p>Mandatory Update</p>
-        </div>';
-}
-
-function alert_pt2_optional_update()
-{
-  echo '<div class="notice notice-warning is-dismissible">
-          <p>Optional Update</p>
-        </div>';
 }
