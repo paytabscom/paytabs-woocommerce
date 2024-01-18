@@ -65,7 +65,20 @@ register_activation_hook(__FILE__, 'woocommerce_paytabs_activated');
 // Load plugin function when woocommerce loaded
 add_action('plugins_loaded', 'woocommerce_paytabs_init', 0);
 
+// Schedule the event to run once every day
+add_action('wp', 'schedule_paytabs_update_check');
+
 //
+// $scheduled_event = wp_get_schedule('check_paytabs_updates_event');
+// file_put_contents('event-scheduled', json_encode($scheduled_event));
+function schedule_paytabs_update_check() {
+  if (!wp_next_scheduled('check_paytabs_updates_event')) {
+      wp_schedule_event(time(), 'daily', 'check_paytabs_updates_event');
+  }
+}
+
+add_action('check_paytabs_updates_event', 'check_paytabs_updates');
+
 
 function woocommerce_paytabs_init()
 {
@@ -158,4 +171,70 @@ function woocommerce_paytabs_activated()
 {
   PaytabsHelper::log("Activate hook.", 1);
   woocommerce_paytabs_check_log_permission();
+}
+
+function woocommerce_paytabs_deactivated()
+{
+  PaytabsHelper::log("Deactivate hook.", 1);
+  wp_clear_scheduled_hook( 'check_paytabs_updates_event' );
+}
+
+function check_paytabs_updates() 
+{
+  $api_url = '';
+
+  $response = wp_remote_get($api_url);
+
+  if (is_wp_error($response)) {
+      // Handle error
+      return;
+  }
+
+  $body = wp_remote_retrieve_body($response);
+  $data = json_decode($body, true);
+
+  // Process the data received from the server
+  if ($data && isset($data['version'])) {
+
+    $latest_version = $data['version'];
+    $update_severity = $data['update_severity'];
+
+    // Comapre versions
+    if (version_compare(PAYTABS_PAYPAGE_VERSION, $latest_version, '<')){
+      alert_paytabs_update($update_severity);
+    }
+
+  }
+}
+
+
+function alert_paytabs_update($update_severity) {
+
+  $alert_update = get_option('paytabs_alert_update');
+
+  if (!$alert_update) {
+    if ($update_severity == "mandatory") {
+      add_action('admin_notices', 'alert_pt2_mandatory_update');
+    } else {
+      add_action('admin_notices', 'alert_pt2_optional_update');
+    }
+    if(is_admin()){
+      update_option('paytabs_alert_update', true);
+    }
+  }
+
+}
+
+function alert_pt2_mandatory_update()
+{
+  echo '<div class="notice notice-error is-dismissible">
+          <p>Mandatory Update</p>
+        </div>';
+}
+
+function alert_pt2_optional_update()
+{
+  echo '<div class="notice notice-warning is-dismissible">
+          <p>Optional Update</p>
+        </div>';
 }
