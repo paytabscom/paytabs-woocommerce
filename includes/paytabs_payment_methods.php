@@ -137,7 +137,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             add_action('woocommerce_api_wc_gateway_paytabs', array($this, 'ipn_response'));
         }
 
-        add_action('woocommerce_order_status_completed', array($this, 'process_capture'), 10, 1);
+        // add_action('woocommerce_order_status_completed', array($this, 'process_capture'), 10, 1);
         add_action('woocommerce_order_status_cancelled', array($this, 'process_void'), 10, 1);
         // $this->checkCallback();
 
@@ -145,8 +145,6 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         add_action('woocommerce_receipt_' . $this->id, array($this, 'receipt_page'));
     }
-
-
     /**
      * Returns the icon URL for this payment method
      * "icons" folder must contains .png file named like the "code" param of the payment method
@@ -642,8 +640,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
     public function process_refund($order_id, $amount = null, $reason = '')
     {
+        file_put_contents('chane-status','changed ' ,FILLE_APPEND);
         global $woocommerce;
-
+        
         if (!$amount) {
             return false;
         }
@@ -695,6 +694,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
     public function process_capture($order_id)
     {
+        file_put_contents('changed statusss3', 'changed', FILE_APPEND);
         global $woocommerce;
 
         $order = wc_get_order($order_id);
@@ -702,7 +702,6 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $amount = $order->get_total();
 
         $transaction_id = $order->get_transaction_id();
-
         if (!$transaction_id) {
             return false;
         }
@@ -716,7 +715,6 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         }
 
         $transaction_type = $this->pt_get_tran_type($order_id);
-
         if (!in_array(PaytabsEnum::TRAN_TYPE_AUTH, $transaction_type)) {
             // $order->add_order_note('Capture status: ' . "can't make capture on non Auth transaction", false);
             PaytabsHelper::log("Capture not allowed on non Auth transactions, {$order_id}", 2);
@@ -745,13 +743,16 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $success = $capRes->success;
         $message = $capRes->message;
         // $pending_success = $capRes->pending_success;
-
         PaytabsHelper::log("Capture request done, Order {$order_id} - {$success} {$message} {$tran_ref}", 1);
 
         if ($success) {
             $this->pt_set_tran_ref($order, PaytabsEnum::TRAN_TYPE_CAPTURE, $tran_ref);
             $order->set_transaction_id($tran_ref);
-            $order->save();
+            if ($order->get_status() != 'completed') {
+                $order->update_status('completed', __('Capture Success: ' . $message, 'PayTabs'));
+            } else {
+                $order->save();
+            }
         } else {
             PaytabsHelper::log("Capture failed, {$order_id} - {$message}", 3);
             $order->update_status('on-hold', __('Capture failed: ' . $message, 'PayTabs'));
