@@ -640,7 +640,6 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
     public function process_refund($order_id, $amount = null, $reason = '')
     {
-        file_put_contents('chane-status','changed ' ,FILLE_APPEND);
         global $woocommerce;
         
         if (!$amount) {
@@ -694,7 +693,6 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
     public function process_capture($order_id)
     {
-        file_put_contents('changed statusss3', 'changed', FILE_APPEND);
         global $woocommerce;
 
         $order = wc_get_order($order_id);
