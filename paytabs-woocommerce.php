@@ -67,55 +67,8 @@ register_activation_hook(__FILE__, 'woocommerce_paytabs_activated');
 
 // Load plugin function when woocommerce loaded
 add_action('plugins_loaded', 'woocommerce_paytabs_init', 0);
-add_action('admin_enqueue_scripts', 'enqueue_paytabs_script');
-function enqueue_paytabs_script() {
-  wp_enqueue_script('paytabs-custom-script', plugin_dir_url(__FILE__) . 'includes/scripts/paytabs-custom-script.js', array('jquery'), '1.0', true);
-}
-
-add_action( 'woocommerce_admin_order_data_after_payment_info', 'add_paytabs_capture_button', 10, 1 );
-function add_paytabs_capture_button( $order ) {
-  $disabled = false;
-  $order_id = $order->get_id();
-  $transaction_type = get_post_meta($order_id, WC_Gateway_Paytabs::PT_TRAN_TYPE);
-  if (!in_array(PaytabsEnum::TRAN_TYPE_AUTH, $transaction_type)){
-    $disabled = true;
-  }
-
-  echo '<div>
-        <button id="paytabs_capture_btn" data-order-id="'.$order_id.'" data-payment-method="'.$order->get_payment_method().'" data-nonce="'. wp_create_nonce("paytabs_capture_nonce") .'" type="button" class="button button-primary" '; echo $disabled ? "disabled" : ""; echo '>
-          Paytabs Capture
-        </button>
-    </div>';
-    ?>
-  <?php
-}
 
 //
-
-add_action('wp_ajax_paytabs_capture', 'wc_pt_capture');
-function wc_pt_capture(){
-  if (isset($_POST['payment_method'])) {
-    $payment_method = $_POST['payment_method'];
-  }
-
-  if (isset($_POST['order_id'])) {
-    $order_id = $_POST['order_id'];
-  }
-  
-  $order = wc_get_order( $order_id );
-  $className = "WC_Gateway_".$payment_method;
-  $payment_method_obj = new $className();
-  
-  $capture_success = $payment_method_obj->process_capture($order_id);
-  if ($capture_success) {
-    $_SESSION['paytabs_capture_type'] = 'success';
-    $_SESSION['paytabs_capture_message'] = 'Paytabs capture succeeded';
-  } else {
-    $_SESSION['paytabs_capture_type'] = 'error';
-    $_SESSION['paytabs_capture_message'] = 'Paytabs capture failed';
-  }
-  wp_die();
-}
 
 function woocommerce_paytabs_init()
 {
