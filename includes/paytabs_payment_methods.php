@@ -742,10 +742,9 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             wp_redirect($_SERVER['REQUEST_URI']);
             $_SESSION['paytabs_capture_type'] = 'success';
             $_SESSION['paytabs_capture_message'] = 'Success Capture';
-            PaytabsHelper::log("Order status set to completed , {$order_id}");
+            PaytabsHelper::log("Capture done, and order status set to completed  , {$order_id}");
             exit;
         }
-        PaytabsHelper::log("Capture done for order , {$order_id}");
     }
 
     public function process_capture($order_id)
