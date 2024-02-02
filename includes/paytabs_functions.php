@@ -88,20 +88,3 @@ function woocommerce_paytabs_check_log_permission()
         }
     }
 }
-
-
-function woocommerce_paytabs_capture_response_notice() {
-    if (isset($_SESSION['paytabs_capture_type'])) {
-        $msg = $_SESSION['paytabs_capture_message'];
-        if ($_SESSION['paytabs_capture_type'] == 'success') {
-            echo "<div class='notice notice-success is-dismissible'><p>$msg</p></div>";
-        }
-        else {
-            echo "<div class='notice notice-error is-dismissible'><p>$msg</p></div>";
-        }
-    }
-    unset($_SESSION['paytabs_capture_type']);
-    unset($_SESSION['paytabs_capture_message']);
-}
-add_action('admin_notices', 'woocommerce_paytabs_capture_response_notice');
-  
