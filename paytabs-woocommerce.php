@@ -86,17 +86,18 @@ function woocommerce_paytabs_init()
 
   global $paytabsGUpdateArr; 
   $paytabsGUpdateArr = getPaytabsUpdate();
-
+  
   if ($paytabsGUpdateArr && $paytabsGUpdateArr['has_update']) {
     add_filter('plugin_row_meta', 'paytabs_plugin_row_meta', 10, 2);
     
     function paytabs_plugin_row_meta($meta, $file) {
-
+      
       global $paytabsGUpdateArr;
-      if (strpos($file, 'paytabs-woocommerce-main/paytabs-woocommerce.php') !== false) {
-        $noticeTypeClass = ($paytabsGUpdateArr['update_severity'] == 'mandatory' ? 'notice-error' : 'notice-warning');
+
+      if (strpos($file, 'paytabs-woocommerce/paytabs-woocommerce.php') !== false) {
+        $noticeTypeClass = ($paytabsGUpdateArr['mandatory_update'] ? 'notice-error' : 'notice-warning');
         $update_message = '<div class="update-message notice inline '. $noticeTypeClass .' notice-alt">
-                            <p>There is a newer <b>('.$paytabsGUpdateArr['update_severity'].')</b> version['.$paytabsGUpdateArr['latest_version'].'] of PayTabs available.</p>
+                            <p>There is a newer version['.$paytabsGUpdateArr['latest_version'].'] of PayTabs Plugin available.</p>
                           </div>';
         array_push($meta, $update_message);
       }
@@ -186,51 +187,36 @@ function woocommerce_paytabs_activated()
 
 function getPaytabsUpdate() 
 {
-  
-  //   TESTING-PURPPOSES
-  //  --------------------
-  // $paytabsUpdateValue = [
-  //   'has_update' => true,
-  //   'latest_version' => '4.3.0',
-  //   'update_severity' => 'mandatory'
-  // ];
-  // set_transient('paytabs_update', json_encode($paytabsUpdateValue), DAY_IN_SECONDS);
-  // return $paytabsUpdateValue;
-
+  // delete_transient('paytabs_update');
+  // return;
   $paytabsUpdateTransient = get_transient('paytabs_update');
   
   if ($paytabsUpdateTransient) {
     return json_decode($paytabsUpdateTransient, true);
   }
 
-  $api_url = '';
+  $version = PAYTABS_PAYPAGE_VERSION;
+  $api_url = "https://plugins.paytabs.com/plugins-updates/wordpress-latestversion.php?current_version=$version";
 
   $response = wp_remote_get($api_url);
-
   if (is_wp_error($response)) {
-      // Handle error
-      return;
+    // Handle error
+    return;
   }
 
-  $body = wp_remote_retrieve_body($response);
-  $data = json_decode($body, true);
+  $response = json_decode(wp_remote_retrieve_body($response), true);
+  if ($response && $response['status'] == 'success') {
 
-  // Process the data received from the server
-  if ($data && isset($data['version'])) {
+    $data = $response['data'];
 
-    $latest_version = $data['version'];
-    $update_severity = $data['update_severity'];
-    
-    $hasUpdate = version_compare(PAYTABS_PAYPAGE_VERSION, $latest_version, '<');
-
-    $paytabsUpdateValue = [
-      'has_update' => (bool) $hasUpdate,
-      'latest_version' => $data['version'],
-      'update_severity' => $data['update_severity']
+    $paytabsUpdateArr = [
+      'has_update' => $data['plugin_need_update'],
+      'latest_version' => $data['latest_version'],
+      'mandatory_update' => $data['mandatory_update']
     ];
-    
-    set_transient('paytabs_update', json_encode($paytabsUpdateValue), DAY_IN_SECONDS);
-    return $paytabsUpdateValue;
+    set_transient('paytabs_update', json_encode($paytabsUpdateArr), DAY_IN_SECONDS);
+    return $paytabsUpdateArr;
+
   }
 
 }
