@@ -1091,9 +1091,9 @@ class PaytabsTokenHolder extends PaytabsExtraDataHolder
     {
         $all = parent::pt_build();
 
-        if (count($this->token_details) > 0) {
+        if ($this->token_details) {
             $all = array_merge($all, $this->token_details);
-        } else if (count($this->token_info) > 0) {
+        } else if ($this->token_info) {
             $all = array_merge($all, $this->token_info);
         }
 
