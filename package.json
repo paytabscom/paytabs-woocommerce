@@ -1,0 +1,27 @@
+{
+	"name": "paytabs-woocommerce",
+	"title": "PayTabs - WooCommerce",
+	"version": "1.0.6",
+	"author": "PayTabs",
+	"license": "GPL-3.0+",
+	"keywords": [],
+	"engines": {
+		"node": ">=6.9.4",
+		"npm": ">=1.1.0"
+	},
+	"devDependencies": {
+		"@woocommerce/dependency-extraction-webpack-plugin": "^2.2.0",
+		"@wordpress/scripts": "^27.4.0",
+		"cross-env": "7.0.3"
+	},
+	"scripts": {
+		"start": "wp-scripts start",
+		"build": "wp-scripts build && npm run i18n:build",
+		"i18n": "npm run i18n:build",
+		"i18n:build": "npm run i18n:pot && ./bin/build_i18n.sh",
+		"i18n:pot": "php -d xdebug.max_nesting_level=512 $(which wp) i18n make-pot --exclude=\"node_modules/,languages/,assets/\" --headers='{\"Report-Msgid-Bugs-To\":\"https://woocommerce.com/my-account/create-a-ticket/\", \"language-team\":\"LANGUAGE <EMAIL@ADDRESS>\"}' . languages/woocommerce-gateway-dummy.pot",
+		"i18n:json": "$(which wp) i18n make-json languages --no-purge",
+		"packages-update": "wp-scripts packages-update",
+		"check-engines": "wp-scripts check-engines"
+	}
+}
