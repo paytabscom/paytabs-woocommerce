@@ -22,16 +22,29 @@ final class WC_Gateway_Paytabs_Blocks_Support extends AbstractPaymentMethodType
 	 *
 	 * @var string
 	 */
-	protected $name = 'paytabs_all';
+	public $gateways, $id = "paytabs_blocks";
+
+	protected $name = 'paytabs_blocks';
 
 	/**
 	 * Initializes the payment method type.
 	 */
 	public function initialize()
 	{
-		$this->settings = get_option('woocommerce_paytabs_all_settings', []);
-		$gateways       = WC()->payment_gateways->payment_gateways();
-		$this->gateway  = $gateways[$this->name];
+		$this->gateways = $this->get_gateways();		
+	}
+
+	public function get_gateways()
+	{
+		$gateways = WC()->payment_gateways->payment_gateways();
+		$enabled_gateways = [];
+
+		foreach ($gateways as $gateway) {
+			if (str_starts_with($gateway->id, "paytabs_") && $gateway->enabled == "yes") {
+				$enabled_gateways[$gateway->id] = $gateway;
+			}
+		}
+		return $enabled_gateways;
 	}
 
 	/**
@@ -62,7 +75,7 @@ final class WC_Gateway_Paytabs_Blocks_Support extends AbstractPaymentMethodType
 		$script_url = PAYTABS_PAYPAGE_URL . $script_path;
 
 		wp_register_script(
-			'wc-paytabs-payments-blocks',
+			$this->id,
 			$script_url,
 			$script_asset['dependencies'],
 			$script_asset['version'],
@@ -73,7 +86,7 @@ final class WC_Gateway_Paytabs_Blocks_Support extends AbstractPaymentMethodType
 			// wp_set_script_translations( 'wc-dummy-payments-blocks', 'woocommerce-gateway-dummy', WC_Dummy_Payments::plugin_abspath() . 'languages/' );
 		}
 
-		return ['wc-paytabs-payments-blocks'];
+		return [$this->id];
 	}
 
 	/**
@@ -83,10 +96,20 @@ final class WC_Gateway_Paytabs_Blocks_Support extends AbstractPaymentMethodType
 	 */
 	public function get_payment_method_data()
 	{
-		return [
-			'title'       => $this->get_setting('title'),
-			'description' => $this->get_setting('description'),
-			'supports'    => array_filter($this->gateway->supports, [$this->gateway, 'supports'])
-		];
+		$data = [];
+
+		foreach ($this->gateways as $gateway) {
+			$gateWayData = [
+				'name' => $gateway->id,
+				'title'       => $gateway->title,
+				'supports'    => array_filter($gateway->supports, [$gateway, 'supports']),
+				'icon' => $gateway->getIcon(),
+				'description' => $gateway->description,
+			];
+
+			$key = "blocks";
+			$data[$key][] = $gateWayData;
+		}
+		return $data;
 	}
 }
