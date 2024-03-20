@@ -11,6 +11,42 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     //
     protected $_paytabsApi;
 
+    // Fields
+
+    private $paytabs_endpoint;
+    private $merchant_id;
+    private $merchant_key;
+    private $client_key;
+
+    private $trans_type;
+
+    private $_is_card_method;
+    private $allow_associated_methods;
+    private $_support_tokenise;
+    private $_support_auth_capture;
+    private $_support_iframe;
+    private $payment_form;
+    private $is_frammed_page;
+    private $is_managed_form;
+
+    private $hide_shipping;
+
+    private $order_status_success;
+    private $order_status_failed;
+    private $order_status_auth_success;
+    private $failed_send_note;
+
+    private $valu_widget_enable;
+    private $valu_widget_static_content;
+    private $valu_widget_phone_number;
+    private $valu_widget_price_threshold;
+
+    private $enable_tokenise;
+    private $tokenise_param;
+    private $token_id_param;
+
+    private $ipn_enable;
+
     // Select the PayPage to use
     private $theme_config_id;
 
@@ -153,7 +189,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
      * example: stcpay.png, applepay.png ...
      * @return string
      */
-    private function getIcon()
+    public function getIcon()
     {
         $icon_name = $this->_icon ?? "{$this->_code}.png";
 
@@ -252,7 +288,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 'title' => __('Payment form type', 'PayTabs'),
                 'type' => 'select',
                 'options' => $redirect_modes,
-                'description' => __("Hosted form on PayTabs server is the secure solution of choice, While iFrame provides better customer experience (https strongly advised)", 'PayTabs'),
+                'description' => __("Hosted form on PayTabs server is the secure solution of choice, While iFrame provides better customer experience (https strongly advised), <br><strong>Managed form option</strong> is not yet supported by the new blocks mode", 'PayTabs'),
                 'default' => 'redirect',
                 'desc_tip' => false,
             ];

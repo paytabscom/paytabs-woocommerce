@@ -66,12 +66,12 @@ class WC_Gateway_Paytabs_Sadad extends WC_Gateway_Paytabs
     protected $_description = 'PayTabs - Sadad payment method';
 }
 
-class WC_Gateway_Paytabs_Fawry extends WC_Gateway_Paytabs
+/*class WC_Gateway_Paytabs_Fawry extends WC_Gateway_Paytabs
 {
     protected $_code = 'fawry';
     protected $_title = 'PayTabs - @Fawry';
     protected $_description = 'PayTabs - @Fawry payment method';
-}
+}*/
 
 class WC_Gateway_Paytabs_Knpay extends WC_Gateway_Paytabs
 {
