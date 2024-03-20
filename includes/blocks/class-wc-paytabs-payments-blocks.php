@@ -9,20 +9,13 @@ use Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodTyp
  */
 final class WC_Gateway_Paytabs_Blocks_Support extends AbstractPaymentMethodType
 {
-
-	/**
-	 * The gateway instance.
-	 *
-	 * @var WC_Gateway_Dummy
-	 */
-	private $gateway;
-
 	/**
 	 * Payment method name/id/slug.
 	 *
 	 * @var string
 	 */
-	public $gateways, $id = "paytabs_blocks";
+	public $gateways = [];
+	public $id = "paytabs_blocks";
 
 	protected $name = 'paytabs_blocks';
 
@@ -31,7 +24,7 @@ final class WC_Gateway_Paytabs_Blocks_Support extends AbstractPaymentMethodType
 	 */
 	public function initialize()
 	{
-		$this->gateways = $this->get_gateways();		
+		$this->gateways = $this->get_gateways();
 	}
 
 	public function get_gateways()
@@ -101,8 +94,8 @@ final class WC_Gateway_Paytabs_Blocks_Support extends AbstractPaymentMethodType
 		foreach ($this->gateways as $gateway) {
 			$gateWayData = [
 				'name' => $gateway->id,
-				'title'       => $gateway->title,
-				'supports'    => array_filter($gateway->supports, [$gateway, 'supports']),
+				'title' => $gateway->title,
+				'supports' => array_filter($gateway->supports, [$gateway, 'supports']),
 				'icon' => $gateway->getIcon(),
 				'description' => $gateway->description,
 			];
