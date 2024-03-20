@@ -252,7 +252,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 'title' => __('Payment form type', 'PayTabs'),
                 'type' => 'select',
                 'options' => $redirect_modes,
-                'description' => __("Hosted form on PayTabs server is the secure solution of choice, While iFrame provides better customer experience (https strongly advised)", 'PayTabs'),
+                'description' => __("Hosted form on PayTabs server is the secure solution of choice, While iFrame provides better customer experience (https strongly advised), <br><strong>Managed form option</strong> is not yet supported by the new blocks mode", 'PayTabs'),
                 'default' => 'redirect',
                 'desc_tip' => false,
             ];
