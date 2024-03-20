@@ -34,7 +34,7 @@ const Label = ( props ) => {
 	
 	return <div style={{ display: 'flex', justifyContent: 'space-between', width: "100%", paddingRight: 5, paddingLeft: 5 }}>
 				<PaymentMethodLabel text={decodeEntities(props.setting.title)} />
-				<img src={props.setting.icon} alt={props.setting.name}/>
+				{props.setting.icon != '' && <img src={props.setting.icon} alt={props.setting.name}/>}
 			</div>
 };
 
