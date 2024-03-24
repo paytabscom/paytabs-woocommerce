@@ -9,7 +9,7 @@
  * Plugin URI:    https://ClickPay.com.sa/
  * Description:   ClickPay is a <strong>3rd party payment gateway</strong>. Ideal payment solutions for your internet business.
 
- * Version:       4.20.0
+ * Version:       5.0.0
  * Requires PHP:  7.0
  * Author:        ClickPay
  * Author URI:    https://ClickPay.com.sa/
@@ -22,8 +22,9 @@ if (!function_exists('add_action')) {
 
 
 
-define('CLICKPAY_PAYPAGE_VERSION', '4.20.0');
+define('CLICKPAY_PAYPAGE_VERSION', '5.0.0');
 define('CLICKPAY_PAYPAGE_DIR', plugin_dir_path(__FILE__));
+define('CLICKPAY_PAYPAGE_URL', plugins_url("/", __FILE__));
 define('CLICKPAY_PAYPAGE_ICONS_URL', plugins_url("icons/", __FILE__));
 define('CLICKPAY_PAYPAGE_IMAGES_URL', plugins_url("images/", __FILE__));
 define('CLICKPAY_DEBUG_FILE', WP_CONTENT_DIR . "/debug_clickpay.log");
@@ -117,6 +118,20 @@ function woocommerce_clickpay_init()
     $links[] = "<a href='{$settings_url}'>Settings</a>";
 
     return $links;
+  }
+
+  add_action('woocommerce_blocks_loaded', 'woocommerce_gateway_clickpay_woocommerce_block_support');
+  function woocommerce_gateway_clickpay_woocommerce_block_support()
+  {
+    if (class_exists('Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType')) {
+      require_once 'includes/blocks/class-wc-clickpay-payments-blocks.php';
+      add_action(
+        'woocommerce_blocks_payment_method_type_registration',
+        function (Automattic\WooCommerce\Blocks\Payments\PaymentMethodRegistry $payment_method_registry) {
+          $payment_method_registry->register(new WC_Gateway_Clickpay_Blocks_Support());
+        }
+      );
+    }
   }
 
 

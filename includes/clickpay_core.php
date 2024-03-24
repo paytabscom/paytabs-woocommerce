@@ -2,10 +2,10 @@
 
 /**
  * ClickPay v2 PHP SDK
- * Version: 2.15.0
+ * Version: 2.21.0
  */
 
-define('CLICKPAY_SDK_VERSION', '2.15.0');
+define('CLICKPAY_SDK_VERSION', '2.21.0');
 define('CLICKPAY_DEBUG_FILE_NAME', 'debug_clickpay.log');
 define('CLICKPAY_DEBUG_SEVERITY', ['Info', 'Warning', 'Error']);
 define('CLICKPAY_PREFIX', 'Clickpay');
@@ -82,6 +82,14 @@ abstract class ClickpayHelper
         return $methods;
     }
 
+     /**
+     * @return true if the payment method can use the Card methods features
+     */
+    static function canUseCardFeatures($code)
+    {
+        return ($code == 'all') || static::isCardPayment($code);
+    }
+
     static function supportTokenization($code)
     {
         foreach (ClickpayApi::PAYMENT_TYPES as $key => $value) {
@@ -117,6 +125,16 @@ abstract class ClickpayHelper
         foreach (ClickpayApi::PAYMENT_TYPES as $key => $value) {
             if ($value['name'] === $code) {
                 return in_array(ClickpayApi::GROUP_REFUND, $value['groups']);
+            }
+        }
+        return false;
+    }
+
+    static function supportPending($code)
+    {
+        foreach (ClickpayApi::PAYMENT_TYPES as $key => $value) {
+            if ($value['name'] === $code) {
+                return in_array(ClickpayApi::GROUP_PENDING, $value['groups']);
             }
         }
         return false;
@@ -225,6 +243,30 @@ abstract class ClickpayHelper
             }
         }
     }
+
+    static function isValidDiscountPattern($pattern)
+    {
+        return preg_match(ClickpayEnum::DISCOUNT_PATTERN_REGEX, $pattern);
+    }
+
+    /**
+     * Validate the patterns for discount option
+     * @param $patterns_str string, comma separated
+     */
+    static function isValidDiscountPatterns($patterns_str)
+    {
+        $patterns = explode(',', $patterns_str);
+
+        if (empty($patterns)) return false;
+
+        foreach ($patterns as $prefix) {
+            if (!static::isValidDiscountPattern($prefix)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
 }
 
 
@@ -237,6 +279,9 @@ abstract class ClickpayEnum
     const TRAN_TYPE_CAPTURE  = 'capture';
     const TRAN_TYPE_SALE     = 'sale';
     const TRAN_TYPE_REGISTER = 'register';
+    // Auth Extension is used to refresh the hold on the funds
+    // Followup an Auth transaction
+    const TRAN_TYPE_AUTH_EXT = 'authext';
 
 
     const TRAN_TYPE_PAYMENT_REQUEST = 'payment request';
@@ -262,15 +307,34 @@ abstract class ClickpayEnum
     const TRAN_STATUS_Expired    = 'X';
 
     //
+    const TOKEN_TYPE_REGISTERED = 'registered';
+    const TOKEN_TYPE_UNSCHEDULED = 'unscheduled';
+    const TOKEN_TYPE_RECURRING_FIXED = 'recurring_fixed';
+    const TOKEN_TYPE_RECURRING_VARIABLE = 'recurring_variable';
+
 
     const PP_ERR_DUPLICATE = 4;
 
     //
 
+    const DISCOUNT_PERCENTAGE = "percentage";
+    const DISCOUNT_FIXED = "fixed";
+
+    const DISCOUNT_PATTERN_REGEX = '/^[0-9]{4,10}$/';
+
+    //
+
+
     static function TranIsAuth($tran_type)
     {
         return strcasecmp($tran_type, ClickpayEnum::TRAN_TYPE_AUTH) == 0;
     }
+
+    static function TranIsAuthExt($tran_type)
+    {
+        return strcasecmp($tran_type, ClickpayEnum::TRAN_TYPE_AUTH_EXT) == 0;
+    }
+
 
     static function TranIsSale($tran_type)
     {
@@ -385,6 +449,12 @@ class ClickpayHolder
     private $cart;
 
     /**
+     * return
+     * callback
+     */
+    private $urls;
+
+    /**
      * cart_name
      * cart_version
      * plugin_version
@@ -400,9 +470,12 @@ class ClickpayHolder
      */
     public function pt_build()
     {
-        $all = array_merge(
+        $all = [];
+        $this->pt_merges(
+            $all,
             $this->transaction,
             $this->cart,
+            $this->urls,
             $this->plugin_info
         );
 
@@ -442,6 +515,16 @@ class ClickpayHolder
         return $this;
     }
 
+    public function set07URLs($return_url, $callback_url)
+    {
+        $this->urls = [
+            'return'   => $return_url,
+            'callback' => $callback_url,
+        ];
+
+        return $this;
+    }
+
     public function set99PluginInfo($platform_name, $platform_version, $plugin_version = null)
     {
         if (!$plugin_version) {
@@ -460,6 +543,46 @@ class ClickpayHolder
     }
 }
 
+/**
+ * Holder class: Holds & Generates the paramters array.
+ * Holds & Generates the parameters array for the payments
+ * Members:
+ * - airline_data
+ *  -- pnr_code
+ */
+abstract class ClickpayExtraDataHolder extends ClickpayHolder
+{
+    private $airline_data;
+
+    /**
+     * @return array
+     */
+    public function pt_build()
+    {
+        $all = parent::pt_build();
+
+        $this->pt_merges(
+            $all,
+            $this->airline_data,
+        );
+
+        return $all;
+    }
+
+    public function set60AirlineData($pnr_code)
+    {
+        if (!is_null($pnr_code)) {
+            $this->airline_data = [
+                'airline_data' => [
+                    'pnr_code' => $pnr_code,
+                ],
+            ];
+        }
+
+        return $this;
+    }
+}
+
 
 /**
  * Holder class, Inherit class ClickpayHolder
@@ -468,12 +591,11 @@ class ClickpayHolder
  * - Payment method (payment_code)
  * - Customer Details
  * - Shipping Details
- * - URLs (return & callback)
  * - Language (paypage_lang)
  * - Tokenise
  * - User defined
  */
-abstract class ClickpayBasicHolder extends ClickpayHolder
+abstract class ClickpayBasicHolder extends ClickpayExtraDataHolder
 {
     /**
      * payment_type
@@ -506,11 +628,6 @@ abstract class ClickpayBasicHolder extends ClickpayHolder
      */
     private $shipping_details;
 
-    /**
-     * return
-     * callback
-     */
-    private $urls;
 
     /**
      * paypage_lang
@@ -522,6 +639,15 @@ abstract class ClickpayBasicHolder extends ClickpayHolder
      * show_save_card
      */
     private $tokenise;
+
+     /**
+     * tokenise
+     * token_type
+     * counter
+     * total_count
+     * show_save_card
+     */
+    private $token_info;
 
     /**
      * udf[1-9]
@@ -540,11 +666,11 @@ abstract class ClickpayBasicHolder extends ClickpayHolder
         $this->pt_merges(
             $all,
             $this->payment_code,
-            $this->urls,
             $this->customer_details,
             $this->shipping_details,
             $this->lang,
             $this->tokenise,
+            $this->token_info,
             $this->user_defined
         );
 
@@ -639,18 +765,6 @@ abstract class ClickpayBasicHolder extends ClickpayHolder
         return $this;
     }
 
-
-    public function set07URLs($return_url, $callback_url)
-    {
-        $this->urls = [
-            'return'   => $return_url,
-            'callback' => $callback_url,
-        ];
-
-        return $this;
-    }
-
-
     public function set08Lang($lang_code)
     {
         $this->lang = [
@@ -661,7 +775,8 @@ abstract class ClickpayBasicHolder extends ClickpayHolder
     }
 
 
-    /**
+      /**
+     * @deprecated
      * @param int $token_format integer between 2 and 6, Set the Token format
      * @param bool $optional Display the save card option on the payment page
      */
@@ -675,6 +790,34 @@ abstract class ClickpayBasicHolder extends ClickpayHolder
         }
 
         return $this;
+    }
+
+     /**
+     * @param int $token_format integer between 2 and 6, Set the Token format
+     * @param string $token_type
+     * @param int $counter
+     * @param int $total_count
+     * @param bool $optional Display the save card option on the payment page
+     */
+    public function set11TokeniseInfo($on, $token_format = 2, $token_type = ClickpayEnum::TOKEN_TYPE_UNSCHEDULED, $counter = null, $total_count = null, $optional = false)
+    {
+        if ($on) {
+            $_info = [
+                'tokenise' => $token_format,
+                'token_type' => $token_type,
+            ];
+            if (!is_null($counter)) {
+                $_info['counter'] = $counter;
+            }
+            if (!is_null($total_count)) {
+                $_info['total_count'] = $total_count;
+            }
+
+            $this->token_info = [
+                'token_info' => $_info,
+                'show_save_card' => $optional
+            ];
+        }
     }
 
 
@@ -729,6 +872,11 @@ class ClickpayRequestHolder extends ClickpayBasicHolder
      */
     private $alt_currency;
 
+     /**
+     * card_discounts
+     */
+    private $card_discounts;
+
     //
 
     /**
@@ -743,7 +891,8 @@ class ClickpayRequestHolder extends ClickpayBasicHolder
             $this->hide_shipping,
             $this->framed,
             $this->config_id,
-            $this->alt_currency
+            $this->alt_currency,
+            $this->card_discounts
         );
 
         return $all;
@@ -799,6 +948,58 @@ class ClickpayRequestHolder extends ClickpayBasicHolder
         }
         return $this;
     }
+
+    public function set13CardDiscounts($discount_patterns, $discount_amounts, $discount_types)
+    {
+        if (empty($discount_patterns)) {
+            ClickpayHelper::log('clickpay admin: Discount arrays must be not empty', 3);
+            return $this;
+        }
+
+        $count = count($discount_patterns);
+
+        if ($count != count($discount_amounts) || $count != count($discount_types)) {
+            ClickpayHelper::log('clickpay admin: Discount arrays must have the same length', 3);
+            return $this;
+        }
+
+        $cards = [];
+
+        for ($i = 0; $i < $count; $i++) {
+            $pattern = $discount_patterns[$i];
+            $amount = $discount_amounts[$i];
+            $type = $discount_types[$i];
+
+            if (!ClickpayHelper::isValidDiscountPattern($pattern)) {
+                ClickpayHelper::log('clickpay admin: Discount pattern not valid', 2);
+                // uncomment if you want to stop the request, otherwise send the reqeust
+                // return $this;
+            }
+
+            if ($type == ClickpayEnum::DISCOUNT_PERCENTAGE) {
+                $type_key = 'discount_percent';
+                $title = "$discount_amounts[$i]% discount applied on cards starting with $discount_patterns[$i]";
+            } elseif ($type == ClickpayEnum::DISCOUNT_FIXED) {
+                $type_key = 'discount_amount';
+                $title = "$discount_amounts[$i] fixed discount applied on cards starting with $discount_patterns[$i]";
+            } else {
+                ClickpayHelper::log('clickpay admin: Discount type does not exist', 3);
+                return $this;
+            }
+
+            $cards[$i]['discount_cards'] = $pattern;
+            $cards[$i][$type_key] = $amount;
+            $cards[$i]['discount_title'] = $title;
+        }
+
+        if (count($cards) > 0) {
+            $this->card_discounts = [
+                'card_discounts' => $cards
+            ];
+        }
+
+        return $this;
+    }
 }
 
 
@@ -808,13 +1009,22 @@ class ClickpayRequestHolder extends ClickpayBasicHolder
  * Members:
  * - Token Info (token & tran_ref)
  */
-class ClickpayTokenHolder extends ClickpayHolder
+class ClickpayTokenHolder extends ClickpayExtraDataHolder
 {
     /**
      * token
      * tran_ref
      */
     private $token_info;
+
+     /**
+     * token
+     * tran_ref
+     * token_type
+     * counter
+     * total_count
+     */
+    private $token_details;
 
 
     public function set20Token($tran_ref, $token = null)
@@ -830,11 +1040,47 @@ class ClickpayTokenHolder extends ClickpayHolder
         return $this;
     }
 
+    public function set21TokenInfo($tran_ref, $token, $token_type, $counter, $total_count)
+    {
+        $this->token_details = [];
+
+        $details = [];
+
+        if ($tran_ref) {
+            $details = ['tran_ref' => $tran_ref];
+        }
+
+        if ($token) {
+            $details['token'] = $token;
+        }
+
+        if ($token_type) {
+            $details['token_type'] = $token_type;
+        }
+        if (!is_null($counter)) {
+            $details['counter'] = $counter;
+        }
+        if (!is_null($total_count)) {
+            $details['total_count'] = $total_count;
+        }
+
+        if (count($details) > 0) {
+            $this->token_details['token_info'] = $details;
+        }
+
+        return $this;
+    }
+
+
     public function pt_build()
     {
         $all = parent::pt_build();
 
-        $all = array_merge($all, $this->token_info);
+        if ($this->token_details) {
+            $all = array_merge($all, $this->token_details);
+        } else if ($this->token_info) {
+            $all = array_merge($all, $this->token_info);
+        }
 
         return $all;
     }
@@ -1010,15 +1256,16 @@ class ClickpayApi
     const GROUP_AUTH_CAPTURE = 'auth_capture';
     const GROUP_REFUND = 'refund';
     const GROUP_IFRAME = 'iframe';
+    const GROUP_PENDING = 'payment_request';
 
     const PAYMENT_TYPES = [
-        '0'  => ['name' => 'all', 'title' => 'ClickPay - All', 'currencies' => null, 'groups' => [ClickpayApi::GROUP_TOKENIZE, ClickpayApi::GROUP_AUTH_CAPTURE, ClickpayApi::GROUP_IFRAME, ClickpayApi::GROUP_REFUND]],
+        '0'  => ['name' => 'all', 'title' => 'ClickPay - All', 'currencies' => null, 'groups' => [ClickpayApi::GROUP_TOKENIZE, ClickpayApi::GROUP_AUTH_CAPTURE, ClickpayApi::GROUP_IFRAME, ClickpayApi::GROUP_REFUND, ClickpayApi::GROUP_PENDING]],
         '1'  => ['name' => 'stcpay', 'title' => 'ClickPay - StcPay', 'currencies' => ['SAR'], 'groups' => [ClickpayApi::GROUP_IFRAME, ClickpayApi::GROUP_REFUND]],
         '2'  => ['name' => 'stcpayqr', 'title' => 'ClickPay - StcPay(QR)', 'currencies' => ['SAR'], 'groups' => []],
         '3'  => ['name' => 'applepay', 'title' => 'ClickPay - ApplePay', 'currencies' => null, 'groups' => [ClickpayApi::GROUP_TOKENIZE, ClickpayApi::GROUP_AUTH_CAPTURE, ClickpayApi::GROUP_REFUND]],
         '5'  => ['name' => 'mada', 'title' => 'ClickPay - mada', 'currencies' => ['SAR'], 'groups' => [ClickpayApi::GROUP_TOKENIZE, ClickpayApi::GROUP_CARDS, ClickpayApi::GROUP_AUTH_CAPTURE, ClickpayApi::GROUP_IFRAME, ClickpayApi::GROUP_REFUND]],
         '6'  => ['name' => 'creditcard', 'title' => 'ClickPay - CreditCard', 'currencies' => null, 'groups' => [ClickpayApi::GROUP_TOKENIZE, ClickpayApi::GROUP_CARDS, ClickpayApi::GROUP_CARDS_INTERNATIONAL, ClickpayApi::GROUP_AUTH_CAPTURE, ClickpayApi::GROUP_IFRAME, ClickpayApi::GROUP_REFUND]],
-        '7'  => ['name' => 'sadad', 'title' => 'ClickPay - Sadad', 'currencies' => ['SAR'], 'groups' => [ClickpayApi::GROUP_IFRAME]],
+        '7'  => ['name' => 'sadad', 'title' => 'ClickPay - Sadad', 'currencies' => ['SAR'], 'groups' => [ClickpayApi::GROUP_IFRAME, ClickpayApi::GROUP_PENDING]],
         '10' => ['name' => 'amex', 'title' => 'ClickPay - Amex', 'currencies' => ['AED', 'SAR', 'USD'], 'groups' => [ClickpayApi::GROUP_TOKENIZE, ClickpayApi::GROUP_CARDS, ClickpayApi::GROUP_CARDS_INTERNATIONAL, ClickpayApi::GROUP_AUTH_CAPTURE, ClickpayApi::GROUP_IFRAME, ClickpayApi::GROUP_REFUND]],
         '15' => ['name' => 'samsungpay', 'title' => 'ClickPay - SamsungPay', 'currencies' => ['AED', 'SAR'], 'groups' => [ClickpayApi::GROUP_REFUND]],
         '19' => ['name' => 'urpay', 'title' => 'ClickPay - UrPay', 'currencies' => ['SAR'], 'groups' => [ClickpayApi::GROUP_IFRAME, ClickpayApi::GROUP_REFUND]],
@@ -1050,6 +1297,23 @@ class ClickpayApi
 
     //
 
+    /**
+     * Merge and return all Currency codes available in the payment methods list
+     */
+    public static function getCurrencies()
+    {
+        $currencies = [];
+        foreach (ClickpayApi::PAYMENT_TYPES as $key => $value) {
+            $_currencies = $value['currencies'];
+            if ($_currencies) {
+                $_currencies = array_filter($_currencies);
+                $currencies = array_merge($currencies, $_currencies);
+            }
+        }
+        $currencies = array_unique($currencies);
+        return $currencies;
+    }
+
     public static function getEndpoints()
     {
         $endpoints = [];
@@ -1076,7 +1340,11 @@ class ClickpayApi
 
     private function __construct($region, $profile_id, $server_key)
     {
-        $this->base_url = self::BASE_URLS[$region]['endpoint'];
+        if (array_key_exists($region, self::BASE_URLS)) {
+            $this->base_url = self::BASE_URLS[$region]['endpoint'];
+        } else {
+            ClickpayHelper::log("clickpay Admin: Region {$region} is not valid", 2);
+        }
         $this->setAuth($profile_id, $server_key);
     }
 
@@ -1098,7 +1366,8 @@ class ClickpayApi
             $values['tran_class'] == ClickpayEnum::TRAN_CLASS_RECURRING
             || array_key_exists('payment_token', $values)
             || array_key_exists('apple_pay_token', $values)
-            || array_key_exists('card_details', $values);
+            || array_key_exists('card_details', $values)
+            || (array_key_exists('token', $values) || array_key_exists('token_info', $values));
 
         $response = $this->sendRequest(self::URL_REQUEST, $values);
 
@@ -1250,7 +1519,7 @@ class ClickpayApi
             $_paypage->success = false;
         } else {
             $_paypage->success = isset($paypage->tran_ref, $paypage->redirect_url) && !empty($paypage->redirect_url);
-
+            $_paypage->is_redirect = isset($paypage->tran_ref, $paypage->redirect_url) && !empty($paypage->redirect_url);
             $_paypage->payment_url = @$paypage->redirect_url;
         }
 
