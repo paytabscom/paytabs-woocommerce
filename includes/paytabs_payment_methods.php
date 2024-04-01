@@ -463,7 +463,12 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
     private function is_tokenise()
     {
-        return (bool)filter_input(INPUT_POST, $this->tokenise_param, FILTER_VALIDATE_BOOLEAN);
+        if (!array_key_exists( $this->tokenise_param, $_POST ) ){
+            return false;
+        }
+
+        $isTokenized = (bool) $_POST["$this->tokenise_param"];
+        return $isTokenized;
     }
 
     private function get_token()
