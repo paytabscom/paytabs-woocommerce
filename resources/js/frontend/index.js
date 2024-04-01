@@ -6,7 +6,7 @@ import { getSetting } from '@woocommerce/settings';
 
 const settings = getSetting( 'paytabs_blocks_data', {} );
 
-const defaultLabel = __('PayTabs Payments');
+// const defaultLabel = __('PayTabs Payments');
 
 /**
  * Content component
@@ -39,8 +39,8 @@ const Label = ( props ) => {
 };
 
 
-// registerPaymentMethod( Paytabs );
 settings.blocks.forEach( setting => {
+	const supportTokenization = Boolean(setting.supports.includes("tokenization") && setting.enable_tokenise == "yes");
 	let gateWay = {
 		name: setting.name,
 		label: <Label setting={setting} />,
@@ -49,6 +49,8 @@ settings.blocks.forEach( setting => {
 		canMakePayment: () => true,
 		ariaLabel: decodeEntities(setting.title),
 		supports: {
+			showSavedCards: supportTokenization,
+			showSaveOption: supportTokenization,
 			features: setting.supports,
 		},
 	};
