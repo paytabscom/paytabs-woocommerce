@@ -1,7 +1,7 @@
 {
 	"name": "paytabs-woocommerce",
 	"title": "PayTabs - WooCommerce",
-	"version": "1.0.6",
+	"version": "1.0.7",
 	"author": "PayTabs",
 	"license": "GPL-3.0+",
 	"keywords": [],
@@ -10,8 +10,8 @@
 		"npm": ">=1.1.0"
 	},
 	"devDependencies": {
-		"@woocommerce/dependency-extraction-webpack-plugin": "^2.2.0",
-		"@wordpress/scripts": "^27.4.0",
+		"@woocommerce/dependency-extraction-webpack-plugin": "^3.0.1",
+		"@wordpress/scripts": "^27.8.0",
 		"cross-env": "7.0.3"
 	},
 	"scripts": {
