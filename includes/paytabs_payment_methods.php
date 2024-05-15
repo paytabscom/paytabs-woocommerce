@@ -41,7 +41,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     private $valu_widget_phone_number;
     private $valu_widget_price_threshold;
 
-    private $enable_tokenise;
+    public $enable_tokenise;
     private $tokenise_param;
     private $token_id_param;
 

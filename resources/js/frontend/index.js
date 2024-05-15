@@ -38,9 +38,8 @@ const Label = ( props ) => {
 			</div>
 };
 
-
 settings.blocks.forEach( setting => {
-	const supportTokenization = Boolean(setting.supports.includes("tokenization") && setting.enable_tokenise == "yes");
+	let supportTokenization = setting.supports.includes("tokenization") && setting.enable_tokenise;
 	let gateWay = {
 		name: setting.name,
 		label: <Label setting={setting} />,
