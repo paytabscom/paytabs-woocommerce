@@ -38,6 +38,7 @@ const Label = ( props ) => {
 			</div>
 };
 
+let hasSubscription = settings.cart.has_subscription;
 settings.blocks.forEach( setting => {
 	let supportTokenization = setting.supports.includes("tokenization") && setting.enable_tokenise;
 	let gateWay = {
@@ -49,7 +50,7 @@ settings.blocks.forEach( setting => {
 		ariaLabel: decodeEntities(setting.title),
 		supports: {
 			showSavedCards: supportTokenization,
-			showSaveOption: supportTokenization,
+			showSaveOption: supportTokenization && !hasSubscription,
 			features: setting.supports,
 		},
 	};

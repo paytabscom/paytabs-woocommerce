@@ -104,6 +104,8 @@ final class WC_Gateway_Paytabs_Blocks_Support extends AbstractPaymentMethodType
 			$key = "blocks";
 			$data[$key][] = $gateWayData;
 		}
+		$data['cart']['has_subscription'] = class_exists('WC_Subscriptions_Cart') && WC_Subscriptions_Cart::cart_contains_subscription();
+
 		return $data;
 	}
 }
