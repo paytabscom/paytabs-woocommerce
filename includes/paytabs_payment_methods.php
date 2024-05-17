@@ -569,12 +569,18 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 PaytabsHelper::log("Duplicate issue, Order {$order_id}", 1);
 
                 $cached_payment_page = WC()->session->get('payment_page_' . $order_id);
-                $payment_url = $cached_payment_page;
+                if ($cached_payment_page) {
+                    WC()->session->set('payment_page_' . $order_id, null);
+                    $payment_url = $cached_payment_page;
 
-                if ($this->is_frammed_page) {
-                    $this->pt_echo_animation(true);
+                    if ($this->is_frammed_page) {
+                        $this->pt_echo_animation(true);
 
-                    echo "<iframe src='{$payment_url}' width='100%' height='auto' style='min-width: auto; min-height: 700px; border: 0' onload='document.getElementById(\"pt_loader\").style.display=\"none\";' />";
+                        echo "<iframe src='{$payment_url}' width='100%' height='auto' style='min-width: auto; min-height: 700px; border: 0' onload='document.getElementById(\"pt_loader\").style.display=\"none\";' />";
+                        return;
+                    }
+                } else {
+                    PaytabsHelper::log("Duplicate issue, Order {$order_id}, No payment page URL", 2);
                 }
             } else {
                 $errorMessage = $message;
