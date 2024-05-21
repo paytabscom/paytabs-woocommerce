@@ -9,7 +9,7 @@
  * Plugin URI:    https://paytabs.com/
  * Description:   PayTabs is a <strong>3rd party payment gateway</strong>. Ideal payment solutions for your internet business.
 
- * Version:       4.22.0
+ * Version:       5.1.0
  * Requires PHP:  7.0
  * Author:        PayTabs
  * Author URI:    integration@paytabs.com
@@ -20,8 +20,9 @@ if (!function_exists('add_action')) {
 }
 
 
-define('PAYTABS_PAYPAGE_VERSION', '4.22.0');
+define('PAYTABS_PAYPAGE_VERSION', '5.1.0');
 define('PAYTABS_PAYPAGE_DIR', plugin_dir_path(__FILE__));
+define('PAYTABS_PAYPAGE_URL', plugins_url("/", __FILE__));
 define('PAYTABS_PAYPAGE_ICONS_URL', plugins_url("icons/", __FILE__));
 define('PAYTABS_PAYPAGE_IMAGES_URL', plugins_url("images/", __FILE__));
 define('PAYTABS_DEBUG_FILE', WP_CONTENT_DIR . "/debug_paytabs.log");
@@ -37,7 +38,7 @@ define('PAYTABS_PAYPAGE_METHODS', [
   'applepay'   => 'WC_Gateway_Paytabs_Applepay',
   'omannet'    => 'WC_Gateway_Paytabs_Omannet',
   'sadad'      => 'WC_Gateway_Paytabs_Sadad',
-  'fawry'      => 'WC_Gateway_Paytabs_Fawry',
+  // 'fawry'      => 'WC_Gateway_Paytabs_Fawry',
   'knet'       => 'WC_Gateway_Paytabs_Knpay',
   'amex'       => 'WC_Gateway_Paytabs_Amex',
   'valu'       => 'WC_Gateway_Paytabs_Valu',
@@ -139,6 +140,20 @@ function woocommerce_paytabs_init()
   add_filter('plugin_action_links_' . plugin_basename(__FILE__), 'paytabs_add_action_links');
 
   add_action('woocommerce_single_product_summary', 'valu_widget', 21);
+
+  add_action('woocommerce_blocks_loaded', 'woocommerce_gateway_paytabs_woocommerce_block_support');
+  function woocommerce_gateway_paytabs_woocommerce_block_support()
+  {
+    if (class_exists('Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType')) {
+      require_once 'includes/blocks/class-wc-paytabs-payments-blocks.php';
+      add_action(
+        'woocommerce_blocks_payment_method_type_registration',
+        function (Automattic\WooCommerce\Blocks\Payments\PaymentMethodRegistry $payment_method_registry) {
+          $payment_method_registry->register(new WC_Gateway_Paytabs_Blocks_Support());
+        }
+      );
+    }
+  }
 
   function valu_widget()
   {
