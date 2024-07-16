@@ -2,22 +2,31 @@
 
 /**
  * PayTabs v2 PHP SDK
- * Version: 2.21.0
+ * Version: 2.22.0
  * PHP >= 7.0.0
  */
 
-define('PAYTABS_SDK_VERSION', '2.21.0');
+define('PAYTABS_SDK_VERSION', '2.22.0');
 
 define('PAYTABS_DEBUG_FILE_NAME', 'debug_paytabs.log');
 define('PAYTABS_DEBUG_SEVERITY', ['Info', 'Warning', 'Error']);
 define('PAYTABS_PREFIX', 'PayTabs');
-
 
 abstract class PaytabsHelper
 {
     static function paymentType($key)
     {
         return PaytabsApi::PAYMENT_TYPES[$key]['name'];
+    }
+
+    static function getPaymentMethodDetails($code)
+    {
+        foreach (PaytabsApi::PAYMENT_TYPES as $k => $v) {
+            if ($v['name'] == $code) {
+                return $v;
+            }
+        }
+        return false;
     }
 
     static function paymentAllowed($code, $currencyCode)
@@ -272,6 +281,119 @@ abstract class PaytabsHelper
 
         return true;
     }
+
+    /** Checks if the PT payload has applied a valid discount.
+     * @return bool
+     */
+    static function hasDiscountApplied($patterns, $amounts, $types, $pt_response)
+    {
+        $applied_discounts = self::getAppliedDiscounts($patterns, $pt_response);
+        if (empty($applied_discounts)) return false;
+
+        $cart_amount = (float)$pt_response->cart_amount;
+        $tran_total = (float)$pt_response->tran_total;
+        if ($cart_amount == $tran_total) return false;
+
+        $_idxs = implode(',', $applied_discounts);
+        PaytabsHelper::log("Discount flag detected, Amount: {$cart_amount} >> {$tran_total}, Indexes [{$_idxs}]", 1);
+
+        foreach ($applied_discounts as $i) {
+            $discount_amount = $amounts[$i];
+            $discount_type = $types[$i];
+
+            $valid_discount = self::isValidDiscount($discount_type, $discount_amount, $cart_amount, $tran_total);
+            if ($valid_discount) {
+                return $i;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * If the response payload contains the Discount flag set
+     * And if the used card in the trx matches any of the card patterns in the system
+     * @return array of indexes of the used card patterns
+     */
+    static function getAppliedDiscounts($patterns, $pt_response, $udf_key = 'udf3')
+    {
+        $user_defined = @$pt_response->user_defined;
+        if (!$user_defined) return false;
+
+        $udf3 = @$user_defined->$udf_key;
+        if (!$udf3) return false;
+
+        if ($udf3 != PaytabsEnum::DISCOUNT_FLAG) return false;
+
+        $card_used = @$pt_response->payment_info->payment_description;
+        if (!$card_used) return false;
+
+        $card_used = substr(str_replace(' ', '', $card_used), 0, 6);
+
+        $count = count($patterns);
+        if ($count < 1) return false;
+
+        $indexes = [];
+
+        $card_used_length = strlen($card_used);
+        for ($i = 0; $i < $count; $i++) {
+            $pattern_str = $patterns[$i];
+            $patterns_arr = explode(',', $pattern_str);
+            foreach ($patterns_arr as $pattern) {
+                $shared_length = min(strlen($pattern), $card_used_length);
+
+                if (substr($pattern, 0, $shared_length) == substr($card_used, 0, $shared_length)) {
+                    PaytabsHelper::log("Discount matched: Card ($card_used), {$pattern_str} => {$pattern}", 1);
+
+                    $indexes[] = $i;
+                }
+            }
+        }
+
+        if (count($indexes) > 0) {
+            return $indexes;
+        }
+
+        return false;
+    }
+
+    /**
+     * Validate the discount amount value.
+     * @return bool
+     */
+    static function isValidDiscount($discount_type, $discount_amount, $amount_original, $amount_discounted)
+    {
+        $amount_original = (float)$amount_original;
+        $amount_discounted = (float)$amount_discounted;
+        // if ($amount_original == $amount_discounted) return false;
+
+        $computed_discount = 0;
+        $computed_amount = 0;
+
+        if ($discount_type == PaytabsEnum::DISCOUNT_FIXED) {
+            $computed_discount = $discount_amount;
+        } elseif ($discount_type == PaytabsEnum::DISCOUNT_PERCENTAGE) {
+            $computed_discount = $amount_original * $discount_amount / 100;
+        }
+
+        $computed_amount = $amount_original - $computed_discount;
+
+        //
+
+        $tolerancePercentage = 0.1;
+
+        // Calculate the percentage difference
+        $percentageDifference = abs((($amount_discounted - $computed_amount) / $amount_discounted) * 100);
+
+        if ($percentageDifference <= $tolerancePercentage) {
+            // PaytabsHelper::log("Discount values: {$amount_original}, {$computed_amount}", 1);
+            return true;
+        } else {
+            PaytabsHelper::log("Exceeded the tolerance, Discount values: {$amount_original}, {$computed_amount}", 2);
+        }
+
+        return false;
+    }
 }
 
 
@@ -323,6 +445,7 @@ abstract class PaytabsEnum
 
     //
 
+    const DISCOUNT_FLAG = 'flag.card_discount';
     const DISCOUNT_PERCENTAGE = "percentage";
     const DISCOUNT_FIXED = "fixed";
 
@@ -965,7 +1088,7 @@ class PaytabsRequestHolder extends PaytabsBasicHolder
         return $this;
     }
 
-    public function set13CardDiscounts($discount_patterns, $discount_amounts, $discount_types)
+    public function set13CardDiscounts($discount_patterns, $discount_amounts, $discount_types, $flag_set = false)
     {
         if (empty($discount_patterns)) {
             PaytabsHelper::log('Paytabs admin: Discount arrays must be not empty', 3);
@@ -1012,6 +1135,10 @@ class PaytabsRequestHolder extends PaytabsBasicHolder
             $this->card_discounts = [
                 'card_discounts' => $cards
             ];
+
+            if ($flag_set) {
+                $this->set50UserDefined(null, null, PaytabsEnum::DISCOUNT_FLAG);
+            }
         }
 
         return $this;
@@ -1302,6 +1429,7 @@ class PaytabsApi
         '24' => ['name' => 'tabby', 'title' => 'PayTabs - Tabby', 'currencies' => ['AED', 'SAR'], 'groups' => []],
         '25' => ['name' => 'souhoola', 'title' => 'PayTabs - Souhoola', 'currencies' => ['EGP'], 'groups' => [PaytabsApi::GROUP_IFRAME, PaytabsApi::GROUP_REFUND]],
         '26' => ['name' => 'amaninstallments', 'title' => 'PayTabs - Aman installments', 'currencies' => ['EGP'], 'groups' => [PaytabsApi::GROUP_IFRAME, PaytabsApi::GROUP_REFUND]],
+        '27' => ['name' => 'tamara', 'title' => 'PayTabs - Tamara', 'currencies' => null, 'groups' => []],
 
     ];
 
