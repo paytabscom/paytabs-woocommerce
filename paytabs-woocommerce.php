@@ -9,7 +9,7 @@
  * Plugin URI:    https://paytabs.com/
  * Description:   PayTabs is a <strong>3rd party payment gateway</strong>. Ideal payment solutions for your internet business.
 
- * Version:       5.1.0
+ * Version:       5.2.0
  * Requires PHP:  7.0
  * Author:        PayTabs
  * Author URI:    integration@paytabs.com
@@ -20,7 +20,7 @@ if (!function_exists('add_action')) {
 }
 
 
-define('PAYTABS_PAYPAGE_VERSION', '5.1.0');
+define('PAYTABS_PAYPAGE_VERSION', '5.2.0');
 define('PAYTABS_PAYPAGE_DIR', plugin_dir_path(__FILE__));
 define('PAYTABS_PAYPAGE_URL', plugins_url("/", __FILE__));
 define('PAYTABS_PAYPAGE_ICONS_URL', plugins_url("icons/", __FILE__));
@@ -55,6 +55,7 @@ define('PAYTABS_PAYPAGE_METHODS', [
   'tabby'       => 'WC_Gateway_Paytabs_Tabby',
   'souhoola'    => 'WC_Gateway_Paytabs_Souhoola',
   'amaninstallments' => 'WC_Gateway_Paytabs_AmanInstallments',
+  'tamara'           => 'WC_Gateway_Paytabs_Tamara',
 ]);
 
 require_once PAYTABS_PAYPAGE_DIR . 'includes/paytabs_core.php';
@@ -64,7 +65,7 @@ require_once PAYTABS_PAYPAGE_DIR . 'includes/paytabs_functions.php';
 register_activation_hook(__FILE__, 'woocommerce_paytabs_activated');
 
 // Load plugin function when woocommerce loaded
-add_action('plugins_loaded', 'woocommerce_paytabs_init', 0);
+add_action('plugins_loaded', 'woocommerce_paytabs_init', 10, 0);
 
 //
 

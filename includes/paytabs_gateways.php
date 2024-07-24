@@ -256,3 +256,12 @@ class WC_Gateway_Paytabs_AmanInstallments extends WC_Gateway_Paytabs
 
     protected $_icon = "amaninstallments.svg";
 }
+
+class WC_Gateway_Paytabs_Tamara extends WC_Gateway_Paytabs
+{
+    protected $_code = 'tamara';
+    protected $_title = 'PayTabs - Tamara ';
+    protected $_description = 'PayTabs - Tamara payment method';
+
+    protected $_icon = "tamara.svg";
+}
