@@ -65,7 +65,7 @@ require_once PAYTABS_PAYPAGE_DIR . 'includes/paytabs_functions.php';
 register_activation_hook(__FILE__, 'woocommerce_paytabs_activated');
 
 // Load plugin function when woocommerce loaded
-add_action('plugins_loaded', 'woocommerce_paytabs_init', 11, 0);
+add_action('plugins_loaded', 'woocommerce_paytabs_init', 10, 0);
 
 //
 
