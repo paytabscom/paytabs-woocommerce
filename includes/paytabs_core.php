@@ -12,6 +12,7 @@ define('PAYTABS_DEBUG_FILE_NAME', 'debug_paytabs.log');
 define('PAYTABS_DEBUG_SEVERITY', ['Info', 'Warning', 'Error']);
 define('PAYTABS_PREFIX', 'PayTabs');
 
+
 abstract class PaytabsHelper
 {
     static function paymentType($key)
@@ -1429,7 +1430,7 @@ class PaytabsApi
         '24' => ['name' => 'tabby', 'title' => 'PayTabs - Tabby', 'currencies' => ['AED', 'SAR'], 'groups' => []],
         '25' => ['name' => 'souhoola', 'title' => 'PayTabs - Souhoola', 'currencies' => ['EGP'], 'groups' => [PaytabsApi::GROUP_IFRAME, PaytabsApi::GROUP_REFUND]],
         '26' => ['name' => 'amaninstallments', 'title' => 'PayTabs - Aman installments', 'currencies' => ['EGP'], 'groups' => [PaytabsApi::GROUP_IFRAME, PaytabsApi::GROUP_REFUND]],
-        '27' => ['name' => 'tamara', 'title' => 'PayTabs - Tamara', 'currencies' => null, 'groups' => []],
+        '27' => ['name' => 'tamara', 'title' => 'PayTabs - Tamara', 'currencies' => ['AED', 'SAR'], 'groups' => [PaytabsApi::GROUP_IFRAME, PaytabsApi::GROUP_REFUND]],
 
     ];
 
