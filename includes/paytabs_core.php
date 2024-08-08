@@ -2,11 +2,11 @@
 
 /**
  * PayTabs v2 PHP SDK
- * Version: 2.22.0
+ * Version: 2.23.0
  * PHP >= 7.0.0
  */
 
-define('PAYTABS_SDK_VERSION', '2.22.0');
+define('PAYTABS_SDK_VERSION', '2.23.0');
 
 define('PAYTABS_DEBUG_FILE_NAME', 'debug_paytabs.log');
 define('PAYTABS_DEBUG_SEVERITY', ['Info', 'Warning', 'Error']);
@@ -1431,6 +1431,8 @@ class PaytabsApi
         '25' => ['name' => 'souhoola', 'title' => 'PayTabs - Souhoola', 'currencies' => ['EGP'], 'groups' => [PaytabsApi::GROUP_IFRAME, PaytabsApi::GROUP_REFUND]],
         '26' => ['name' => 'amaninstallments', 'title' => 'PayTabs - Aman installments', 'currencies' => ['EGP'], 'groups' => [PaytabsApi::GROUP_IFRAME, PaytabsApi::GROUP_REFUND]],
         '27' => ['name' => 'tamara', 'title' => 'PayTabs - Tamara', 'currencies' => ['AED', 'SAR'], 'groups' => [PaytabsApi::GROUP_IFRAME, PaytabsApi::GROUP_REFUND]],
+        '28' => ['name' => 'halan', 'title' => 'PayTabs - Halan', 'currencies' => ['EGP'], 'groups' => [PaytabsApi::GROUP_IFRAME, PaytabsApi::GROUP_REFUND]],
+
 
     ];
 
