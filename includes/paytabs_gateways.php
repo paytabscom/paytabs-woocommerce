@@ -265,3 +265,12 @@ class WC_Gateway_Paytabs_Tamara extends WC_Gateway_Paytabs
 
     protected $_icon = "tamara.svg";
 }
+
+class WC_Gateway_Paytabs_Halan extends WC_Gateway_Paytabs
+{
+    protected $_code = 'halan';
+    protected $_title = 'PayTabs - Halan ';
+    protected $_description = 'PayTabs - Halan payment method';
+
+    protected $_icon = "halan.svg";
+}
