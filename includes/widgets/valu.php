@@ -58,8 +58,8 @@ class ValuWidget
             ],
         ];
 
-        PaytabsHelper::log("valU inqiry, {$product_price}", 1);
-        $details = $_paytabsApi->inqiry_valu($data);
+        PaytabsHelper::log("valU inquiry, {$product_price}", 1);
+        $details = $_paytabsApi->inquiry_valu($data);
 
         if (!$details || !$details->success) {
             $_err_msg = json_encode($details);
