@@ -274,3 +274,12 @@ class WC_Gateway_Paytabs_Halan extends WC_Gateway_Paytabs
 
     protected $_icon = "halan.svg";
 }
+
+class WC_Gateway_Paytabs_Tru extends WC_Gateway_Paytabs
+{
+    protected $_code = 'tru';
+    protected $_title = 'PayTabs - Tru ';
+    protected $_description = 'PayTabs - Tru payment method';
+
+    protected $_icon = "tru.svg";
+}
