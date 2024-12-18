@@ -287,7 +287,7 @@ class WC_Gateway_Paytabs_Tru extends WC_Gateway_Paytabs
 class WC_Gateway_Paytabs_Basata extends WC_Gateway_Paytabs
 {
     protected $_code = 'basata';
-    protected $_title = 'PayTabs - Basata ';
+    protected $_title = 'PayTabs - Basata';
     protected $_description = 'PayTabs - Basata payment method';
 
     protected $_icon = "basata.svg";
