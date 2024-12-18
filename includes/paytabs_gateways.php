@@ -275,15 +275,6 @@ class WC_Gateway_Paytabs_Halan extends WC_Gateway_Paytabs
     protected $_icon = "halan.svg";
 }
 
-class WC_Gateway_Paytabs_Tru extends WC_Gateway_Paytabs
-{
-    protected $_code = 'tru';
-    protected $_title = 'PayTabs - Tru ';
-    protected $_description = 'PayTabs - Tru payment method';
-
-    protected $_icon = "tru.svg";
-}
-
 class WC_Gateway_Paytabs_Basata extends WC_Gateway_Paytabs
 {
     protected $_code = 'basata';
@@ -291,4 +282,13 @@ class WC_Gateway_Paytabs_Basata extends WC_Gateway_Paytabs
     protected $_description = 'PayTabs - Basata payment method';
 
     protected $_icon = "basata.svg";
+}
+
+class WC_Gateway_Paytabs_Tru extends WC_Gateway_Paytabs
+{
+    protected $_code = 'shahry';
+    protected $_title = 'PayTabs - TRU';
+    protected $_description = 'PayTabs - TRU payment method';
+
+    protected $_icon = "tru.svg";
 }
