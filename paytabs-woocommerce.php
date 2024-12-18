@@ -20,7 +20,7 @@ if (!function_exists('add_action')) {
 }
 
 
-define('PAYTABS_PAYPAGE_VERSION', '5.5.0');
+define('PAYTABS_PAYPAGE_VERSION', '5.6.0');
 define('PAYTABS_PAYPAGE_DIR', plugin_dir_path(__FILE__));
 define('PAYTABS_PAYPAGE_URL', plugins_url("/", __FILE__));
 define('PAYTABS_PAYPAGE_ICONS_URL', plugins_url("icons/", __FILE__));
