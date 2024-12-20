@@ -4,12 +4,12 @@ const path = require('path');
 
 const wcDepMap = {
 	'@woocommerce/blocks-registry': ['wc', 'wcBlocksRegistry'],
-	'@woocommerce/settings'       : ['wc', 'wcSettings']
+	'@woocommerce/settings': ['wc', 'wcSettings'],
 };
 
 const wcHandleMap = {
 	'@woocommerce/blocks-registry': 'wc-blocks-registry',
-	'@woocommerce/settings'       : 'wc-settings'
+	'@woocommerce/settings': 'wc-settings',
 };
 
 const requestToExternal = (request) => {
@@ -31,7 +31,7 @@ module.exports = {
 		'frontend/blocks': '/resources/js/frontend/index.js',
 	},
 	output: {
-		path: path.resolve( __dirname, 'assets/js' ),
+		path: path.resolve(__dirname, 'assets/js'),
 		filename: '[name].js',
 	},
 	plugins: [
@@ -41,7 +41,7 @@ module.exports = {
 		),
 		new WooCommerceDependencyExtractionWebpackPlugin({
 			requestToExternal,
-			requestToHandle
-		})
-	]
+			requestToHandle,
+		}),
+	],
 };
