@@ -26,7 +26,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     private $_support_auth_capture;
     private $_support_iframe;
     private $payment_form;
-    private $is_frammed_page;
+    private $is_framed_page;
     private $is_managed_form;
 
     private $hide_shipping;
@@ -113,7 +113,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $this->enabled = $this->get_option('enabled');
 
         $this->payment_form = $this->get_option('payment_form');
-        $this->is_frammed_page = ($this->payment_form === 'iframe');
+        $this->is_framed_page = ($this->payment_form === 'iframe');
         $this->is_managed_form = ($this->payment_form === "managed_form");
 
         // PT
@@ -232,7 +232,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $ipn_url = $this->get_ipn_url();
 
-        $addional_fields = [];
+        $additional_fields = [];
 
         $redirect_modes = [
             'redirect' => __('Redirect to hosted form on PayTabs server', 'PayTabs'),
@@ -244,7 +244,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
 
         if ($this->_is_card_method) {
-            $addional_fields['allow_associated_methods'] = [
+            $additional_fields['allow_associated_methods'] = [
                 'title' => __('Allow associated methods', 'PayTabs'),
                 'type' => 'checkbox',
                 'description' => 'Accept all associated methods of the current payment method, do not limit to this one only.',
@@ -253,7 +253,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         }
 
         if ($this->_support_tokenise) {
-            $addional_fields['enable_tokenise'] = [
+            $additional_fields['enable_tokenise'] = [
                 'title' => __('Enable Tokenise', 'PayTabs'),
                 'type' => 'checkbox',
                 'description' => 'Allow your customers to save their payment methods for later use.',
@@ -262,7 +262,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         }
 
         if ($this->_support_auth_capture) {
-            $addional_fields['trans_type'] = [
+            $additional_fields['trans_type'] = [
                 'title' => __('Transaction Type', 'PayTabs'),
                 'label' => __('Transaction Type', 'PayTabs'),
                 'type' => 'select',
@@ -274,7 +274,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 'default' => PaytabsEnum::TRAN_TYPE_SALE
             ];
 
-            $addional_fields['status_auth_success'] = [
+            $additional_fields['status_auth_success'] = [
                 'title' => __('Auth Order status', 'PayTabs'),
                 'type' => 'select',
                 'description' => 'Set the Order status if the Auth succeed.',
@@ -284,7 +284,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         }
 
         if ($this->_support_iframe) {
-            $addional_fields['payment_form'] = [
+            $additional_fields['payment_form'] = [
                 'title' => __('Payment form type', 'PayTabs'),
                 'type' => 'select',
                 'options' => $redirect_modes,
@@ -375,7 +375,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             'restock_items' => array(
                 'title' => __('Restock refunded items (IPN)', 'PayTabs'),
                 'type' => 'checkbox',
-                'description' => 'Refund isssued on PayTabs Dashboard will be reflected on your Store (if IPN option enabled), This option will Restock all the orders\' items if the refund amount matched the remaining refund amount, So <strong>use carefully if there is a cross use between the Woo admin refund & PayTabs dashboard refund</strong>.',
+                'description' => 'Refund issued on PayTabs Dashboard will be reflected on your Store (if IPN option enabled), This option will Restock all the orders\' items if the refund amount matched the remaining refund amount, So <strong>use carefully if there is a cross use between the Woo admin refund & PayTabs dashboard refund</strong>.',
                 'default' => 'yes'
             ),
             'failed_send_note' => array(
@@ -406,7 +406,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             )
         );
 
-        $this->form_fields = array_merge($fields, $addional_fields);
+        $this->form_fields = array_merge($fields, $additional_fields);
     }
 
 
@@ -516,7 +516,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $saved_token = $this->get_token();
         if ($saved_token) {
             $values = $this->prepareOrder_Tokenised($order, $saved_token);
-        } elseif ($this->is_frammed_page) {
+        } elseif ($this->is_framed_page) {
 
             return array(
                 'result' => 'success',
@@ -631,7 +631,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
             $payment_url = $paypage->payment_url;
 
-            if ($this->is_frammed_page) {
+            if ($this->is_framed_page) {
                 $this->pt_echo_animation(true);
 
                 echo "<iframe src='{$payment_url}' width='100%' height='auto' style='min-width: auto; min-height: 700px; border: 0' onload='document.getElementById(\"pt_loader\").style.display=\"none\";' />";
@@ -1289,7 +1289,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
 
     /**
-     * Payment successed => Order status change to success
+     * Payment succeed => Order status change to success
      */
     private function orderSuccess($order, $transaction_id, $transaction_type, $token_str, $message, $is_tokenise, $is_ipn, $is_on_hold, $is_pending, $response_code, $result = null)
     {
@@ -1310,7 +1310,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         // wc_add_notice(__('Thank you for shopping with us. Your account has been charged and your transaction is successful. We will be shipping your order to you soon.', 'woocommerce'), 'success');
 
         if ($is_on_hold) {
-            $order->update_status('wc-on-hold', 'Payment for this order is On-Hold, you can Capture/Decline manualy from your dashboard on PayTabs portal', true);
+            $order->update_status('wc-on-hold', 'Payment for this order is On-Hold, you can Capture/Decline manually from your dashboard on PayTabs portal', true);
         } elseif ($is_pending) {
             $_msg = 'Payment for this order is Pending';
             if ($response_code) {
@@ -1403,7 +1403,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         wc_add_notice($message, 'error');
 
         // $order->update_status('failed', $message);
-        $order->update_status('wc-on-hold', 'Payment for this order is On-Hold, you can Capture/Decline manualy from your dashboard on PayTabs portal', true);
+        $order->update_status('wc-on-hold', 'Payment for this order is On-Hold, you can Capture/Decline manually from your dashboard on PayTabs portal', true);
 
         // $this->setNewStatus($order, false);
 
@@ -1578,7 +1578,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 $callback_url
             )
             ->set08Lang($lang)
-            ->set09Framed($this->is_frammed_page, 'top')
+            ->set09Framed($this->is_framed_page, 'top')
             ->set10Tokenise($tokenise)
             ->set11ThemeConfigId($this->theme_config_id);
 
@@ -1697,7 +1697,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                 $callback_url
             )
             ->set08Lang($lang)
-            ->set09Framed($this->is_frammed_page, 'top')
+            ->set09Framed($this->is_framed_page, 'top')
             ->set10Tokenise($tokenise)
             ->set11ThemeConfigId($this->theme_config_id);
 
