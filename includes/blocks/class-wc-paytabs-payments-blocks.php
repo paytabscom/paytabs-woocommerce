@@ -33,7 +33,7 @@ final class WC_Gateway_Paytabs_Blocks_Support extends AbstractPaymentMethodType
 		$enabled_gateways = [];
 
 		foreach ($gateways as $gateway) {
-			if (str_starts_with($gateway->id, "paytabs_") && $gateway->enabled == "yes") {
+			if ((substr($gateway->id, 0, 9) === "paytabs_") && $gateway->enabled == "yes") {
 				$enabled_gateways[$gateway->id] = $gateway;
 			}
 		}
