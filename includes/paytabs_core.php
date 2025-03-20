@@ -2,7 +2,7 @@
 
 /**
  * PayTabs v2 PHP SDK
- * Version: 2.27.0
+ * Version: 2.27.1
  * PHP >= 7.0.0
  */
 
@@ -244,7 +244,9 @@ abstract class PaytabsHelper
     public static function log($msg, $severity = 1)
     {
         try {
-            paytabs_error_log($msg, $severity);
+            if (function_exists('paytabs_error_log')) {
+                paytabs_error_log($msg, $severity);
+            }
         } catch (\Throwable $th) {
             try {
                 $severity_str = PAYTABS_DEBUG_SEVERITY[--$severity];
@@ -351,7 +353,7 @@ abstract class PaytabsHelper
             }
         }
 
-        if (count($indexes) > 0) {
+        if (!empty($indexes)) {
             return $indexes;
         }
 
@@ -699,7 +701,7 @@ abstract class PaytabsExtraDataHolder extends PaytabsHolder
 
         $this->pt_merges(
             $all,
-            $this->airline_data,
+            $this->airline_data
         );
 
         return $all;
@@ -1132,7 +1134,7 @@ class PaytabsRequestHolder extends PaytabsBasicHolder
             $cards[$i]['discount_title'] = $title;
         }
 
-        if (count($cards) > 0) {
+        if (!empty($cards)) {
             $this->card_discounts = [
                 'card_discounts' => $cards
             ];
@@ -1208,7 +1210,7 @@ class PaytabsTokenHolder extends PaytabsExtraDataHolder
             $details['total_count'] = $total_count;
         }
 
-        if (count($details) > 0) {
+        if (!empty($details)) {
             $this->token_details['token_info'] = $details;
         }
 
@@ -1221,7 +1223,7 @@ class PaytabsTokenHolder extends PaytabsExtraDataHolder
 
         if ($this->token_details) {
             $all = array_merge($all, $this->token_details);
-        } else if ($this->token_info) {
+        } elseif ($this->token_info) {
             $all = array_merge($all, $this->token_info);
         }
 
@@ -1728,7 +1730,7 @@ class PaytabsApi
             $_paypage = new stdClass();
             $_paypage->success = false;
             $_paypage->message = 'Create paytabs payment failed';
-        } else if (isset($_paypage->code)) {
+        } elseif (isset($_paypage->code)) {
             $_paypage->success = false;
         } else {
             $_paypage->success = isset($paypage->tran_ref, $paypage->redirect_url) && !empty($paypage->redirect_url);
@@ -1747,7 +1749,7 @@ class PaytabsApi
             $_verify = new stdClass();
             $_verify->success = false;
             $_verify->message = 'Verifying paytabs payment failed';
-        } else if (isset($verify->code, $verify->message)) {
+        } elseif (isset($verify->code, $verify->message)) {
             $_verify->success = false;
         } else {
             if (isset($verify->payment_result)) {
@@ -1849,7 +1851,7 @@ class PaytabsApi
             if ($is_redirect) {
                 $_paypage->success = true;
                 $_paypage->payment_url = $paypage->redirect_url;
-            } else if ($is_completed) {
+            } elseif ($is_completed) {
                 $_paypage = $this->enhanceVerify($paypage);
             } else {
                 $_paypage = $this->enhance($paypage);
@@ -1884,8 +1886,8 @@ class PaytabsApi
         @curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         @curl_setopt($ch, CURLOPT_HEADER, false);
         @curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        @curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        @curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        @curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        @curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
         @curl_setopt($ch, CURLOPT_VERBOSE, true);
         // @curl_setopt($ch, CURLOPT_TIMEOUT, 30);
 

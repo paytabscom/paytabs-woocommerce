@@ -1015,7 +1015,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                                 $this->setNewStatus($order, false, $pt_tran_type, true);
                             }
                         } else {
-                            PaytabsHelper::log('Sale could not be registered, Not same transaction, {$pt_tran_ref} - {$pending_trx}', 3);
+                            PaytabsHelper::log("Sale could not be registered, Not same transaction, {$pt_tran_ref} - {$pending_trx}", 3);
                         }
                     }
                 } else {
