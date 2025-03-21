@@ -463,7 +463,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
     private function is_tokenise()
     {
-        if (!array_key_exists( $this->tokenise_param, $_POST ) ){
+        if (!array_key_exists($this->tokenise_param, $_POST)) {
             return false;
         }
 
@@ -512,6 +512,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         $order = wc_get_order($order_id);
 
         $_paytabsApi = PaytabsApi::getInstance($this->paytabs_endpoint, $this->merchant_id, $this->merchant_key);
+
+        if (!$_paytabsApi->isValid()) {
+            return [];
+        }
 
         $saved_token = $this->get_token();
         if ($saved_token) {

@@ -2,11 +2,11 @@
 
 /**
  * PayTabs v2 PHP SDK
- * Version: 2.27.1
+ * Version: 2.27.2
  * PHP >= 7.0.0
  */
 
-define('PAYTABS_SDK_VERSION', '2.27.0');
+define('PAYTABS_SDK_VERSION', '2.27.2');
 
 define('PAYTABS_DEBUG_FILE_NAME', 'debug_paytabs.log');
 define('PAYTABS_DEBUG_SEVERITY', ['Info', 'Warning', 'Error']);
@@ -1552,6 +1552,11 @@ class PaytabsApi
     {
         $this->profile_id = $profile_id;
         $this->server_key = $server_key;
+    }
+
+    public function isValid()
+    {
+        return isset($this->base_url, $this->profile_id, $this->server_key);
     }
 
 
