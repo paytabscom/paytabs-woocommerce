@@ -74,8 +74,6 @@ register_activation_hook(__FILE__, 'woocommerce_paytabs_activated');
 // Load plugin function when woocommerce loaded
 add_action('plugins_loaded', 'woocommerce_paytabs_init', 10, 0);
 
-//
-
 function woocommerce_paytabs_init()
 {
 
@@ -91,6 +89,32 @@ function woocommerce_paytabs_init()
   require_once PAYTABS_PAYPAGE_DIR . 'includes/paytabs_gateways.php';
   require_once PAYTABS_PAYPAGE_DIR . 'includes/paytabs_payment_token.php';
   require_once PAYTABS_PAYPAGE_DIR . 'includes/widgets/valu.php';
+
+
+  // update process
+
+  global $paytabsGUpdateArr; 
+  $paytabsGUpdateArr = getPaytabsUpdate();
+  
+  if ($paytabsGUpdateArr && $paytabsGUpdateArr['has_update']) {
+    add_filter('plugin_row_meta', 'paytabs_plugin_row_meta', 10, 2);
+    
+    function paytabs_plugin_row_meta($meta, $file) {
+      
+      global $paytabsGUpdateArr;
+
+      if (strpos($file, 'paytabs-woocommerce/paytabs-woocommerce.php') !== false) {
+        $noticeTypeClass = ($paytabsGUpdateArr['mandatory_update'] ? 'notice-error' : 'notice-warning');
+        $update_message = '<div class="update-message notice inline '. $noticeTypeClass .' notice-alt">
+                            <p>There is a newer version['.$paytabsGUpdateArr['latest_version'].'] of PayTabs Plugin available.</p>
+                          </div>';
+        array_push($meta, $update_message);
+      }
+
+      return $meta;
+
+    }
+  }
 
 
   /**
@@ -181,4 +205,41 @@ function woocommerce_paytabs_activated()
 {
   PaytabsHelper::log("Activate hook.", 1);
   woocommerce_paytabs_check_log_permission();
+}
+
+
+function getPaytabsUpdate() 
+{
+  // delete_transient('paytabs_update');
+  // return;
+  $paytabsUpdateTransient = get_transient('paytabs_update');
+  
+  if ($paytabsUpdateTransient) {
+    return json_decode($paytabsUpdateTransient, true);
+  }
+
+  $version = PAYTABS_PAYPAGE_VERSION;
+  $api_url = "https://plugins.paytabs.com/plugins-updates/wordpress-latestversion.php?current_version=$version";
+
+  $response = wp_remote_get($api_url);
+  if (is_wp_error($response)) {
+    // Handle error
+    return;
+  }
+
+  $response = json_decode(wp_remote_retrieve_body($response), true);
+  if ($response && $response['status'] == 'success') {
+
+    $data = $response['data'];
+
+    $paytabsUpdateArr = [
+      'has_update' => $data['plugin_need_update'],
+      'latest_version' => $data['latest_version'],
+      'mandatory_update' => $data['mandatory_update']
+    ];
+    set_transient('paytabs_update', json_encode($paytabsUpdateArr), DAY_IN_SECONDS);
+    return $paytabsUpdateArr;
+
+  }
+
 }
