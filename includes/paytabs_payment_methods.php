@@ -173,7 +173,11 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
             add_action('woocommerce_api_wc_gateway_paytabs', array($this, 'ipn_response'));
         }
 
-        add_action('woocommerce_order_status_completed', array($this, 'process_capture'), 10, 1);
+        // add_action('woocommerce_order_status_completed', array($this, 'process_capture'), 10, 1);
+
+        add_action( 'woocommerce_admin_order_data_after_payment_info', [$this,'add_paytabs_capture_button'], 10, 1 );
+        add_action('woocommerce_saved_order_items', array($this, 'pt_capture_auth_order'), 10, 2);
+
         add_action('woocommerce_order_status_cancelled', array($this, 'process_void'), 10, 1);
         // $this->checkCallback();
 
@@ -182,6 +186,31 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         add_action('woocommerce_receipt_' . $this->id, array($this, 'receipt_page'));
     }
 
+
+    function add_paytabs_capture_button( $order ) {
+
+        if ($this->getPaymentMethod($order) !== $this->id) {
+            return false;
+        }
+
+        $disabled = false;
+        $order_id = $order->get_id();
+        $transaction_type = get_post_meta($order_id, WC_Gateway_Paytabs::PT_TRAN_TYPE);
+        if (!in_array(PaytabsEnum::TRAN_TYPE_AUTH, $transaction_type)){
+            $disabled = true;
+        }
+
+        echo '<div>
+            <input type="hidden" name="paytabs_capture" id="paytabs_capture_input" value="0"'; echo $disabled ? "disabled" : ""; echo ' >
+            <button type="submit" class="button button-primary" id="paytabs_capture_btn" '; echo $disabled ? "disabled" : ""; echo '>Paytabs Capture</button>
+        </div>';
+
+        echo '<script>
+                document.getElementById("paytabs_capture_btn").addEventListener("click", function() {
+                    document.getElementById("paytabs_capture_input").value = 1;
+                });
+            </script>';
+    }
 
     /**
      * Returns the icon URL for this payment method
@@ -737,6 +766,31 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         return $success;
     }
 
+    function pt_capture_auth_order($order_id){
+
+        $order = wc_get_order($order_id);
+        if ($this->getPaymentMethod($order) !== $this->id || !isset($_POST['paytabs_capture']) || !$_POST['paytabs_capture']) {
+            return;
+        }
+
+        $transaction_type = $this->pt_get_tran_type($order_id);
+        if (!in_array(PaytabsEnum::TRAN_TYPE_AUTH, $transaction_type)) {
+            PaytabsHelper::log("Capture not allowed on non Auth transactions, {$order_id}", 2);
+            return;
+        }
+
+        $captured = $this->process_capture($order_id);
+        if($captured){
+            $order->set_status('completed', 'The amount has been captured');
+            $order->save();
+            wp_redirect($_SERVER['REQUEST_URI']);
+            $_SESSION['paytabs_capture_type'] = 'success';
+            $_SESSION['paytabs_capture_message'] = 'Success Capture';
+            PaytabsHelper::log("Capture done, and order status set to completed  , {$order_id}");
+            exit;
+        }
+    }
+
 
     public function process_capture($order_id)
     {
@@ -796,7 +850,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         if ($success) {
             $this->pt_set_tran_ref($order, PaytabsEnum::TRAN_TYPE_CAPTURE, $tran_ref);
             $order->set_transaction_id($tran_ref);
-            $order->save();
+            // $order->save();
         } else {
             PaytabsHelper::log("Capture failed, {$order_id} - {$message}", 3);
             $order->update_status('on-hold', __('Capture failed: ' . $message, 'PayTabs'));
