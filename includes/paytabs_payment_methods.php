@@ -36,11 +36,6 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     private $order_status_auth_success;
     private $failed_send_note;
 
-    private $valu_widget_enable;
-    private $valu_widget_static_content;
-    private $valu_widget_phone_number;
-    private $valu_widget_price_threshold;
-
     public $enable_tokenise;
     private $tokenise_param;
     private $token_id_param;
@@ -131,15 +126,6 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
         $this->trans_type = $this->get_option('trans_type', PaytabsEnum::TRAN_TYPE_SALE);
         $this->order_status_auth_success = $this->get_option('status_auth_success', 'wc-on-hold');
-
-
-        if ($this->_code == 'valu') {
-            //$this->valu_product_id = $this->get_option('valu_product_id');
-            $this->valu_widget_enable = $this->get_option('valu_widget_enable') == 'yes';
-            $this->valu_widget_static_content = $this->get_option('valu_widget_static_content') == 'yes';
-            $this->valu_widget_phone_number = $this->get_option('valu_widget_phone_number');
-            $this->valu_widget_price_threshold = $this->get_option('valu_widget_price_threshold');
-        }
 
         $this->enable_tokenise = $this->get_option('enable_tokenise') == 'yes';
         $this->allow_associated_methods = $this->get_option('allow_associated_methods') == 'yes';

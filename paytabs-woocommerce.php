@@ -9,7 +9,7 @@
  * Plugin URI:    https://paytabs.com/
  * Description:   PayTabs is a <strong>3rd party payment gateway</strong>. Ideal payment solutions for your internet business.
 
- * Version:       5.7.1
+ * Version:       5.7.2
  * Requires PHP:  7.0
  * Requires Plugins: woocommerce
  
@@ -24,7 +24,7 @@ if (!function_exists('add_action')) {
 }
 
 
-define('PAYTABS_PAYPAGE_VERSION', '5.7.1');
+define('PAYTABS_PAYPAGE_VERSION', '5.7.2');
 define('PAYTABS_PAYPAGE_DIR', plugin_dir_path(__FILE__));
 define('PAYTABS_PAYPAGE_URL', plugins_url("/", __FILE__));
 define('PAYTABS_PAYPAGE_ICONS_URL', plugins_url("icons/", __FILE__));
@@ -147,7 +147,7 @@ function woocommerce_paytabs_init()
   add_filter('woocommerce_payment_methods_list_item', 'get_account_saved_payment_methods_list_item_paytabs', 10, 2);
   add_filter('plugin_action_links_' . plugin_basename(__FILE__), 'paytabs_add_action_links');
 
-  add_action('woocommerce_single_product_summary', 'valu_widget', 21);
+  add_action('woocommerce_single_product_summary', 'pt_valu_widget', 21);
 
   add_action('woocommerce_blocks_loaded', 'woocommerce_gateway_paytabs_woocommerce_block_support');
   function woocommerce_gateway_paytabs_woocommerce_block_support()
@@ -163,7 +163,7 @@ function woocommerce_paytabs_init()
     }
   }
 
-  function valu_widget()
+  function pt_valu_widget()
   {
     $enabled_gateways = WC()->payment_gateways->get_available_payment_gateways();
 

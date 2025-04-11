@@ -95,6 +95,22 @@ class WC_Gateway_Paytabs_Valu extends WC_Gateway_Paytabs
     protected $_title = 'PayTabs - valU';
     protected $_description = 'valU payments powered by PayTabs';
 
+    public $valu_widget_enable;
+    public $valu_widget_static_content;
+    public $valu_widget_phone_number;
+    public $valu_widget_price_threshold;
+
+    public function __construct()
+    {
+        parent::__construct();
+
+        //$this->valu_product_id = $this->get_option('valu_product_id');
+
+        $this->valu_widget_enable = $this->get_option('valu_widget_enable') == 'yes';
+        $this->valu_widget_static_content = $this->get_option('valu_widget_static_content') == 'yes';
+        $this->valu_widget_phone_number = $this->get_option('valu_widget_phone_number');
+        $this->valu_widget_price_threshold = $this->get_option('valu_widget_price_threshold');
+    }
 
     public function init_form_fields()
     {
