@@ -264,6 +264,18 @@ class WC_Gateway_Paytabs_Tamara extends WC_Gateway_Paytabs
     protected $_description = 'PayTabs - Tamara payment method';
 
     protected $_icon = "tamara.svg";
+
+    // if customer_details.name is not 2 words => stop the proces payment
+    // Display error message to the customer
+    public function process_payment($order_id)
+    {
+        $order = wc_get_order($order_id);
+        $full_name = $order->get_formatted_billing_full_name();
+        if (str_word_count($full_name) < 2) {
+            throw new Exception( __( 'Please enter name with two words to use Tamara.', 'woocommerce' ) );
+        }
+        return parent::process_payment($order_id);
+    }
 }
 
 class WC_Gateway_Paytabs_Halan extends WC_Gateway_Paytabs
