@@ -84,7 +84,9 @@ function woocommerce_paytabs_init()
     return;
   }
 
-  define('WooCommerce2', !woocommerce_paytabs_version_check('3.0'));
+   if (!defined('WooCommerce2')) {
+    define('WooCommerce2', !woocommerce_paytabs_version_check('3.0'));
+  }
 
   // PT
   require_once PAYTABS_PAYPAGE_DIR . 'includes/paytabs_payment_methods.php';
