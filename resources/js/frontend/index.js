@@ -5,14 +5,10 @@ import { getSetting } from '@woocommerce/settings';
 
 const settings = getSetting('paytabs_blocks_data', {});
 
-// const defaultLabel = __('PayTabs Payments');
-
 /**
  * Content component
  */
 const Content = (props) => {
-	const { PaymentMethodLabel } = props.components;
-
 	return (
 		<>
 			{props.setting.description && (
@@ -24,9 +20,8 @@ const Content = (props) => {
 						paddingRight: 5,
 						paddingLeft: 5,
 					}}
-				>
-					<PaymentMethodLabel text={props.setting.description} />
-				</div>
+					dangerouslySetInnerHTML={{ __html: props.setting.description }}
+				/>
 			)}
 			{props.showSaveNote && (
 				<div
@@ -66,7 +61,7 @@ const Label = (props) => {
 			<PaymentMethodLabel
 				text={decodeEntities(props.setting.title)}
 			/>
-			{props.setting.icon != '' && (
+			{props.setting.icon !== '' && (
 				<img src={props.setting.icon} alt={props.setting.name} />
 			)}
 		</div>
@@ -74,15 +69,21 @@ const Label = (props) => {
 };
 
 let hasSubscription = settings.cart.has_subscription;
+
 settings.blocks.forEach((setting) => {
 	let supportTokenization =
 		setting.supports.includes('tokenization') && setting.enable_tokenise;
 	let showSaveNote = supportTokenization && hasSubscription;
+
 	let gateWay = {
 		name: setting.name,
 		label: <Label setting={setting} />,
 		content: <Content setting={setting} showSaveNote={showSaveNote} />,
-		edit: <div>{decodeEntities(setting.description)}</div>,
+		edit: (
+			<div
+				dangerouslySetInnerHTML={{ __html: setting.description }}
+			/>
+		),
 		canMakePayment: () => true,
 		ariaLabel: decodeEntities(setting.title),
 		supports: {
