@@ -71,7 +71,7 @@ final class WC_Gateway_Paytabs_Blocks_Support extends AbstractPaymentMethodType
 			$this->id,
 			$script_url,
 			$script_asset['dependencies'],
-			time(),
+			$script_asset['version'],
 			true
 		);
 
