@@ -10,6 +10,8 @@ const settings = getSetting('paytabs_blocks_data', {});
  * Content component
  */
 const Content = (props) => {
+	const { PaymentMethodLabel } = props.components;
+
 	return (
 		<>
 			{
@@ -28,8 +30,9 @@ const Content = (props) => {
 						paddingRight: 5,
 						paddingLeft: 5,
 					}}
-					dangerouslySetInnerHTML={{ __html: props.setting.description }}
-				/>
+				>
+					<PaymentMethodLabel text={props.setting.description} />
+				</div>
 			)}
 			{props.showSaveNote && (
 				<div
@@ -87,11 +90,7 @@ settings.blocks.forEach((setting) => {
 		name: setting.name,
 		label: <Label setting={setting} />,
 		content: <Content setting={setting} showSaveNote={showSaveNote} />,
-		edit: (
-			<div
-				dangerouslySetInnerHTML={{ __html: setting.description }}
-			/>
-		),
+		edit: <div>{decodeEntities(setting.description)}</div>,
 		canMakePayment: () => true,
 		ariaLabel: decodeEntities(setting.title),
 		supports: {
