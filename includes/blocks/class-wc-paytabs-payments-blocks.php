@@ -97,8 +97,9 @@ final class WC_Gateway_Paytabs_Blocks_Support extends AbstractPaymentMethodType
 				'title' => $gateway->title,
 				'supports' => array_filter($gateway->supports, [$gateway, 'supports']),
 				'icon' => $gateway->getIcon(),
-				'description' => $gateway->get_description(),
+				'description' => $gateway->description,
 				'enable_tokenise' => $gateway->enable_tokenise,
+				'frontend_component' => $gateway->getFrontendComponent(),
 			];
 
 			$key = "blocks";

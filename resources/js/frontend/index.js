@@ -2,6 +2,7 @@ import { sprintf, __ } from '@wordpress/i18n';
 import { registerPaymentMethod } from '@woocommerce/blocks-registry';
 import { decodeEntities } from '@wordpress/html-entities';
 import { getSetting } from '@woocommerce/settings';
+import FrontComponent from './methods';
 
 const settings = getSetting('paytabs_blocks_data', {});
 
@@ -11,7 +12,14 @@ const settings = getSetting('paytabs_blocks_data', {});
 const Content = (props) => {
 	return (
 		<>
-			{props.setting.description && (
+			{
+				props.setting.frontend_component && (
+					<div>
+						<FrontComponent name={props.setting.frontend_component} />
+					</div>
+				)
+			}
+			{!props.setting.frontend_component && props.setting.description && (
 				<div
 					style={{
 						display: 'flex',

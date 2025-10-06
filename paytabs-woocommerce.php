@@ -12,7 +12,7 @@
  * Version:       5.7.3
  * Requires PHP:  7.0
  * Requires Plugins: woocommerce
- 
+
  * Author:        PayTabs
  * Author URI:    mailto:integration@paytabs.com
 
@@ -182,4 +182,3 @@ function woocommerce_paytabs_activated()
   PaytabsHelper::log("Activate hook.", 1);
   woocommerce_paytabs_check_log_permission();
 }
-

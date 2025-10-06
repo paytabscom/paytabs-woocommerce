@@ -51,6 +51,10 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
 
     //
 
+    protected $_frontend_component = null;
+
+    //
+
     const PT_HANDLED = '_pt_handled';
     const PT_TRAN_TYPE = '_pt_transaction_type';
 
@@ -201,6 +205,11 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     private function get_endpoint_url()
     {
         return PaytabsApi::getEndpoint($this->paytabs_endpoint);
+    }
+
+    public function getFrontendComponent()
+    {
+        return $this->_frontend_component;
     }
 
     /**
