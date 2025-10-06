@@ -2,10 +2,9 @@ import { sprintf, __ } from '@wordpress/i18n';
 import { registerPaymentMethod } from '@woocommerce/blocks-registry';
 import { decodeEntities } from '@wordpress/html-entities';
 import { getSetting } from '@woocommerce/settings';
+import FrontComponent from './methods';
 
 const settings = getSetting('paytabs_blocks_data', {});
-
-// const defaultLabel = __('PayTabs Payments');
 
 /**
  * Content component
@@ -15,7 +14,14 @@ const Content = (props) => {
 
 	return (
 		<>
-			{props.setting.description && (
+			{
+				props.setting.frontend_component && (
+					<div>
+						<FrontComponent name={props.setting.frontend_component} />
+					</div>
+				)
+			}
+			{!props.setting.frontend_component && props.setting.description && (
 				<div
 					style={{
 						display: 'flex',
@@ -66,7 +72,7 @@ const Label = (props) => {
 			<PaymentMethodLabel
 				text={decodeEntities(props.setting.title)}
 			/>
-			{props.setting.icon != '' && (
+			{props.setting.icon !== '' && (
 				<img src={props.setting.icon} alt={props.setting.name} />
 			)}
 		</div>
@@ -74,10 +80,12 @@ const Label = (props) => {
 };
 
 let hasSubscription = settings.cart.has_subscription;
+
 settings.blocks.forEach((setting) => {
 	let supportTokenization =
 		setting.supports.includes('tokenization') && setting.enable_tokenise;
 	let showSaveNote = supportTokenization && hasSubscription;
+
 	let gateWay = {
 		name: setting.name,
 		label: <Label setting={setting} />,

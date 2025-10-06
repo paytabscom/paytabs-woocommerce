@@ -277,9 +277,22 @@ class WC_Gateway_Paytabs_Tamara extends WC_Gateway_Paytabs
 {
     protected $_code = 'tamara';
     protected $_title = 'PayTabs - Tamara ';
-    protected $_description = 'PayTabs - Tamara payment method';
+    protected $_description = 'PayTabs - Tamara payment method.';
 
     protected $_icon = "tamara.svg";
+
+    protected $_frontend_component = "Tamara";
+
+    public function __construct()
+    {
+        parent::__construct();
+
+        $locale = determine_locale();
+
+        if (strpos($locale, 'ar') === 0) {
+            $this->_icon = "tamara_ar.svg";
+        }
+    }
 }
 
 class WC_Gateway_Paytabs_Halan extends WC_Gateway_Paytabs
