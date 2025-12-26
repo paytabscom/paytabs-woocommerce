@@ -6,7 +6,7 @@
  * PHP >= 7.0.0
  */
 
-define('PAYTABS_SDK_VERSION', '2.27.2');
+define('PAYTABS_SDK_VERSION', '2.28.0');
 
 define('PAYTABS_DEBUG_FILE_NAME', 'debug_paytabs.log');
 define('PAYTABS_DEBUG_SEVERITY', ['Info', 'Warning', 'Error']);
@@ -1155,7 +1155,7 @@ class PaytabsRequestHolder extends PaytabsBasicHolder
  * Members:
  * - Token Info (token & tran_ref)
  */
-class PaytabsTokenHolder extends PaytabsExtraDataHolder
+class PaytabsTokenHolder extends PaytabsRequestHolder
 {
     /**
      * token
@@ -1466,6 +1466,14 @@ class PaytabsApi
         'KWT' => [
             'title' => 'Kuwait',
             'endpoint' => 'https://secure-kuwait.paytabs.com/'
+        ],
+        'QAT' => [
+            'title' => 'Qatar',
+            'endpoint' => 'https://secure-doha.paytabs.com/'
+        ],
+        'MAR' => [
+            'title' => 'Morocco',
+            'endpoint' => 'https://secure-morocco.paytabs.com/'
         ],
         'GLOBAL' => [
             'title' => 'Global',
@@ -1829,12 +1837,15 @@ class PaytabsApi
             $_refund->success = false;
             $_refund->message = 'Verifying paytabs Refund failed';
         } else {
+            $_refund->success = false;
+            $_refund->is_pending = false;
+
             if (isset($refund->payment_result)) {
                 $_refund->success = PaytabsEnum::TranStatusIsSuccess($refund->payment_result->response_status);
+                $_refund->is_pending = PaytabsEnum::TranStatusIsPending($refund->payment_result->response_status);
                 $_refund->message = $refund->payment_result->response_message;
-            } else {
-                $_refund->success = false;
             }
+
             $_refund->pending_success = false;
         }
 
