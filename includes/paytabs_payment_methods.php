@@ -876,6 +876,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
     {
         PaytabsHelper::log("Return triggered", 1);
         $this->handle_response(false);
+        PaytabsHelper::log("Return completed", 1);
     }
 
     public function callback_response()
@@ -891,6 +892,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
         } else {
             $this->handle_response(true);
         }
+        PaytabsHelper::log("Callback completed", 1);
     }
 
     public function ipn_response()
@@ -1176,6 +1178,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                     if ($response_data->failed) {
                         $_redirect_url = add_query_arg('pt_msg', $response_data->message, $_redirect_url);
                     }
+                    PaytabsHelper::log("{$handler} redirecting to Order Received Page, {$_redirect_url}, Order {$orderId}", 1);
                     wp_redirect($_redirect_url);
                     exit;
                 }

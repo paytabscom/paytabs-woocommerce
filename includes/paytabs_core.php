@@ -1723,7 +1723,7 @@ class PaytabsApi
 
         if (!$is_valid) {
             $hashed_key = explode('-', @$this->server_key ?? '')[0];
-            PaytabsHelper::log("Paytabs Admin: Invalid Signature ({$hashed_key}, {$signature})", 3);
+            PaytabsHelper::log("Paytabs Admin: Invalid Signature ({$hashed_key}, {$signature}, {$is_ipn})", 3);
             return false;
         }
 
