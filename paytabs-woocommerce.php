@@ -23,6 +23,9 @@ if (!function_exists('add_action')) {
   exit;
 }
 
+if( !session_id() ) {
+  session_start();
+}
 
 define('PAYTABS_PAYPAGE_VERSION', '5.8.0');
 define('PAYTABS_PAYPAGE_DIR', plugin_dir_path(__FILE__));
