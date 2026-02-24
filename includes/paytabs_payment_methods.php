@@ -1171,6 +1171,7 @@ class WC_Gateway_Paytabs extends WC_Payment_Gateway
                     }
                 } else {
                     PaytabsHelper::log("{$handler} failed, Order {$orderId}, No need for Payment", 2);
+                    $order->add_order_note("{$handler} response received, but Order does not need payment");
                 }
 
                 if (!$is_ipn && !$pt_reach) {
