@@ -2,11 +2,11 @@
 
 /**
  * PayTabs v2 PHP SDK
- * Version: 2.27.2
+ * Version: 2.29.0
  * PHP >= 7.0.0
  */
 
-define('PAYTABS_SDK_VERSION', '2.28.0');
+define('PAYTABS_SDK_VERSION', '2.29.0');
 
 define('PAYTABS_DEBUG_FILE_NAME', 'debug_paytabs.log');
 define('PAYTABS_DEBUG_SEVERITY', ['Info', 'Warning', 'Error']);
@@ -244,9 +244,7 @@ abstract class PaytabsHelper
     public static function log($msg, $severity = 1)
     {
         try {
-            if (function_exists('paytabs_error_log')) {
-                paytabs_error_log($msg, $severity);
-            }
+            paytabs_error_log($msg, $severity);
         } catch (\Throwable $th) {
             try {
                 $severity_str = PAYTABS_DEBUG_SEVERITY[--$severity];
@@ -256,7 +254,7 @@ abstract class PaytabsHelper
                 $_file = defined('PAYTABS_DEBUG_FILE') ? PAYTABS_DEBUG_FILE : PAYTABS_DEBUG_FILE_NAME;
                 file_put_contents($_file, $_msg, FILE_APPEND);
             } catch (\Throwable $th) {
-                // var_export($th);
+                error_log("PayTabs Logging Error: " . $th->getMessage());
             }
         }
     }
@@ -1474,6 +1472,10 @@ class PaytabsApi
         'MAR' => [
             'title' => 'Morocco',
             'endpoint' => 'https://secure-morocco.paytabs.com/'
+        ],
+        'MADFOAT' => [
+            'title' => 'Madfoat',
+            'endpoint' => 'https://madfoat-secure.paytabs.com/'
         ],
         'GLOBAL' => [
             'title' => 'Global',
