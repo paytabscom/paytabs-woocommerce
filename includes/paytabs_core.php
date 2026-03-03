@@ -1726,7 +1726,7 @@ class PaytabsApi
         ],
         'CUZDAN' => [
             'title' => 'Cuzdan',
-            'endpoint' => 'https://secure-cuzdan.paytabs.com/'
+            'endpoint' => 'https://secure.cuzdan.az/'
         ],
         'GLOBAL' => [
             'title' => 'Global',
