@@ -321,3 +321,11 @@ class WC_Gateway_Paytabs_Tru extends WC_Gateway_Paytabs
 
     protected $_icon = "tru.svg";
 }
+// kapital bank external hosted ( cuzdan instance only )
+class WC_Gateway_Paytabs_KapitalBank extends WC_Gateway_Paytabs
+{
+    protected $_code = 'kapitalbankhosted';
+    protected $_title = 'PayTabs - KapitalBank - Hosted';
+    protected $_description = 'PayTabs - KapitalBank - Hosted payment method';
+    protected $_icon = "KapitalBank.png";
+}
