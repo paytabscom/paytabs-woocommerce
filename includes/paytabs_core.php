@@ -1681,6 +1681,16 @@ class PaytabsApi
                 PaytabsApi::GROUP_PENDING
             ]
         ],
+        // kapital bank external hosted ( cuzdan instance only )
+        '31'  => [
+            'name' => 'kapitalbank',
+            'title' => 'PayTabs - KapitalBank - Hosted',
+            'currencies' => ['AZN'],
+            'groups' => [
+                PaytabsApi::GROUP_CARDS,
+                PaytabsApi::GROUP_REFUND
+            ]
+        ],
     ];
 
     const BASE_URLS = [
