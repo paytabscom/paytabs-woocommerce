@@ -2,11 +2,11 @@
 
 /**
  * PayTabs v2 PHP SDK
- * Version: 2.30.0
+ * Version: 2.30.1
  * PHP >= 7.0.0
  */
 
-define('PAYTABS_SDK_VERSION', '2.30.0');
+define('PAYTABS_SDK_VERSION', '2.30.1');
 
 define('PAYTABS_DEBUG_FILE_NAME', 'debug_paytabs.log');
 define('PAYTABS_DEBUG_SEVERITY', ['Info', 'Warning', 'Error']);
@@ -1511,7 +1511,7 @@ class PaytabsApi
         '11' => [
             'name' => 'valu',
             'title' => 'PayTabs - valU',
-            'currencies' => ['EGP'],
+            'currencies' => ['EGP', 'JOD'],
             'groups' => [
                 PaytabsApi::GROUP_IFRAME,
                 PaytabsApi::GROUP_REFUND
