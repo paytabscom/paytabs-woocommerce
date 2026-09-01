@@ -18,8 +18,8 @@ $_js_url = $this->get_endpoint_url() . $_js_path;
         </div>
         <div class="row">
             <label>Expiry Date (MM/YYYY)</label>
-            <input type="text" data-paylib="expmonth" size="2">
-            <input type="text" data-paylib="expyear" size="4">
+            <input placeholder="MM" type="text" data-paylib="expmonth" size="2">
+            <input placeholder="YYYY" type="text" data-paylib="expyear" size="4">
         </div>
         <div class="row">
             <label>Security Code</label>
